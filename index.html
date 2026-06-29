@@ -121,6 +121,10 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   font-family:inherit; color-scheme:dark; -webkit-appearance:none;
 }
 .form-row input:focus, .form-row textarea:focus { border-color:var(--orange); }
+.form-row input[readonly], .form-row textarea[readonly] {
+  background:#202020; color:var(--muted); border-color:#2e2e2e; cursor:default;
+}
+.form-row input[readonly]:focus, .form-row textarea[readonly]:focus { border-color:#2e2e2e; }
 .form-row textarea { height:72px; resize:vertical; }
 .time-row { display:flex; gap:12px; }
 .time-row > div { flex:1; }
@@ -487,7 +491,24 @@ document.getElementById('rp-b').onclick = function() { setRoom('b'); };
 
 function hideConfirm() {
   document.getElementById('confirm-box').style.display = 'none';
-  document.getElementById('save-btn').style.display = 'inline-block';
+  // Vis kun Lagre når vi lager en ny booking (ikke ved redigering av eksisterende)
+  document.getElementById('save-btn').style.display = editId ? 'none' : 'inline-block';
+}
+
+// Lås eller lås opp skjemafeltene
+function setFieldsLocked(locked) {
+  ['f-name','f-date','f-start','f-end','f-tech','f-note'].forEach(id => {
+    const el = document.getElementById(id);
+    if (locked) el.setAttribute('readonly', 'readonly');
+    else el.removeAttribute('readonly');
+  });
+  // Romvelger
+  document.getElementById('rp-a').disabled = locked;
+  document.getElementById('rp-b').disabled = locked;
+  document.getElementById('rp-a').style.pointerEvents = locked ? 'none' : 'auto';
+  document.getElementById('rp-b').style.pointerEvents = locked ? 'none' : 'auto';
+  document.getElementById('rp-a').style.opacity = locked ? '0.6' : '1';
+  document.getElementById('rp-b').style.opacity = locked ? '0.6' : '1';
 }
 
 function openNew(ds) {
@@ -496,6 +517,8 @@ function openNew(ds) {
   document.getElementById('modal-box').className = 'modal is-new';
   document.getElementById('modal-badge').style.display = 'inline-block';
   document.getElementById('booked-box').style.display = 'none';
+  document.getElementById('save-btn').style.display = 'inline-block';
+  setFieldsLocked(false);
   document.getElementById('f-name').value = '';
   document.getElementById('f-date').value = ds || '';
   document.getElementById('f-start').value = '10:00';
@@ -511,7 +534,7 @@ function openNew(ds) {
 
 function openEdit(b) {
   editId = b.id;
-  document.getElementById('modal-title').textContent = 'Rediger booking';
+  document.getElementById('modal-title').textContent = 'Booking';
   document.getElementById('modal-box').className = 'modal is-edit';
   document.getElementById('modal-badge').style.display = 'none';
   document.getElementById('booked-box').style.display = 'flex';
@@ -522,6 +545,8 @@ function openEdit(b) {
   document.getElementById('f-tech').value = b.tech || '';
   document.getElementById('f-note').value = b.note || '';
   document.getElementById('del-btn').style.display = 'inline-flex';
+  document.getElementById('save-btn').style.display = 'none';
+  setFieldsLocked(true);
   document.getElementById('conflict-msg').style.display = 'none';
   setRoom(b.room || 'a');
   hideConfirm();
