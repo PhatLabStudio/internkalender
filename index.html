@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PhatLab Studio – Bookingkalender</title>
+<style>
+* { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:       #111;
+  --surface:  #1c1c1c;
+  --surf2:    #2a2a2a;
+  --border:   #3a3a3a;
+  --orange:   #e8682a;
+  --orange-d: #c45520;
+  --text:     #f0f0f0;
+  --muted:    #888;
+  --dim:      #555;
+  --ra:       #e8682a;
+  --ra-bg:    rgba(232,104,42,.18);
+  --rb:       #4a9edd;
+  --rb-bg:    rgba(74,158,221,.18);
+  --green:    #3db87a;
+  --green-bg: rgba(61,184,122,.15);
+}
+body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+#app { background:var(--bg); color:var(--text); padding:1.25rem; max-width:1100px; margin:0 auto; min-height:100vh; }
+
+/* TOP BAR */
+.top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px; }
+.logo { font-size:18px; font-weight:600; letter-spacing:-.02em; }
+.logo .accent { color:var(--orange); }
+.logo .sub { color:var(--muted); font-weight:400; font-size:14px; margin-left:4px; }
+.nav { display:flex; align-items:center; gap:6px; }
+.nav-btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 14px; font-size:18px; cursor:pointer; color:var(--text); line-height:1; }
+.nav-btn:hover { background:var(--surf2); }
+.month-label { font-size:15px; font-weight:500; min-width:140px; text-align:center; }
+.btn-new { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:14px; cursor:pointer; font-weight:500; white-space:nowrap; }
+.btn-new:hover { background:var(--orange-d); }
+.btn-help { background:var(--surface); border:1px solid var(--border); color:var(--muted); border-radius:50%; width:34px; height:34px; font-size:16px; font-weight:600; cursor:pointer; flex-shrink:0; }
+.btn-help:hover { background:var(--surf2); color:var(--text); }
+
+/* HELP BOX */
+.help-content { font-size:14px; line-height:1.7; color:var(--text); }
+.help-content p { margin-bottom:0.85rem; }
+.help-content .h-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:0.85rem; }
+.help-content .h-ico { flex-shrink:0; font-size:16px; line-height:1.5; }
+.help-content .h-swatch { flex-shrink:0; width:14px; height:14px; border-radius:4px; margin-top:3px; }
+.help-content strong { color:var(--orange); }
+
+/* FILTER BUTTONS */
+.room-legend { display:flex; gap:8px; margin-bottom:1.25rem; }
+.rfbtn {
+  display:flex; align-items:center; gap:6px;
+  padding:6px 16px; border-radius:20px; font-size:12px; font-weight:600;
+  cursor:pointer; border:2px solid transparent; transition:all .15s;
+}
+.rfbtn-a-on  { background:var(--ra); border-color:var(--ra); color:#fff; }
+.rfbtn-a-off { background:var(--surface); border-color:var(--border); color:var(--dim); }
+.rfbtn-b-on  { background:var(--rb); border-color:var(--rb); color:#fff; }
+.rfbtn-b-off { background:var(--surface); border-color:var(--border); color:var(--dim); }
+
+/* CALENDAR */
+.cal-grid { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:1px; background:var(--border); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+.day-hdr { background:var(--surface); padding:8px 2px; text-align:center; font-size:11px; font-weight:500; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+.day-cell { background:var(--surface); min-height:90px; padding:5px 4px; cursor:pointer; transition:background .1s; }
+.day-cell:hover { background:var(--surf2); }
+.day-cell.other-month .day-num { color:var(--dim); }
+.day-cell.today .day-num { background:var(--orange); color:#fff; border-radius:50%; }
+.day-num { font-size:12px; font-weight:500; width:22px; height:22px; display:flex; align-items:center; justify-content:center; margin-bottom:3px; }
+
+/* PILLS */
+.pill-wrap { position:relative; margin-bottom:2px; }
+.pill {
+  font-size:10px; border-radius:4px; padding:2px 4px;
+  cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  max-width:100%; font-weight:500; line-height:1.5; border-left:2px solid transparent;
+}
+.pill-a { background:var(--ra-bg); color:#f0a070; border-left-color:var(--ra); }
+.pill-b { background:var(--rb-bg); color:#7dbfe8; border-left-color:var(--rb); }
+.tip {
+  display:none; position:absolute; bottom:calc(100% + 6px); left:0; z-index:200;
+  background:#222; border:1px solid #444; border-radius:8px;
+  padding:8px 10px; min-width:160px; max-width:220px;
+  font-size:12px; line-height:1.6; color:#f0f0f0;
+  pointer-events:none; white-space:pre-wrap; box-shadow:0 4px 16px rgba(0,0,0,.5);
+}
+.tip-room { font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; margin-bottom:4px; }
+.pill-wrap:hover .tip { display:block; }
+
+.more-pill { font-size:10px; color:var(--muted); padding:1px 3px; }
+.conflict-banner { font-size:9px; color:#f08080; background:rgba(200,60,60,.18); border-radius:3px; padding:2px 3px; margin-bottom:2px; font-weight:500; }
+
+/* MODAL */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.75); display:flex; align-items:flex-end; justify-content:center; z-index:100; padding:0; }
+.modal {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:20px 20px 0 0; padding:1.5rem;
+  width:100%; max-width:520px;
+  max-height:92vh; overflow-y:auto;
+}
+.modal-drag { width:40px; height:4px; background:var(--border); border-radius:2px; margin:0 auto 1.25rem; }
+.modal.is-new { border-top:4px solid var(--orange); }
+.modal.is-edit { border-top:4px solid var(--green); }
+.modal-head { display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; }
+.modal h3 { font-size:16px; font-weight:600; color:var(--text); margin:0; }
+.modal-badge { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:3px 9px; border-radius:20px; }
+.badge-new { background:var(--ra-bg); color:var(--orange); }
+.booked-box {
+  background:var(--green-bg); border:1px solid rgba(61,184,122,.35);
+  border-radius:10px; padding:10px 12px; margin-bottom:1.25rem;
+  display:flex; align-items:center; gap:10px;
+}
+.booked-box .bk-label { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--green); white-space:nowrap; }
+.booked-box .bk-text { font-size:13px; color:#a8d8c2; }
+.form-row { margin-bottom:1rem; }
+.form-row label { display:block; font-size:11px; color:var(--muted); margin-bottom:5px; text-transform:uppercase; letter-spacing:.04em; }
+.form-row input, .form-row textarea {
+  width:100%; font-size:16px; background:var(--surf2); border:1px solid var(--border);
+  border-radius:10px; padding:10px 12px; color:var(--text); outline:none;
+  font-family:inherit; color-scheme:dark; -webkit-appearance:none;
+}
+.form-row input:focus, .form-row textarea:focus { border-color:var(--orange); }
+.form-row textarea { height:72px; resize:vertical; }
+.time-row { display:flex; gap:12px; }
+.time-row > div { flex:1; }
+.room-picker { display:flex; gap:8px; }
+.rpbtn {
+  flex:1; padding:10px; border-radius:10px; border:1.5px solid var(--border);
+  background:var(--surf2); color:var(--muted); font-size:14px; font-weight:500;
+  cursor:pointer; text-align:center; transition:all .15s;
+}
+.rpbtn-a-sel { border-color:var(--ra); background:var(--ra-bg); color:var(--ra); }
+.rpbtn-b-sel { border-color:var(--rb); background:var(--rb-bg); color:var(--rb); }
+.conflict-msg { font-size:13px; color:#f08080; background:rgba(200,60,60,.15); border:1px solid rgba(200,60,60,.3); border-radius:10px; padding:10px 12px; margin-bottom:1rem; display:none; }
+.confirm-box { background:rgba(200,60,60,.12); border:1px solid rgba(200,60,60,.3); border-radius:10px; padding:12px; margin-bottom:1rem; display:none; }
+.confirm-box p { font-size:13px; color:#f08080; margin-bottom:10px; }
+.confirm-btns { display:flex; gap:8px; }
+.modal-footer { display:flex; justify-content:flex-end; gap:8px; margin-top:1.25rem; border-top:1px solid var(--border); padding-top:1.25rem; flex-wrap:wrap; }
+.btn { border-radius:10px; padding:10px 20px; font-size:15px; cursor:pointer; font-family:inherit; font-weight:500; }
+.btn-ghost { background:var(--surf2); border:1px solid var(--border); color:var(--text); }
+.btn-ghost:hover { background:#363636; }
+.btn-primary { background:var(--orange); color:#fff; border:none; flex:1; }
+.btn-primary:hover { background:var(--orange-d); }
+.btn-danger { background:transparent; border:1px solid rgba(200,60,60,.5); color:#f08080; margin-right:auto; }
+.btn-danger:hover { background:rgba(200,60,60,.18); }
+.btn-del-ok { background:#a32d2d; color:#fff; border:none; border-radius:10px; padding:8px 16px; font-size:14px; cursor:pointer; font-weight:500; }
+.btn-del-ok:hover { background:#882020; }
+.btn-del-no { background:var(--surf2); border:1px solid var(--border); color:var(--text); border-radius:10px; padding:8px 16px; font-size:14px; cursor:pointer; }
+
+/* DESKTOP overrides */
+@media (min-width:600px) {
+  .overlay { align-items:center; padding:1rem; }
+  .modal { border-radius:14px; }
+  .modal-drag { display:none; }
+  .day-cell { min-height:100px; padding:6px; }
+  .day-hdr { font-size:11px; }
+  .pill { font-size:10px; }
+  .btn-primary { flex:unset; }
+}
+
+/* SMALL MOBILE tweaks */
+@media (max-width:400px) {
+  #app { padding:0.75rem; }
+  .logo .sub { display:none; }
+  .month-label { min-width:110px; font-size:13px; }
+  .day-hdr { font-size:9px; padding:6px 1px; letter-spacing:0; }
+  .day-cell { min-height:72px; padding:3px 2px; }
+  .day-num { font-size:11px; width:18px; height:18px; }
+  .pill { font-size:9px; padding:1px 3px; }
+  .conflict-banner { font-size:8px; }
+}
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="top-bar">
+    <div class="logo"><span class="accent">Phat</span>Lab<span class="sub">Studio</span></div>
+    <div class="nav">
+      <button class="nav-btn" id="prev-btn">&#8249;</button>
+      <div class="month-label" id="month-label"></div>
+      <button class="nav-btn" id="next-btn">&#8250;</button>
+    </div>
+    <button class="btn-new" id="new-btn">+ Ny booking</button>
+    <button class="btn-help" id="refresh-btn" title="Oppdater">↻</button>
+    <button class="btn-help" id="help-btn" title="Hjelp">?</button>
+  </div>
+  <div class="room-legend">
+    <button class="rfbtn rfbtn-a-on" id="filter-a">Studio A</button>
+    <button class="rfbtn rfbtn-b-on" id="filter-b">Studio B</button>
+  </div>
+  <div class="cal-grid" id="cal"></div>
+</div>
+
+<div class="overlay" id="help-modal" style="display:none">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <h3>Slik bruker du kalenderen</h3>
+    <div class="help-content">
+      <div class="h-row">
+        <span class="h-ico">📅</span>
+        <span>Trykk på en <strong>dag</strong> for å lage en ny booking, eller på <strong>+ Ny booking</strong>.</span>
+      </div>
+      <div class="h-row">
+        <span class="h-swatch" style="background:var(--ra)"></span>
+        <span>Oransje = <strong>Studio A</strong></span>
+      </div>
+      <div class="h-row">
+        <span class="h-swatch" style="background:var(--rb)"></span>
+        <span>Blå = <strong>Studio B</strong></span>
+      </div>
+      <div class="h-row">
+        <span class="h-ico">🔘</span>
+        <span>Bruk <strong>filterknappene</strong> øverst for å vise eller skjule et rom.</span>
+      </div>
+      <div class="h-row">
+        <span class="h-ico">✏️</span>
+        <span>Trykk på en eksisterende booking for å <strong>redigere</strong> eller <strong>slette</strong> den.</span>
+      </div>
+      <div class="h-row">
+        <span class="h-ico">⚠️</span>
+        <span>Du får varsel hvis to bookinger i <strong>samme rom</strong> overlapper i tid.</span>
+      </div>
+      <div class="h-row">
+        <span class="h-ico">🔄</span>
+        <span>Alle deler samme kalender. Trykk <strong>↻</strong> for å hente de nyeste bookingene.</span>
+      </div>
+      <div class="h-row">
+        <span class="h-ico">💾</span>
+        <span>Bookinger lagres sentralt, så alle ser det samme uansett enhet.</span>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="help-close-btn" style="flex:1">Skjønner!</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="modal" style="display:none">
+  <div class="modal" id="modal-box">
+    <div class="modal-drag"></div>
+    <div class="modal-head">
+      <h3 id="modal-title">Ny booking</h3>
+      <span class="modal-badge badge-new" id="modal-badge">Ny</span>
+    </div>
+    <div class="booked-box" id="booked-box" style="display:none">
+      <span class="bk-label">✓ Booket</span>
+      <span class="bk-text">Dette rommet er booket</span>
+    </div>
+    <div class="form-row">
+      <label>Rom</label>
+      <div class="room-picker">
+        <button class="rpbtn" id="rp-a">Studio A</button>
+        <button class="rpbtn" id="rp-b">Studio B</button>
+      </div>
+    </div>
+    <div class="form-row"><label>Artist / kunde</label><input type="text" id="f-name" placeholder="Navn" autocomplete="off" /></div>
+    <div class="form-row"><label>Dato</label><input type="date" id="f-date" /></div>
+    <div class="form-row time-row">
+      <div><label>Start</label><input type="time" id="f-start" value="10:00" /></div>
+      <div><label>Slutt</label><input type="time" id="f-end" value="14:00" /></div>
+    </div>
+    <div class="form-row"><label>Tekniker</label><input type="text" id="f-tech" placeholder="Valgfritt" autocomplete="off" /></div>
+    <div class="form-row"><label>Notat</label><textarea id="f-note" placeholder="Valgfritt..."></textarea></div>
+    <div class="conflict-msg" id="conflict-msg">&#9888; Rommet er allerede booket i dette tidsrommet!</div>
+    <div class="confirm-box" id="confirm-box">
+      <p>Er du sikker på at du vil slette denne bookingen?</p>
+      <div class="confirm-btns">
+        <button class="btn-del-ok" id="del-ok-btn">Ja, slett</button>
+        <button class="btn-del-no" id="del-no-btn">Avbryt</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-danger" id="del-btn" style="display:none">&#128465; Slett</button>
+      <button class="btn btn-ghost" id="cancel-btn">Lukk</button>
+      <button class="btn btn-primary" id="save-btn">Lagre</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// === Supabase-oppsett ===
+const SUPABASE_URL = 'https://vrjherdkzxerygrbfuhr.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyamhlcmRrenhlcnlncmJmdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NjU4NTgsImV4cCI6MjA5ODM0MTg1OH0.0JPL21EDYmhh6_IdMLVGm7BWsk_Zrinp6TqGNBUYt0w';
+const API = SUPABASE_URL + '/rest/v1/bookings';
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': 'Bearer ' + SUPABASE_KEY,
+  'Content-Type': 'application/json'
+};
+
+const DAYS = ['Man','Tir','Ons','Tor','Fre','Lør','Søn'];
+const MONTHS = ['Januar','Februar','Mars','April','Mai','Juni','Juli','August','September','Oktober','November','Desember'];
+
+let bookings = [];
+let curYear, curMonth;
+let editId = null;
+let selRoom = 'a';
+let showA = true;
+let showB = true;
+
+// Hent alle bookinger fra Supabase
+async function load() {
+  try {
+    const res = await fetch(API + '?select=*', { headers: HEADERS });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    bookings = await res.json();
+  } catch(e) {
+    console.error('Kunne ikke hente bookinger:', e);
+    alert('Kunne ikke koble til databasen. Sjekk internett og prøv igjen.');
+    bookings = [];
+  }
+}
+
+// Legg til ny booking
+async function createBooking(b) {
+  const res = await fetch(API, {
+    method: 'POST',
+    headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(b)
+  });
+  if (!res.ok) throw new Error('Lagring feilet: ' + res.status);
+}
+
+// Oppdater eksisterende booking
+async function updateBooking(id, b) {
+  const res = await fetch(API + '?id=eq.' + encodeURIComponent(id), {
+    method: 'PATCH',
+    headers: { ...HEADERS, 'Prefer': 'return=minimal' },
+    body: JSON.stringify(b)
+  });
+  if (!res.ok) throw new Error('Oppdatering feilet: ' + res.status);
+}
+
+// Slett booking
+async function deleteBooking(id) {
+  const res = await fetch(API + '?id=eq.' + encodeURIComponent(id), {
+    method: 'DELETE',
+    headers: { ...HEADERS, 'Prefer': 'return=minimal' }
+  });
+  if (!res.ok) throw new Error('Sletting feilet: ' + res.status);
+}
+
+function toMin(t) { const [h,m] = t.split(':').map(Number); return h*60+m; }
+
+function conflict(date, start, end, room, exId) {
+  const s = toMin(start), e = toMin(end);
+  return bookings.some(b => {
+    if (b.id === exId || b.date !== date || b.room !== room) return false;
+    return s < toMin(b.end) && e > toMin(b.start);
+  });
+}
+
+function roomConflictOnDay(ds, room) {
+  const list = bookings.filter(b => b.date === ds && b.room === room)
+    .sort((a,b) => a.start.localeCompare(b.start));
+  for (let i = 0; i < list.length - 1; i++) {
+    if (toMin(list[i].end) > toMin(list[i+1].start)) return true;
+  }
+  return false;
+}
+
+function render() {
+  document.getElementById('month-label').textContent = MONTHS[curMonth] + ' ' + curYear;
+  const cal = document.getElementById('cal');
+  cal.innerHTML = '';
+  DAYS.forEach(d => {
+    const h = document.createElement('div');
+    h.className = 'day-hdr';
+    h.textContent = d;
+    cal.appendChild(h);
+  });
+
+  const first = new Date(curYear, curMonth, 1);
+  let dow = first.getDay();
+  dow = dow === 0 ? 6 : dow - 1;
+  const dim = new Date(curYear, curMonth + 1, 0).getDate();
+  const prevDim = new Date(curYear, curMonth, 0).getDate();
+  const total = Math.ceil((dow + dim) / 7) * 7;
+  const today = new Date();
+
+  for (let i = 0; i < total; i++) {
+    let day, mo, yr;
+    const cell = document.createElement('div');
+    cell.className = 'day-cell';
+
+    if (i < dow) {
+      day = prevDim - dow + i + 1; mo = curMonth - 1; yr = curYear;
+      if (mo < 0) { mo = 11; yr--; }
+      cell.classList.add('other-month');
+    } else if (i >= dow + dim) {
+      day = i - dow - dim + 1; mo = curMonth + 1; yr = curYear;
+      if (mo > 11) { mo = 0; yr++; }
+      cell.classList.add('other-month');
+    } else {
+      day = i - dow + 1; mo = curMonth; yr = curYear;
+    }
+
+    if (day === today.getDate() && mo === today.getMonth() && yr === today.getFullYear()) {
+      cell.classList.add('today');
+    }
+
+    const num = document.createElement('div');
+    num.className = 'day-num';
+    num.textContent = day;
+    cell.appendChild(num);
+
+    const ds = yr + '-' + String(mo+1).padStart(2,'0') + '-' + String(day).padStart(2,'0');
+
+    if (showA && roomConflictOnDay(ds, 'a')) {
+      const w = document.createElement('div'); w.className = 'conflict-banner';
+      w.textContent = '⚠ Studio A'; cell.appendChild(w);
+    }
+    if (showB && roomConflictOnDay(ds, 'b')) {
+      const w = document.createElement('div'); w.className = 'conflict-banner';
+      w.textContent = '⚠ Studio B'; cell.appendChild(w);
+    }
+
+    const db = bookings.filter(b => {
+      if (b.date !== ds) return false;
+      if (b.room === 'a' && !showA) return false;
+      if (b.room === 'b' && !showB) return false;
+      return true;
+    }).sort((a,b) => a.start.localeCompare(b.start));
+
+    db.slice(0,2).forEach(b => {
+      const wrap = document.createElement('div');
+      wrap.className = 'pill-wrap';
+
+      const p = document.createElement('div');
+      p.className = 'pill ' + (b.room === 'a' ? 'pill-a' : 'pill-b');
+      p.textContent = b.start + '–' + b.end + ' ' + b.name;
+      p.onclick = e => { e.stopPropagation(); openEdit(b); };
+
+      const tip = document.createElement('div');
+      tip.className = 'tip';
+      const roomLabel = b.room === 'a' ? 'Studio A' : 'Studio B';
+      const roomColor = b.room === 'a' ? 'var(--ra)' : 'var(--rb)';
+      tip.innerHTML = '<div class="tip-room" style="color:' + roomColor + '">' + roomLabel + '</div>' +
+        '<strong>' + b.name + '</strong>\n' +
+        b.start + '–' + b.end +
+        (b.tech ? '\nTekniker: ' + b.tech : '') +
+        (b.note ? '\n' + b.note : '');
+
+      wrap.appendChild(p);
+      wrap.appendChild(tip);
+      cell.appendChild(wrap);
+    });
+
+    if (db.length > 2) {
+      const m = document.createElement('div');
+      m.className = 'more-pill';
+      m.textContent = '+' + (db.length - 2) + ' til';
+      cell.appendChild(m);
+    }
+
+    cell.onclick = () => openNew(ds);
+    cal.appendChild(cell);
+  }
+}
+
+function updateFilterBtns() {
+  document.getElementById('filter-a').className = 'rfbtn ' + (showA ? 'rfbtn-a-on' : 'rfbtn-a-off');
+  document.getElementById('filter-b').className = 'rfbtn ' + (showB ? 'rfbtn-b-on' : 'rfbtn-b-off');
+}
+
+document.getElementById('filter-a').onclick = function() {
+  if (showA && !showB) return;
+  showA = !showA;
+  updateFilterBtns();
+  render();
+};
+document.getElementById('filter-b').onclick = function() {
+  if (showB && !showA) return;
+  showB = !showB;
+  updateFilterBtns();
+  render();
+};
+
+function setRoom(r) {
+  selRoom = r;
+  document.getElementById('rp-a').className = 'rpbtn' + (r === 'a' ? ' rpbtn-a-sel' : '');
+  document.getElementById('rp-b').className = 'rpbtn' + (r === 'b' ? ' rpbtn-b-sel' : '');
+}
+document.getElementById('rp-a').onclick = function() { setRoom('a'); };
+document.getElementById('rp-b').onclick = function() { setRoom('b'); };
+
+function hideConfirm() {
+  document.getElementById('confirm-box').style.display = 'none';
+  document.getElementById('save-btn').style.display = 'inline-block';
+}
+
+function openNew(ds) {
+  editId = null;
+  document.getElementById('modal-title').textContent = 'Ny booking';
+  document.getElementById('modal-box').className = 'modal is-new';
+  document.getElementById('modal-badge').style.display = 'inline-block';
+  document.getElementById('booked-box').style.display = 'none';
+  document.getElementById('f-name').value = '';
+  document.getElementById('f-date').value = ds || '';
+  document.getElementById('f-start').value = '10:00';
+  document.getElementById('f-end').value = '14:00';
+  document.getElementById('f-tech').value = '';
+  document.getElementById('f-note').value = '';
+  document.getElementById('del-btn').style.display = 'none';
+  document.getElementById('conflict-msg').style.display = 'none';
+  setRoom('a');
+  hideConfirm();
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function openEdit(b) {
+  editId = b.id;
+  document.getElementById('modal-title').textContent = 'Rediger booking';
+  document.getElementById('modal-box').className = 'modal is-edit';
+  document.getElementById('modal-badge').style.display = 'none';
+  document.getElementById('booked-box').style.display = 'flex';
+  document.getElementById('f-name').value = b.name;
+  document.getElementById('f-date').value = b.date;
+  document.getElementById('f-start').value = b.start;
+  document.getElementById('f-end').value = b.end;
+  document.getElementById('f-tech').value = b.tech || '';
+  document.getElementById('f-note').value = b.note || '';
+  document.getElementById('del-btn').style.display = 'inline-flex';
+  document.getElementById('conflict-msg').style.display = 'none';
+  setRoom(b.room || 'a');
+  hideConfirm();
+  document.getElementById('modal').style.display = 'flex';
+}
+
+function closeModal() {
+  document.getElementById('modal').style.display = 'none';
+  editId = null;
+  hideConfirm();
+}
+
+document.getElementById('cancel-btn').onclick = closeModal;
+
+// Hjelp-modal
+document.getElementById('help-btn').onclick = function() {
+  document.getElementById('help-modal').style.display = 'flex';
+};
+
+// Oppdater-knapp – hent ferske bookinger fra databasen
+document.getElementById('refresh-btn').onclick = async function() {
+  const btn = this;
+  btn.style.opacity = '0.4';
+  await load();
+  render();
+  btn.style.opacity = '1';
+};
+document.getElementById('help-close-btn').onclick = function() {
+  document.getElementById('help-modal').style.display = 'none';
+};
+document.getElementById('help-modal').onclick = function(e) {
+  if (e.target === this) this.style.display = 'none';
+};
+
+document.getElementById('prev-btn').onclick = function() {
+  curMonth--; if (curMonth < 0) { curMonth = 11; curYear--; } render();
+};
+document.getElementById('next-btn').onclick = function() {
+  curMonth++; if (curMonth > 11) { curMonth = 0; curYear++; } render();
+};
+document.getElementById('new-btn').onclick = function() {
+  const t = new Date();
+  openNew(t.getFullYear() + '-' + String(t.getMonth()+1).padStart(2,'0') + '-' + String(t.getDate()).padStart(2,'0'));
+};
+document.getElementById('del-btn').onclick = function() {
+  document.getElementById('confirm-box').style.display = 'block';
+  document.getElementById('save-btn').style.display = 'none';
+};
+document.getElementById('del-no-btn').onclick = hideConfirm;
+document.getElementById('del-ok-btn').onclick = async function() {
+  if (!editId) return;
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Sletter...';
+  try {
+    await deleteBooking(editId);
+    bookings = bookings.filter(b => b.id !== editId);
+    closeModal();
+    render();
+  } catch(e) {
+    alert('Kunne ikke slette. Prøv igjen.');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Ja, slett';
+};
+document.getElementById('save-btn').onclick = async function() {
+  const name  = document.getElementById('f-name').value.trim();
+  const date  = document.getElementById('f-date').value;
+  const start = document.getElementById('f-start').value;
+  const end   = document.getElementById('f-end').value;
+  const tech  = document.getElementById('f-tech').value.trim();
+  const note  = document.getElementById('f-note').value.trim();
+  const room  = selRoom;
+  if (!name || !date || !start || !end) { alert('Fyll ut artist, dato og tid.'); return; }
+  if (toMin(end) <= toMin(start)) { alert('Slutt må være etter start.'); return; }
+  const cm = document.getElementById('conflict-msg');
+  if (conflict(date, start, end, room, editId)) { cm.style.display = 'block'; return; }
+  cm.style.display = 'none';
+
+  const btn = this;
+  btn.disabled = true; btn.textContent = 'Lagrer...';
+  // Postgres bruker "end" som kolonnenavn (reservert ord)
+  const payload = { name, date, start, 'end': end, tech, note, room };
+  try {
+    if (editId) {
+      await updateBooking(editId, payload);
+      const idx = bookings.findIndex(b => b.id === editId);
+      if (idx > -1) bookings[idx] = { id: editId, ...payload };
+    } else {
+      const newB = { id: Date.now().toString(), ...payload };
+      await createBooking(newB);
+      bookings.push(newB);
+    }
+    closeModal();
+    render();
+  } catch(e) {
+    alert('Kunne ikke lagre. Sjekk internett og prøv igjen.');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = 'Lagre';
+};
+
+(async function init() {
+  const n = new Date(); curYear = n.getFullYear(); curMonth = n.getMonth();
+  render(); // vis tom kalender med en gang
+  await load();
+  render(); // tegn på nytt med data fra Supabase
+})();
+</script>
+</body>
+</html>
