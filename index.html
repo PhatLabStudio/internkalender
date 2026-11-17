@@ -108,17 +108,9 @@ fetch(SB + "bookings?select=date&date=gte." + ymd(mon) + "&date=lte." + ymd(sun)
   .then(rows => { set("bToday", rows.filter(b => b.date === today).length); set("bWeek", rows.length); })
   .catch(() => {});
 
-fetch(SB + "prod_songs?select=steps", {headers:H})
+fetch(SB + "rpc/prod_summary", {method:"POST", headers:{...H, "Content-Type":"application/json"}, body:"{}"})
   .then(r => r.ok ? r.json() : Promise.reject())
-  .then(rows => {
-    let active = 0, running = 0;
-    for (const s of rows) {
-      const st = Array.isArray(s.steps) ? s.steps : [];
-      if (!st.length || st.some(x => x.status !== "ferdig")) active++;
-      running += st.filter(x => x.status === "pagar").length;
-    }
-    set("pSongs", active); set("pRunning", running);
-  })
+  .then(s => { set("pSongs", s.songs); set("pRunning", s.running); })
   .catch(() => {});
 </script>
 </body>
