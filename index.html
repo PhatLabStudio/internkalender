@@ -37,6 +37,8 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .month-label { font-size:15px; font-weight:500; min-width:140px; text-align:center; }
 .btn-new { background:var(--orange); color:#fff; border:none; border-radius:8px; padding:8px 16px; font-size:14px; cursor:pointer; font-weight:500; white-space:nowrap; }
 .btn-new:hover { background:var(--orange-d); }
+.btn-link { background:var(--surface); border:1px solid var(--border); color:var(--text); border-radius:8px; padding:8px 14px; font-size:14px; font-weight:500; text-decoration:none; white-space:nowrap; }
+.btn-link:hover { background:var(--surf2); border-color:var(--orange); }
 .btn-help { background:var(--surface); border:1px solid var(--border); color:var(--muted); border-radius:50%; width:34px; height:34px; font-size:16px; font-weight:600; cursor:pointer; flex-shrink:0; }
 .btn-help:hover { background:var(--surf2); color:var(--text); }
 
@@ -185,6 +187,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
       <div class="month-label" id="month-label"></div>
       <button class="nav-btn" id="next-btn">&#8250;</button>
     </div>
+    <a class="btn-link" href="produksjon.html" title="Åpne produksjonskalenderen">Produksjon &#8594;</a>
     <button class="btn-new" id="new-btn">+ Ny booking</button>
     <button class="btn-help" id="refresh-btn" title="Oppdater">↻</button>
     <button class="btn-help" id="help-btn" title="Hjelp">?</button>
