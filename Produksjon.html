@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phat Lab produksjonskalender</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+/* Layout: artistfaner øverst, nøkkeltall, så en horisontal tidslinje (låter = rader, steg = stolper) og en statusliste under.
+   Farger og fonter fra phatlab.no: mørk bakgrunn, lilla tekst, magenta→fiolett og oransje→rosa gradienter. */
+:root{
+  --bg:#0A0A0F; --surface:#13111C; --card:#1A1625; --ink:#F5F3FF; --muted:#8B7FB8; --line:#2D2640; --grid:#1D1829;
+  --accent:#D946EF; --accent-ink:#FFFFFF; --rec:#F97316; --soft:#1E1530;
+  --grad:linear-gradient(135deg,#D946EF 0%,#7C3AED 100%);
+  --grad-hot:linear-gradient(135deg,#F97316 0%,#EC4899 100%);
+  --f-display:"Space Grotesk", "Inter", system-ui, sans-serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"Space Grotesk", "Inter", system-ui, sans-serif;
+  --lw:250px;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1440px;margin:0 auto;padding:20px clamp(16px,3vw,32px) 48px;display:flex;flex-direction:column;gap:18px}
+
+header.top{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand small{font:500 12px var(--f-mono);color:var(--muted);letter-spacing:.06em;text-transform:uppercase;display:flex;align-items:center;gap:6px}
+.logo{font:700 15px var(--f-display);letter-spacing:.04em;color:var(--ink)}
+.logo span{background:var(--grad-hot);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+h1{font:700 clamp(24px,3vw,32px)/1.1 var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 12px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--grad);color:#fff;border-color:transparent}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent;border-color:transparent}
+.btn.danger{color:var(--rec)}
+.btn.danger.armed{background:var(--rec);color:#fff;border-color:var(--rec)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+.tabs{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.artistpick{position:relative;display:flex;align-items:center}
+.adot{position:absolute;left:14px;width:12px;height:12px;border-radius:50%;background:var(--dc);pointer-events:none}
+.asel{appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23D946EF' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 14px center;border-radius:12px;padding:10px 42px 10px 34px;font:700 18px var(--f-display);color:var(--ink);min-width:260px;max-width:100%}
+.asel:hover{border-color:var(--accent)}
+.asel option{background:var(--card);color:var(--ink);font:500 15px var(--f-body)}
+.btn.dbx{background:#0061FE;border-color:#0061FE;color:#fff;text-decoration:none}
+.btn.dbx:hover{filter:brightness(1.1)}
+a.btn{text-decoration:none;color:inherit}
+.glink{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:7px;color:#4D9BFF;margin-left:auto}
+.glink:hover{background:var(--card)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.tab{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px 6px 10px;font-weight:600;font-size:14px;display:inline-flex;align-items:center;gap:8px}
+.tab .dot{width:10px;height:10px;border-radius:50%;background:var(--dc,var(--muted))}
+.tab[aria-selected="true"]{background:var(--grad);color:#fff;border-color:transparent}
+.tab[aria-selected="true"] .dot{box-shadow:0 0 0 2px #fff}
+.tab .n{font:500 12px var(--f-mono);opacity:.65}
+.tab.add{border-style:dashed;color:var(--muted);padding:6px 14px}
+.tab .edit{opacity:.6;font-size:13px;margin-left:2px;padding:0 2px;border-radius:4px}
+.tab .edit:hover{opacity:1}
+
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between}
+.tgroup{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:transparent;padding:7px 11px;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--soft);color:var(--ink)}
+.range{font:500 13px var(--f-mono);color:var(--muted);min-width:150px;text-align:center}
+select.sel{border:1px solid var(--line);background:var(--surface);border-radius:9px;padding:7px 10px;font-size:14px}
+label.inl{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:center}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat b{font:700 26px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+.stat ul{margin:4px 0 0;padding:0;list-style:none;font-size:13px;display:flex;flex-direction:column;gap:2px}
+.stat li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat li em{font-style:normal;font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-right:6px}
+
+.legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted);align-items:center}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend i{width:12px;height:12px;border-radius:3px;background:var(--c);display:inline-block}
+.legend .sw{width:22px;height:12px;border-radius:3px}
+.legend .sw.p{background:color-mix(in srgb,var(--muted) 14%,var(--surface));border:1.5px dashed var(--muted)}
+.legend .sw.a{background:var(--accent)}
+.legend .sw.f{background:color-mix(in srgb,var(--muted) 35%,var(--surface))}
+
+/* Tidslinje */
+.tl{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+.tl-inner{position:relative;min-width:100%}
+.row{display:flex}
+.row+.row{border-top:1px solid var(--line)}
+.lab{position:sticky;left:0;z-index:3;width:var(--lw);flex:none;background:var(--surface);border-right:1px solid var(--line);padding:10px 12px;display:flex;flex-direction:column;gap:5px;min-width:0}
+.track{position:relative;flex:none;background-image:repeating-linear-gradient(to right,var(--grid) 0 1px,transparent 1px var(--wk));background-position:var(--wo) 0}
+.row.head .lab{justify-content:flex-end;font:500 11px var(--f-mono);color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.row.head .track{height:48px;background-image:none}
+.months,.weeks{position:absolute;left:0;right:0;height:24px}
+.months{top:0}.weeks{top:24px;border-top:1px solid var(--line)}
+.mcell,.wcell{position:absolute;top:0;bottom:0;display:flex;align-items:center;padding-left:6px;white-space:nowrap;overflow:hidden;border-left:1px solid var(--line)}
+.mcell{font-weight:700;font-size:13px;text-transform:capitalize}
+.wcell{font:500 11px var(--f-mono);color:var(--muted)}
+.wcell.now{color:var(--rec);font-weight:700}
+.row.group .lab{background:var(--soft);flex-direction:row;align-items:center;gap:8px;padding:8px 12px}
+.row.group .track{background:var(--soft);background-image:none;height:auto}
+.row.group button{border:0;background:none;padding:0;font:700 15px var(--f-display);display:flex;align-items:center;gap:8px}
+.row.group .dot{width:10px;height:10px;border-radius:50%;background:var(--dc)}
+.row.group .n{font:500 12px var(--f-mono);color:var(--muted)}
+
+.song-t{border:0;background:none;padding:0;text-align:left;font:700 15px/1.25 var(--f-body);color:var(--ink);overflow-wrap:anywhere}
+.song-t:hover{color:var(--accent)}
+.song-a{font-size:12px;color:var(--muted);margin-top:-3px}
+.nn{display:flex;flex-direction:column;gap:3px;font-size:12px}
+.nn div{display:flex;gap:6px;align-items:center;min-width:0}
+.nn b{font:500 10px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);width:40px;flex:none}
+.pill{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:1px 8px 1px 6px;font-weight:600;background:color-mix(in srgb,var(--c) 16%,transparent);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c);flex:none}
+.pill.done{--c:#22A55B}
+.pill.none{--c:var(--muted);font-weight:500;color:var(--muted)}
+.nn .d{font-family:var(--f-mono);color:var(--muted);white-space:nowrap}
+.team{display:flex;gap:3px;flex-wrap:wrap}
+.av{width:22px;height:22px;border-radius:50%;background:var(--soft);border:1px solid var(--line);font:600 10px/20px var(--f-body);text-align:center;color:var(--ink);flex:none}
+.av.hl{background:var(--grad);color:#fff;border-color:transparent}
+
+.bar{position:absolute;height:24px;border-radius:6px;font-size:12px;font-weight:600;display:flex;align-items:center;gap:5px;padding:0 7px;border:1.5px solid transparent;overflow:hidden;white-space:nowrap;text-align:left;min-width:6px}
+.bar .t{overflow:hidden;text-overflow:ellipsis;min-width:0}
+.bar .w{font:500 10px var(--f-mono);opacity:.8;flex:none}
+.bar.planlagt{background:color-mix(in srgb,var(--c) 13%,var(--surface));border:1.5px dashed var(--c);color:var(--ink)}
+.bar.pagar{background:var(--c);color:var(--ct);box-shadow:0 1px 0 rgba(0,0,0,.08)}
+.bar.pagar::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor;flex:none;animation:pulse 1.6s ease-in-out infinite}
+.bar.ferdig{background:color-mix(in srgb,var(--c) 32%,var(--surface));color:var(--ink)}
+.bar.ferdig::before{content:"✓";font-size:11px;flex:none}
+.bar.cl{border-top-left-radius:0;border-bottom-left-radius:0;border-left-width:0}
+.bar.cr{border-top-right-radius:0;border-bottom-right-radius:0;border-right-width:0}
+.bar.dim{opacity:.22}
+.bar:hover{filter:brightness(1.06);z-index:2}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion: reduce){.bar.pagar::before{animation:none}}
+.today{position:absolute;top:0;bottom:0;width:2px;background:var(--rec);z-index:2;pointer-events:none}
+.today::after{content:"I dag";white-space:nowrap;position:absolute;top:2px;left:4px;font:700 10px var(--f-mono);color:var(--rec);text-transform:uppercase;background:var(--surface);padding:0 3px;border-radius:3px}
+.nodates{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:12px;color:var(--muted)}
+.empty{padding:44px 20px;text-align:center;display:flex;flex-direction:column;gap:12px;align-items:center;color:var(--muted)}
+.empty h2{font:700 20px var(--f-display);color:var(--ink);margin:0}
+
+/* Statusliste */
+h2.sec{font:700 18px var(--f-display);margin:6px 0 0}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td .pill{font-size:13px}
+td .sub{font-size:12px;color:var(--muted);font-family:var(--f-mono)}
+.prog{display:flex;align-items:center;gap:8px;font:500 12px var(--f-mono);color:var(--muted);white-space:nowrap}
+.prog .b{width:70px;height:6px;border-radius:3px;background:var(--grid);overflow:hidden}
+.prog .b i{display:block;height:100%;background:var(--grad)}
+.names{font-size:13px;line-height:1.5}
+.names span{color:var(--muted)}
+
+/* Modal */
+.scrim{position:fixed;inset:0;background:rgba(5,4,10,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:var(--card);border:1px solid var(--line);border-radius:16px;width:min(820px,100%);max-height:100%;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.mh{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--line);gap:12px}
+.mh h3{font:700 20px var(--f-display);margin:0}
+.mb{overflow:auto;padding:18px 20px;display:flex;flex-direction:column;gap:18px}
+.mf{display:flex;justify-content:space-between;gap:10px;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
+.mf .r{display:flex;gap:8px}
+.field{display:flex;flex-direction:column;gap:5px;min-width:0}
+.field>label,.flabel{font-size:12px;font-weight:600;color:var(--muted)}
+.inp{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:7px 10px;font-size:14px;width:100%;min-width:0}
+textarea.inp{resize:vertical;min-height:54px}
+.grid2{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.blk{display:flex;flex-direction:column;gap:8px}
+.blk-h{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.blk-h h4{margin:0;font:700 15px var(--f-display)}
+.teamrow{display:grid;grid-template-columns:1.2fr 1fr auto;gap:8px;align-items:center}
+.x{border:1px solid transparent;background:none;border-radius:6px;width:30px;height:30px;color:var(--muted);font-size:18px;line-height:1}
+.x:hover{border-color:var(--line);color:var(--rec)}
+.step{border:1px solid var(--line);border-left:4px solid var(--c);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:var(--surface)}
+.step.flash{box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 35%,transparent)}
+.sr1{display:grid;grid-template-columns:1.1fr 1.1fr .9fr .9fr auto;gap:8px;align-items:end}
+.sr2{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.chips{display:flex;gap:5px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--grad);border-color:transparent;color:#fff}
+.stseg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.stseg button{border:0;background:var(--bg);padding:4px 10px;font-size:12px;font-weight:600;color:var(--muted)}
+.stseg button+button{border-left:1px solid var(--line)}
+.stseg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.hint{font-size:12px;color:var(--muted)}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatch{width:30px;height:30px;border-radius:50%;border:3px solid transparent;background:var(--dc);outline:1px solid var(--line)}
+.swatch[aria-pressed="true"]{border-color:var(--surface);outline:2px solid var(--ink)}
+
+.cmts{display:flex;flex-direction:column;gap:12px}
+.cmt{display:grid;grid-template-columns:30px 1fr;gap:10px}
+.cmt img{width:30px;height:30px;border-radius:50%;background:var(--soft)}
+.cmt .meta{font-size:12px;color:var(--muted);display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cmt .meta b{color:var(--ink);font-weight:600;font-size:13px}
+.cmt .body{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;background:var(--surface);border:1px solid var(--line);border-radius:4px 12px 12px 12px;padding:8px 12px;margin-top:4px}
+.cmt .del{border:0;background:none;color:var(--muted);font-size:12px;padding:0 4px;margin-left:auto}
+.cmt .del:hover,.cmt .del.armed{color:var(--rec)}
+.cmt .tag{font-size:11px;padding:0 7px 0 5px}
+.composer{display:flex;flex-direction:column;gap:8px;border-top:1px dashed var(--line);padding-top:12px}
+.composer .r{display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.composer .r .l{display:flex;gap:8px;flex-wrap:wrap;align-items:center;flex:1;min-width:0}
+.composer select.inp,.composer input.inp{width:auto;min-width:160px}
+.ccount{display:inline-flex;align-items:center;gap:5px;font:600 12px var(--f-display);color:var(--muted);border:0;background:none;padding:2px 0}
+.ccount:hover{color:var(--accent)}
+.ccount svg{width:14px;height:14px}
+.ccount.has{color:var(--ink)}
+.lastc{font-size:13px;max-width:260px}
+.lastc .who{font-size:12px;color:var(--muted)}
+.lastc .txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.banner{background:color-mix(in srgb,var(--rec) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--rec) 40%,var(--line));border-radius:10px;padding:10px 14px;font-size:14px}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:80;max-width:calc(100% - 32px)}
+.loading{padding:40px;text-align:center;color:var(--muted)}
+
+@media (max-width:700px){
+  :root{--lw:150px}
+  .sr1{grid-template-columns:1fr 1fr}
+  .sr1 .x{justify-self:end}
+  .grid2{grid-template-columns:1fr}
+  .teamrow{grid-template-columns:1fr 1fr auto}
+  .nn b{width:34px}
+  .range{min-width:0}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <small><span class="logo">PHAT <span>LAB</span></span> · Musikkstudio i Drammen</small>
+      <h1>Produksjons<em>kalender</em></h1>
+    </div>
+    <div class="tgroup">
+      <button class="btn primary" id="newSong" type="button">+ Ny låt</button>
+    </div>
+  </header>
+  <div id="banner"></div>
+  <div class="tabs" id="tabs"></div>
+  <div class="toolbar">
+    <div class="tgroup">
+      <button class="btn" id="prev" type="button" aria-label="Tilbake i tid">‹</button>
+      <button class="btn" id="todayBtn" type="button">I dag</button>
+      <button class="btn" id="next" type="button" aria-label="Fremover i tid">›</button>
+      <span class="range" id="rangeLbl"></span>
+    </div>
+    <div class="tgroup">
+      <div class="seg" id="zoom" role="group" aria-label="Tidsperiode"></div>
+      <label class="inl" for="person">Vis for
+        <select class="sel" id="person"></select>
+      </label>
+    </div>
+  </div>
+  <section class="stats" id="stats"></section>
+  <div class="legend" id="legend"></div>
+  <section class="tl" id="tl"><div class="loading">Henter produksjoner …</div></section>
+  <h2 class="sec">Status per låt</h2>
+  <div class="tablewrap" id="table"></div>
+</div>
+<div id="modalRoot"></div>
+<div id="toastRoot"></div>
+
+<script>
+"use strict";
+/* ---------- Konstanter ---------- */
+const STAGES = [
+  {k:"demo",       n:"Demo",             c:"#8B7FB8", t:"#0A0A0F"},
+  {k:"produksjon", n:"Produksjon",       c:"#7C3AED", t:"#fff"},
+  {k:"vokal",      n:"Vokalinnspilling", c:"#D946EF", t:"#fff"},
+  {k:"mix",        n:"Mix",              c:"#F97316", t:"#1A0A00"},
+  {k:"master",     n:"Master",           c:"#22C55E", t:"#04230F"},
+  {k:"annet",      n:"Annet",            c:"#64748B", t:"#fff"}
+];
+const LEGACY = {skisse:"demo", preprod:"produksjon", innspilling:"produksjon", miks:"mix", release:"annet"};
+const STATUS = [["planlagt","Planlagt"],["pagar","Pågår"],["ferdig","Ferdig"]];
+const ROLES = ["Artist","Produsent","Tekniker","Låtskriver","Vokalist","Musiker","Mix","Master","Manager"];
+const ART_COLORS = ["#D946EF","#7C3AED","#F97316","#EC4899","#22C55E","#38BDF8","#FACC15","#8B7FB8"];
+const ZOOMS = [{l:"6 uker",days:42,dw:22},{l:"3 mnd",days:91,dw:11},{l:"6 mnd",days:182,dw:6},{l:"12 mnd",days:365,dw:3.2}];
+const MON = ["jan","feb","mar","apr","mai","jun","jul","aug","sep","okt","nov","des"];
+const MONL = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+const stageOf = k => STAGES.find(s=>s.k===(LEGACY[k]||k)) || STAGES[STAGES.length-1];
+
+/* ---------- Datoer (dagnummer i UTC) ---------- */
+const dn = iso => { if(!iso) return null; const [y,m,d]=iso.split("-").map(Number); return Math.round(Date.UTC(y,m-1,d)/864e5); };
+const isoOf = n => new Date(n*864e5).toISOString().slice(0,10);
+const todayN = (()=>{ const t=new Date(); return Math.round(Date.UTC(t.getFullYear(),t.getMonth(),t.getDate())/864e5); })();
+const wd = n => (new Date(n*864e5).getUTCDay()+6)%7;
+const mondayOf = n => n - wd(n);
+function isoWeek(n){ const th=n - wd(n) + 3; const y=new Date(th*864e5).getUTCFullYear(); const jan4=Math.round(Date.UTC(y,0,4)/864e5); return 1 + Math.round((th - (jan4 - wd(jan4) + 3))/7); }
+const fmt = iso => { const n=dn(iso); if(n==null) return ""; const d=new Date(n*864e5); return d.getUTCDate()+". "+MON[d.getUTCMonth()]; };
+const fmtY = n => { const d=new Date(n*864e5); return d.getUTCDate()+". "+MON[d.getUTCMonth()]+" "+d.getUTCFullYear(); };
+
+/* ---------- Hjelpere ---------- */
+const esc = s => String(s==null?"":s).replace(/[&<>"']/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = p => p + Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const initials = name => { const p=String(name||"?").trim().split(/\s+/); return ((p[0]||"?")[0] + (p.length>1 ? p[p.length-1][0] : (p[0][1]||""))).toUpperCase(); };
+const clone = o => JSON.parse(JSON.stringify(o));
+const $ = id => document.getElementById(id);
+
+/* ---------- Tilstand ---------- */
+let db = null, local = false;
+let artists = [], songs = [], comments = [];
+let userNs = null, me = null, profCache = {};
+const loaded = {a:false, s:false};
+const view = { artist:"alle", zoom:1, start: mondayOf(todayN - 14), person:"" };
+let modal = null; // {kind:'song'|'artist', draft, isNew, focusStep, armed}
+
+function readHash(){ const h=location.hash.replace(/^#/,""); view.artist = h.startsWith("artist-") ? h.slice(7) : "alle"; }
+readHash();
+window.addEventListener("hashchange", ()=>{ readHash(); render(); });
+
+/* ---------- Avledet status ---------- */
+function sortedSteps(song){ return [...(song.steps||[])].sort((a,b)=>(dn(a.start)??1e9)-(dn(b.start)??1e9)); }
+function progress(song){
+  const st = sortedSteps(song);
+  const cur = st.filter(s=>s.status==="pagar");
+  const next = st.find(s=>s.status==="planlagt");
+  const done = st.filter(s=>s.status==="ferdig").length;
+  return {cur, next, done, total:st.length, allDone: st.length>0 && done===st.length};
+}
+const DBX = `<svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15"><path fill="currentColor" d="M6 2 0 6l6 4-6 4 6 4 6-4-6-4 6-4-6-4Zm12 0-6 4 6 4-6 4 6 4 6-4-6-4 6-4-6-4ZM6 19.3l6 4 6-4-6-4-6 4Z"/></svg>`;
+const safeUrl = u => /^https:\/\/[^\s"<>]+$/i.test(String(u||"").trim()) ? String(u).trim() : "";
+const BUBBLE = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 3.5a1.5 1.5 0 0 1 1.5-1.5h8a1.5 1.5 0 0 1 1.5 1.5v6a1.5 1.5 0 0 1-1.5 1.5H7l-3 2.5V11H4a1.5 1.5 0 0 1-1.5-1.5z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
+const songComments = id => comments.filter(c=>c.songId===id).sort((a,b)=>(a.createdAt||0)-(b.createdAt||0));
+function authorName(c){ const p = c.authorId && profCache[c.authorId]; return (p && p.name) || c.sign || "Noen"; }
+function authorAvatar(c){ const p = c.authorId && profCache[c.authorId]; if(p && p.avatarUrl) return p.avatarUrl;
+  const n = authorName(c); const ini = esc(initials(n));
+  return "data:image/svg+xml,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><rect width="30" height="30" rx="15" fill="#2D2640"/><text x="15" y="19.5" text-anchor="middle" font-family="sans-serif" font-size="11" font-weight="700" fill="#F5F3FF">${ini}</text></svg>`); }
+function when(ts){ if(!ts) return ""; const d=new Date(ts); const n=Math.round(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/864e5);
+  const hm = String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  if(n===todayN) return "i dag "+hm; if(n===todayN-1) return "i går "+hm; return d.getDate()+". "+MON[d.getMonth()]+" "+hm; }
+async function resolveProfiles(){
+  if(!userNs) return; const ids=[...new Set(comments.map(c=>c.authorId).filter(Boolean))]; if(!ids.length) return;
+  try{ const ps = await userNs.profiles(ids); let changed=false; for(const id of ids){ const a=profCache[id], b=ps[id]; if(!a || a.name!==b.name || a.avatarUrl!==b.avatarUrl) changed=true; } profCache = {...profCache, ...ps}; return changed; }catch(_){ return false; }
+}
+const teamName = (song,id) => ((song.team||[]).find(m=>m.id===id)||{}).name || "";
+const whoNames = (song,step) => (step.who||[]).map(id=>teamName(song,id)).filter(Boolean);
+function artistById(id){ return artists.find(a=>a.id===id); }
+function visibleSongs(){
+  let list = songs.slice();
+  if(view.artist!=="alle") list = list.filter(s=>s.artistId===view.artist);
+  if(view.person) list = list.filter(s=>(s.team||[]).some(m=>m.name.trim().toLowerCase()===view.person));
+  const order = new Map(artists.map((a,i)=>[a.id,i]));
+  return list.sort((a,b)=>((order.get(a.artistId)??999)-(order.get(b.artistId)??999)) || ((a.createdAt||0)-(b.createdAt||0)));
+}
+function sortedArtists(){ return artists.slice().sort((a,b)=>(a.createdAt||0)-(b.createdAt||0)); }
+
+/* ---------- Render ---------- */
+function render(){
+  if(view.artist!=="alle" && loaded.a && !artistById(view.artist)) view.artist="alle";
+  renderTabs(); renderToolbar(); renderStats(); renderLegend(); renderTimeline(); renderTable();
+}
+
+function renderTabs(){
+  const cnt = id => songs.filter(s=>s.artistId===id).length;
+  const cur = artistById(view.artist);
+  const opts = `<option value="alle" ${view.artist==="alle"?"selected":""}>Alle artister (${songs.length})</option>` +
+    sortedArtists().map(a=>`<option value="${esc(a.id)}" ${view.artist===a.id?"selected":""}>${esc(a.name)} (${cnt(a.id)})</option>`).join("");
+  $("tabs").innerHTML = `<div class="artistpick">
+      <span class="adot" style="--dc:${cur?esc(cur.color||"#888"):"var(--muted)"}"></span>
+      <label class="sr" for="artistSel">Velg artist</label>
+      <select id="artistSel" class="asel">${opts}</select>
+    </div>
+    ${cur && safeUrl(cur.dropbox)?`<a class="btn dbx" href="${esc(safeUrl(cur.dropbox))}" target="_blank" rel="noopener noreferrer">${DBX}Åpne Dropbox</a>`:""}
+    ${cur && !safeUrl(cur.dropbox)?`<button class="btn ghost" type="button" data-edit-artist="${esc(cur.id)}" style="color:var(--muted)">${DBX}Legg til Dropbox-lenke</button>`:""}
+    ${cur?`<button class="btn" type="button" data-edit-artist="${esc(cur.id)}">Rediger artist</button>`:""}
+    <button class="btn" type="button" id="addArtist">+ Ny artist</button>`;
+}
+
+function renderToolbar(){
+  const z = ZOOMS[view.zoom];
+  $("zoom").innerHTML = ZOOMS.map((o,i)=>`<button type="button" data-zoom="${i}" aria-pressed="${i===view.zoom}">${o.l}</button>`).join("");
+  $("rangeLbl").textContent = fmtY(view.start) + " – " + fmtY(view.start + z.days - 1);
+  const names = new Map();
+  for(const s of songs) for(const m of (s.team||[])){ const k=m.name.trim().toLowerCase(); if(k && !names.has(k)) names.set(k, m.name.trim()); }
+  const opts = [...names.entries()].sort((a,b)=>a[1].localeCompare(b[1],"nb"));
+  if(view.person && !names.has(view.person)) view.person="";
+  $("person").innerHTML = `<option value="">Alle personer</option>` + opts.map(([k,n])=>`<option value="${esc(k)}" ${k===view.person?"selected":""}>${esc(n)}</option>`).join("");
+}
+
+function renderStats(){
+  const list = visibleSongs();
+  const active = list.filter(s=>!progress(s).allDone);
+  const running = [], upcoming = [], deadlines = [];
+  for(const s of list){
+    for(const st of (s.steps||[])){
+      const a=dn(st.start), b=dn(st.end);
+      if(st.status==="pagar") running.push({s,st});
+      if(st.status==="planlagt" && a!=null && a>=todayN && a<=todayN+14) upcoming.push({s,st,a});
+      if(st.status!=="ferdig" && b!=null && b>=todayN && b<=todayN+14) deadlines.push({s,st,b});
+    }
+  }
+  upcoming.sort((x,y)=>x.a-y.a); deadlines.sort((x,y)=>x.b-y.b);
+  const li = (arr,key) => arr.slice(0,3).map(o=>`<li><em>${fmt(o.st[key])}</em>${esc(o.s.title)} · ${esc(o.st.label||stageOf(o.st.type).n)}</li>`).join("") + (arr.length>3?`<li><em>+${arr.length-3}</em>flere</li>`:"");
+  $("stats").innerHTML = `
+    <div class="stat"><b>${active.length}</b><span>låter i produksjon</span></div>
+    <div class="stat"><b>${running.length}</b><span>steg pågår nå</span><ul>${running.slice(0,3).map(o=>`<li>${esc(o.s.title)} · ${esc(o.st.label||stageOf(o.st.type).n)}</li>`).join("")}${running.length>3?`<li><em>+${running.length-3}</em>flere</li>`:""}</ul></div>
+    <div class="stat"><b>${upcoming.length}</b><span>steg starter neste 14 dager</span><ul>${li(upcoming,"start")}</ul></div>
+    <div class="stat"><b>${deadlines.length}</b><span>frister neste 14 dager</span><ul>${li(deadlines,"end")}</ul></div>`;
+}
+
+function renderLegend(){
+  $("legend").innerHTML = STAGES.filter(s=>s.k!=="annet").map(s=>`<span><i style="--c:${s.c}"></i>${s.n}</span>`).join("") +
+    `<span style="margin-left:8px"><i class="sw p"></i>Planlagt</span><span><i class="sw a"></i>Pågår</span><span><i class="sw f"></i>Ferdig</span>`;
+}
+
+function laneLayout(steps){
+  const items = steps.filter(x=>x.start && x.end).map(x=>({st:x, a:Math.min(dn(x.start),dn(x.end)), b:Math.max(dn(x.start),dn(x.end))})).sort((p,q)=>p.a-q.a||p.b-q.b);
+  const ends = [];
+  for(const it of items){ let l = ends.findIndex(e=>e<it.a); if(l<0){ l=ends.length; ends.push(it.b); } else ends[l]=it.b; it.lane=l; }
+  return {items, count:Math.max(1,ends.length)};
+}
+
+function songLabel(s, showArtist){
+  const p = progress(s);
+  const a = artistById(s.artistId);
+  let now;
+  if(p.allDone) now = `<span class="pill done">Ferdig</span>`;
+  else if(p.cur.length) now = p.cur.map(st=>`<span class="pill" style="--c:${stageOf(st.type).c}">${esc(st.label||stageOf(st.type).n)}</span>`).join(" ");
+  else now = `<span class="pill none">Venter</span>`;
+  const nx = p.next ? `<span class="pill" style="--c:${stageOf(p.next.type).c}">${esc(p.next.label||stageOf(p.next.type).n)}</span>${p.next.start?`<span class="d">${fmt(p.next.start)}</span>`:""}` : `<span class="pill none">–</span>`;
+  const team = (s.team||[]);
+  const av = team.slice(0,5).map(m=>`<span class="av ${view.person && m.name.trim().toLowerCase()===view.person?"hl":""}" title="${esc(m.name)}${m.role?" – "+esc(m.role):""}">${esc(initials(m.name))}</span>`).join("") + (team.length>5?`<span class="av" title="${team.slice(5).map(m=>esc(m.name)).join(", ")}">+${team.length-5}</span>`:"");
+  return `<button class="song-t" type="button" data-song="${esc(s.id)}">${esc(s.title||"Uten tittel")}</button>
+    ${showArtist && a?`<div class="song-a">${esc(a.name)}</div>`:""}
+    <div class="nn"><div><b>Nå</b>${now}</div><div><b>Neste</b>${nx}</div></div>
+    ${team.length?`<div class="team">${av}</div>`:""}
+    ${(()=>{ const n=songComments(s.id).length; return `<button type="button" class="ccount ${n?"has":""}" data-comments="${esc(s.id)}" title="Kommentarer">${BUBBLE}${n?n+(n===1?" kommentar":" kommentarer"):"Kommenter"}</button>`; })()}`;
+}
+
+function renderTimeline(){
+  const el = $("tl");
+  if(!loaded.a || !loaded.s){ if(!el.querySelector(".loading")) el.innerHTML = `<div class="loading">Henter produksjoner …</div>`; return; }
+  if(!artists.length){
+    el.innerHTML = `<div class="empty"><h2>Ingen artister ennå</h2><p>Start med å legge inn en artist, og legg så inn låtene som er i produksjon.</p><button class="btn primary" type="button" data-act="addArtist">+ Legg til første artist</button></div>`;
+    return;
+  }
+  const z = ZOOMS[view.zoom], dw = z.dw, rs = view.start, re = rs + z.days - 1, tw = Math.round(z.days*dw);
+  const list = visibleSongs();
+  const wo = (mondayOf(rs) - rs) * dw; // negative eller 0
+  const trackStyle = `width:${tw}px;--wk:${(dw*7).toFixed(2)}px;--wo:${wo.toFixed(2)}px`;
+
+  // Header
+  let months = "", weeks = "";
+  let m = new Date(rs*864e5); let mStart = rs;
+  while(mStart <= re){
+    const y=m.getUTCFullYear(), mo=m.getUTCMonth();
+    const nextM = Math.round(Date.UTC(y,mo+1,1)/864e5);
+    const a = Math.max(mStart, rs), b = Math.min(nextM-1, re);
+    const w = (b-a+1)*dw;
+    months += `<div class="mcell" style="left:${((a-rs)*dw).toFixed(1)}px;width:${w.toFixed(1)}px">${w>90?MONL[mo]+" "+y:(w>34?MON[mo]:"")}</div>`;
+    mStart = nextM; m = new Date(nextM*864e5);
+  }
+  const wkW = dw*7;
+  for(let n = mondayOf(rs); n <= re; n += 7){
+    const a = Math.max(n, rs); const w = (Math.min(n+6,re)-a+1)*dw;
+    const isNow = todayN>=n && todayN<=n+6;
+    let txt = "";
+    if(wkW >= 34) txt = "u" + isoWeek(n) + (wkW >= 110 ? " · " + fmt(isoOf(n)) : "");
+    else if(wkW >= 20) txt = String(isoWeek(n));
+    weeks += `<div class="wcell ${isNow?"now":""}" style="left:${((a-rs)*dw).toFixed(1)}px;width:${w.toFixed(1)}px">${txt}</div>`;
+  }
+  let h = `<div class="row head"><div class="lab">Låt · status</div><div class="track" style="${trackStyle}"><div class="months">${months}</div><div class="weeks">${weeks}</div></div></div>`;
+
+  const songRow = (s, showArtist) => {
+    const {items, count} = laneLayout(s.steps||[]);
+    const height = Math.max(96, 14 + count*30);
+    let bars = "";
+    for(const it of items){
+      if(it.b < rs || it.a > re) continue;
+      const a = Math.max(it.a, rs), b = Math.min(it.b, re);
+      const st = it.st, sg = stageOf(st.type);
+      const who = whoNames(s, st);
+      const dim = view.person && !who.some(n=>n.trim().toLowerCase()===view.person);
+      const w = (b-a+1)*dw;
+      const name = st.label || sg.n;
+      const statusTxt = (STATUS.find(x=>x[0]===st.status)||STATUS[0])[1];
+      const tip = `${name} · ${statusTxt}\n${fmt(st.start)} – ${fmt(st.end)}${who.length?"\n"+who.join(", "):""}${st.note?"\n"+st.note:""}`;
+      bars += `<button type="button" class="bar ${esc(st.status||"planlagt")} ${it.a<rs?"cl":""} ${it.b>re?"cr":""} ${dim?"dim":""}" style="left:${((a-rs)*dw).toFixed(1)}px;width:${Math.max(6,w-2).toFixed(1)}px;top:${10+it.lane*30}px;--c:${sg.c};--ct:${sg.t}" data-song="${esc(s.id)}" data-step="${esc(st.id)}" title="${esc(tip)}">${w>46?`<span class="t">${esc(name)}</span>`:""}${w>110&&who.length?`<span class="w">${esc(who.map(initials).join(" "))}</span>`:""}</button>`;
+    }
+    const noDates = !items.length ? `<span class="nodates">Ingen datoer lagt inn. Åpne låten for å legge inn steg.</span>` : "";
+    return `<div class="row"><div class="lab">${songLabel(s, showArtist)}</div><div class="track" style="${trackStyle};height:${height}px">${bars}${noDates}</div></div>`;
+  };
+
+  if(!list.length){
+    const a = artistById(view.artist);
+    h += `<div class="row"><div class="lab"></div><div class="track" style="${trackStyle};height:120px"><div class="nodates" style="position:sticky;left:12px">${view.person?"Ingen låter med denne personen.":`Ingen låter${a?" for "+esc(a.name):""} ennå. Trykk «+ Ny låt».`}</div></div></div>`;
+  } else if(view.artist==="alle"){
+    for(const a of sortedArtists()){
+      const sl = list.filter(s=>s.artistId===a.id);
+      if(!sl.length) continue;
+      h += `<div class="row group"><div class="lab"><button type="button" data-artist="${esc(a.id)}"><span class="dot" style="--dc:${esc(a.color||"#888")}"></span>${esc(a.name)}</button><span class="n">${sl.length} ${sl.length===1?"låt":"låter"}</span>${safeUrl(a.dropbox)?`<a class="glink" href="${esc(safeUrl(a.dropbox))}" target="_blank" rel="noopener noreferrer" title="Åpne Dropbox for ${esc(a.name)}">${DBX}</a>`:""}</div><div class="track" style="width:${tw}px"></div></div>`;
+      for(const s of sl) h += songRow(s, false);
+    }
+    const orphans = list.filter(s=>!artistById(s.artistId));
+    if(orphans.length){
+      h += `<div class="row group"><div class="lab"><button type="button" disabled>Uten artist</button></div><div class="track" style="width:${tw}px"></div></div>`;
+      for(const s of orphans) h += songRow(s,false);
+    }
+  } else {
+    for(const s of list) h += songRow(s, false);
+  }
+  const todayLine = (todayN>=rs && todayN<=re) ? `<div class="today" style="left:calc(var(--lw) + ${((todayN-rs)*dw + dw/2).toFixed(1)}px)"></div>` : "";
+  el.innerHTML = `<div class="tl-inner" style="width:calc(var(--lw) + ${tw}px)">${h}${todayLine}</div>`;
+}
+
+function renderTable(){
+  const el = $("table");
+  if(!loaded.a || !loaded.s){ el.innerHTML = ""; return; }
+  const list = visibleSongs();
+  if(!list.length){ el.innerHTML = `<div class="loading">Ingen låter å vise.</div>`; return; }
+  const showArtist = view.artist==="alle";
+  let h = `<table><thead><tr><th>Låt</th>${showArtist?"<th>Artist</th>":""}<th>Nå</th><th>Neste steg</th><th>Hvem jobber på den</th><th>Siste kommentar</th><th>Fremdrift</th></tr></thead><tbody>`;
+  for(const s of list){
+    const p = progress(s), a = artistById(s.artistId);
+    const now = p.allDone ? `<span class="pill done">Ferdig</span>` : p.cur.length ? p.cur.map(st=>`<div><span class="pill" style="--c:${stageOf(st.type).c}">${esc(st.label||stageOf(st.type).n)}</span>${st.end?`<div class="sub">til ${fmt(st.end)}</div>`:""}</div>`).join("") : `<span class="pill none">Venter</span>`;
+    const nx = p.next ? `<span class="pill" style="--c:${stageOf(p.next.type).c}">${esc(p.next.label||stageOf(p.next.type).n)}</span>${p.next.start?`<div class="sub">${fmt(p.next.start)}${whoNames(s,p.next).length?" · "+esc(whoNames(s,p.next).join(", ")):""}</div>`:""}` : `<span class="pill none">–</span>`;
+    const team = (s.team||[]).map(m=>`${esc(m.name)}${m.role?` <span>(${esc(m.role)})</span>`:""}`).join("<br>") || `<span>Ingen lagt inn</span>`;
+    const pct = p.total ? Math.round(p.done/p.total*100) : 0;
+    h += `<tr><td><button class="song-t" type="button" data-song="${esc(s.id)}">${esc(s.title||"Uten tittel")}</button>${s.note?`<div class="sub" style="font-family:var(--f-body)">${esc(s.note)}</div>`:""}</td>${showArtist?`<td>${a?esc(a.name):"–"}${a&&safeUrl(a.dropbox)?` <a class="glink" href="${esc(safeUrl(a.dropbox))}" target="_blank" rel="noopener noreferrer" title="Åpne Dropbox">${DBX}</a>`:""}</td>`:""}<td>${now}</td><td>${nx}</td><td class="names">${team}</td><td class="lastc">${(()=>{ const cs=songComments(s.id); const c=cs[cs.length-1]; return c?`<div class="who">${esc(authorName(c))} · ${esc(when(c.createdAt))}</div><div class="txt">${esc(c.text)}</div><button type="button" class="ccount has" data-comments="${esc(s.id)}">${BUBBLE}Alle ${cs.length}</button>`:`<button type="button" class="ccount" data-comments="${esc(s.id)}">${BUBBLE}Kommenter</button>`; })()}</td><td><div class="prog"><span class="b"><i style="width:${pct}%"></i></span>${p.done}/${p.total}</div></td></tr>`;
+  }
+  el.innerHTML = h + `</tbody></table>`;
+}
+
+/* ---------- Lagring (Supabase) ---------- */
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co";
+const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZyamhlcmRrenhlcnlncmJmdWhyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI3NjU4NTgsImV4cCI6MjA5ODM0MTg1OH0.0JPL21EDYmhh6_IdMLVGm7BWsk_Zrinp6TqGNBUYt0w";
+let sb = null;
+const TABLE = {artist:"prod_artists", song:"prod_songs", comment:"prod_comments"};
+const toRow = {
+  artist: a => ({id:a.id, name:a.name, color:a.color||null, dropbox:a.dropbox||null, created_at:a.createdAt||Date.now()}),
+  song: s => ({id:s.id, artist_id:s.artistId, title:s.title, note:s.note||"", team:s.team||[], steps:s.steps||[], created_at:s.createdAt||Date.now(), updated_at:Date.now()}),
+  comment: c => ({id:c.id, song_id:c.songId, step_id:c.stepId||null, text:c.text, author:c.sign||null, created_at:c.createdAt||Date.now()})
+};
+const fromRow = {
+  artist: r => ({id:r.id, name:r.name, color:r.color||"#8B7FB8", dropbox:r.dropbox||"", createdAt:Number(r.created_at)||0}),
+  song: r => ({id:r.id, artistId:r.artist_id, title:r.title, note:r.note||"", team:Array.isArray(r.team)?r.team:[], steps:Array.isArray(r.steps)?r.steps:[], createdAt:Number(r.created_at)||0, updatedAt:Number(r.updated_at)||0}),
+  comment: r => ({id:r.id, songId:r.song_id, stepId:r.step_id||"", text:r.text||"", sign:r.author||"", createdAt:Number(r.created_at)||0})
+};
+function toast(msg){ const r=$("toastRoot"); r.innerHTML=`<div class="toast" role="status">${esc(msg)}</div>`; clearTimeout(toast.t); toast.t=setTimeout(()=>{r.innerHTML="";},4200); }
+function errMsg(e){
+  const m = (e && (e.message || e.error_description || e.details)) || String(e);
+  if(/does not exist|Could not find the table|schema cache/i.test(m)) return "Databasetabellene finnes ikke ennå. Kjør SQL-oppsettet i Supabase (se instruksjonene).";
+  if(/Failed to fetch|NetworkError|Load failed/i.test(m)) return "Får ikke kontakt med databasen. Sjekk nettforbindelsen.";
+  if(/row-level security|permission denied/i.test(m)) return "Databasen nektet tilgang. Sjekk at hele SQL-oppsettet (med policies) er kjørt.";
+  return "Noe gikk galt: " + m;
+}
+function setBanner(msg){ $("banner").innerHTML = msg ? `<div class="banner">${esc(msg)}</div>` : ""; }
+async function fetchTable(kind){
+  const {data, error} = await sb.from(TABLE[kind]).select("*");
+  if(error) throw error;
+  const list = (data||[]).map(fromRow[kind]);
+  if(kind==="artist") artists = list; else if(kind==="song") songs = list; else comments = list;
+}
+async function refresh(kinds){
+  kinds = kinds || ["artist","song","comment"];
+  try{ await Promise.all(kinds.map(fetchTable)); setBanner(""); }
+  catch(e){ setBanner(errMsg(e)); }
+  loaded.a = loaded.s = true;
+  render(); if(modal && modal.kind==="song") renderComments();
+}
+let rt = {};
+function refreshSoon(kind){ clearTimeout(rt[kind]); rt[kind] = setTimeout(()=>refresh([kind]), 250); }
+async function write(kind, op, payload){
+  if(!sb){ toast("Ikke koblet til databasen."); return false; }
+  try{
+    const q = sb.from(TABLE[kind]);
+    const {error} = op==="upsert" ? await q.upsert(payload) : await q.delete().eq("id", payload);
+    if(error) throw error;
+    await refresh(op==="delete" ? undefined : [kind]);
+    return true;
+  }catch(e){ toast(errMsg(e)); return false; }
+}
+const saveSong     = s  => write("song", "upsert", toRow.song(s));
+const deleteSong   = id => write("song", "delete", id);
+const saveArtist   = a  => write("artist", "upsert", toRow.artist(a));
+const deleteArtist = id => write("artist", "delete", id);
+const saveComment  = c  => write("comment", "upsert", toRow.comment(c));
+async function deleteComment(id){ return write("comment", "delete", id); }
+
+/* ---------- Modal: låt ---------- */
+function newStep(song){
+  const st = sortedSteps(song);
+  const last = st[st.length-1];
+  const idx = last ? Math.min(STAGES.findIndex(s=>s.k===stageOf(last.type).k)+1, STAGES.length-2) : 0;
+  const start = last && last.end ? dn(last.end)+1 : todayN;
+  return {id:uid("st"), type: last ? STAGES[Math.max(0,idx)].k : "demo", label:"", start:isoOf(start), end:isoOf(start+6), status:"planlagt", who:[], note:""};
+}
+function openSong(id, stepId, toComments){
+  const s = songs.find(x=>x.id===id);
+  if(s){ modal = {kind:"song", draft:clone(s), isNew:false, focusStep:stepId||null, armed:false, toComments:!!toComments, cText:"", cStep:"", armedCmt:null}; }
+  else {
+    const artistId = view.artist!=="alle" ? view.artist : (sortedArtists()[0]||{}).id || "";
+    modal = {kind:"song", draft:{id:uid("s"), title:"", artistId, note:"", team:[], steps:[], createdAt:Date.now()}, isNew:true, focusStep:null, armed:false};
+  }
+  renderModal(true);
+}
+function standardFlow(d){
+  const lengths = {demo:7, produksjon:14, vokal:5, mix:7, master:3};
+  let n = todayN;
+  const used = new Set((d.steps||[]).map(s=>stageOf(s.type).k));
+  for(const sg of STAGES){
+    if(sg.k==="annet" || used.has(sg.k)) continue;
+    const len = lengths[sg.k]||7;
+    d.steps.push({id:uid("st"), type:sg.k, label:"", start:isoOf(n), end:isoOf(n+len-1), status:"planlagt", who:[], note:""});
+    n += len;
+  }
+}
+function songModalHTML(){
+  const d = modal.draft;
+  const allNames = new Set(); songs.forEach(s=>(s.team||[]).forEach(m=>m.name && allNames.add(m.name.trim())));
+  const artistOpts = sortedArtists().map(a=>`<option value="${esc(a.id)}" ${a.id===d.artistId?"selected":""}>${esc(a.name)}</option>`).join("");
+  const steps = d.steps;
+  const team = d.team.map((m,i)=>`<div class="teamrow">
+      <input class="inp" id="tm-n-${i}" data-team="${i}" data-tf="name" value="${esc(m.name)}" placeholder="Navn" list="dl-names" aria-label="Navn">
+      <input class="inp" id="tm-r-${i}" data-team="${i}" data-tf="role" value="${esc(m.role)}" placeholder="Rolle" list="dl-roles" aria-label="Rolle">
+      <button class="x" type="button" data-act="rmTeam" data-i="${i}" aria-label="Fjern ${esc(m.name||"person")}">×</button></div>`).join("");
+  const stepHTML = steps.map((st,i)=>{
+    const sg = stageOf(st.type);
+    return `<div class="step ${modal.focusStep===st.id?"flash":""}" style="--c:${sg.c}" id="step-${esc(st.id)}">
+      <div class="sr1">
+        <div class="field"><label for="st-t-${i}">Steg</label><select class="inp" id="st-t-${i}" data-step="${i}" data-sf="type">${STAGES.map(s=>`<option value="${s.k}" ${s.k===stageOf(st.type).k?"selected":""}>${s.n}</option>`).join("")}</select></div>
+        <div class="field"><label for="st-l-${i}">Eget navn (valgfritt)</label><input class="inp" id="st-l-${i}" data-step="${i}" data-sf="label" value="${esc(st.label)}" placeholder="${esc(sg.n)}"></div>
+        <div class="field"><label for="st-s-${i}">Start</label><input class="inp" type="date" id="st-s-${i}" data-step="${i}" data-sf="start" value="${esc(st.start)}"></div>
+        <div class="field"><label for="st-e-${i}">Slutt</label><input class="inp" type="date" id="st-e-${i}" data-step="${i}" data-sf="end" value="${esc(st.end)}"></div>
+        <button class="x" type="button" data-act="rmStep" data-i="${i}" aria-label="Fjern steg">×</button>
+      </div>
+      <div class="sr2">
+        <div class="stseg" role="group" aria-label="Status">${STATUS.map(([k,l])=>`<button type="button" data-act="status" data-i="${i}" data-v="${k}" aria-pressed="${st.status===k}">${l}</button>`).join("")}</div>
+        <span class="flabel">Hvem:</span>
+        <div class="chips">${d.team.filter(m=>m.name.trim()).map(m=>`<button type="button" class="chip" data-act="who" data-i="${i}" data-m="${esc(m.id)}" aria-pressed="${(st.who||[]).includes(m.id)}">${esc(m.name)}</button>`).join("") || `<span class="hint">Legg til folk i teamet over først.</span>`}</div>
+      </div>
+      <input class="inp" id="st-n-${i}" data-step="${i}" data-sf="note" value="${esc(st.note)}" placeholder="Notat, f.eks. «venter på stems»" aria-label="Notat">
+    </div>`;
+  }).join("");
+  return `<div class="scrim" data-act="close"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+    <div class="mh"><h3 id="mTitle">${modal.isNew?"Ny låt":"Rediger låt"}</h3><button class="x" type="button" data-act="close" aria-label="Lukk">×</button></div>
+    <div class="mb" id="mb">
+      <div class="grid2">
+        <div class="field"><label for="f-title">Låttittel</label><input class="inp" id="f-title" data-f="title" value="${esc(d.title)}" placeholder="Arbeidstittel"></div>
+        <div class="field"><label for="f-artist">Artist</label><select class="inp" id="f-artist" data-f="artistId">${artistOpts}</select></div>
+      </div>
+      <div class="field"><label for="f-note">Notat om låten</label><textarea class="inp" id="f-note" data-f="note" placeholder="Referanser, BPM, toneart, avtaler …">${esc(d.note)}</textarea></div>
+      <div class="blk">
+        <div class="blk-h"><h4>Hvem jobber på prosjektet</h4><button class="btn" type="button" data-act="addTeam">+ Legg til person</button></div>
+        ${team || `<span class="hint">Ingen lagt inn ennå.</span>`}
+      </div>
+      <div class="blk">
+        <div class="blk-h"><h4>Steg i prosessen</h4><div class="tgroup">${steps.length<3?`<button class="btn" type="button" data-act="flow">Fyll inn standardløp</button>`:""}<button class="btn" type="button" data-act="addStep">+ Legg til steg</button></div></div>
+        ${stepHTML || `<span class="hint">Ingen steg ennå. «Fyll inn standardløp» legger inn demo → produksjon → vokalinnspilling → mix → master fra i dag, så justerer du datoene.</span>`}
+      </div>
+      <div class="blk" id="cmtBlk">
+        <div class="blk-h"><h4>Kommentarer</h4></div>
+        ${modal.isNew ? `<span class="hint">Lagre låten først, så kan dere kommentere på den.</span>` : `
+        <div class="cmts" id="cmtList"></div>
+        <div class="composer">
+          <textarea class="inp" id="c-text" data-c="cText" placeholder="Skriv en kommentar til teamet …" rows="2">${esc(modal.cText)}</textarea>
+          <div class="r"><div class="l">
+            <select class="inp" id="c-step" data-c="cStep" aria-label="Gjelder steg"><option value="">Gjelder hele låten</option>${(songs.find(x=>x.id===d.id)||d).steps.map(st=>`<option value="${esc(st.id)}" ${modal.cStep===st.id?"selected":""}>Gjelder: ${esc(st.label||stageOf(st.type).n)}</option>`).join("")}</select>
+            ${(me && me.name) ? "" : `<input class="inp" id="c-sign" data-c="cSign" placeholder="Navnet ditt" value="${esc(modal.cSign||getSign())}" aria-label="Navnet ditt">`}
+          </div><button class="btn primary" type="button" data-act="sendCmt">Send kommentar</button></div>
+          <span class="hint">Kommentarer lagres med en gang, uavhengig av «Lagre»-knappen.</span>
+        </div>`}
+      </div>
+    </div>
+    <div class="mf">
+      <div>${modal.isNew?"":`<button class="btn danger ${modal.armed?"armed":""}" type="button" data-act="delSong">${modal.armed?"Trykk igjen for å slette":"Slett låt"}</button>`}</div>
+      <div class="r"><button class="btn" type="button" data-act="close">Avbryt</button><button class="btn primary" type="button" data-act="saveSong">Lagre</button></div>
+    </div>
+  </div></div>
+  <datalist id="dl-names">${[...allNames].map(n=>`<option value="${esc(n)}">`).join("")}</datalist>
+  <datalist id="dl-roles">${ROLES.map(r=>`<option value="${esc(r)}">`).join("")}</datalist>`;
+}
+
+/* ---------- Modal: artist ---------- */
+function openArtist(id){
+  const a = artists.find(x=>x.id===id);
+  modal = a ? {kind:"artist", draft:clone(a), isNew:false, armed:false}
+            : {kind:"artist", draft:{id:uid("a"), name:"", color:ART_COLORS[artists.length % ART_COLORS.length], createdAt:Date.now()}, isNew:true, armed:false};
+  renderModal(true);
+}
+function artistModalHTML(){
+  const d = modal.draft;
+  const n = songs.filter(s=>s.artistId===d.id).length;
+  return `<div class="scrim" data-act="close"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" style="width:min(460px,100%)">
+    <div class="mh"><h3 id="mTitle">${modal.isNew?"Ny artist":"Rediger artist"}</h3><button class="x" type="button" data-act="close" aria-label="Lukk">×</button></div>
+    <div class="mb">
+      <div class="field"><label for="a-name">Artistnavn</label><input class="inp" id="a-name" data-af="name" value="${esc(d.name)}" placeholder="Navn på artist eller band"></div>
+      <div class="field"><label for="a-dbx">Dropbox-lenke</label><input class="inp" id="a-dbx" data-af="dropbox" type="url" inputmode="url" value="${esc(d.dropbox||"")}" placeholder="https://www.dropbox.com/scl/fo/…"><span class="hint">Lim inn delingslenken til artistens mappe i Dropbox.</span></div>
+      <div class="field"><span class="flabel">Farge</span><div class="swatches">${ART_COLORS.map(c=>`<button type="button" class="swatch" style="--dc:${c}" data-act="color" data-v="${c}" aria-pressed="${d.color===c}" aria-label="Farge ${c}"></button>`).join("")}</div></div>
+    </div>
+    <div class="mf">
+      <div>${modal.isNew?"":`<button class="btn danger ${modal.armed?"armed":""}" type="button" data-act="delArtist">${modal.armed?"Trykk igjen for å slette":"Slett artist"}</button>`}${!modal.isNew&&n?`<div class="hint" style="margin-top:4px">${n} ${n===1?"låt":"låter"} slettes også.</div>`:""}</div>
+      <div class="r"><button class="btn" type="button" data-act="close">Avbryt</button><button class="btn primary" type="button" data-act="saveArtist">Lagre</button></div>
+    </div>
+  </div></div>`;
+}
+
+function renderModal(first){
+  const root = $("modalRoot");
+  if(!modal){ root.innerHTML=""; return; }
+  const mb = $("mb"); const sc = mb ? mb.scrollTop : 0;
+  root.innerHTML = modal.kind==="song" ? songModalHTML() : artistModalHTML();
+  const nb = $("mb");
+  if(modal.kind==="song") renderComments();
+  if(first && modal.kind==="song" && modal.toComments){ const el=$("cmtBlk"); if(el) el.scrollIntoView({block:"start"}); const ta=$("c-text"); if(ta) ta.focus({preventScroll:true}); }
+  else if(first){
+    if(modal.kind==="song" && modal.focusStep){ const el=document.getElementById("step-"+modal.focusStep); if(el) el.scrollIntoView({block:"center"}); }
+    else { const f = root.querySelector(modal.kind==="song"?"#f-title":"#a-name"); if(f && modal.isNew) f.focus(); }
+  } else if(nb) nb.scrollTop = sc;
+}
+function getSign(){ try{ return localStorage.getItem("plk-sign")||""; }catch(_){ return ""; } }
+function setSign(v){ try{ localStorage.setItem("plk-sign", v); }catch(_){} }
+async function canDeleteCmt(c){ if(!userNs) return true; if(me && me.id && c.authorId===me.id) return true; try{ return (await userNs.isOwner()) || (await userNs.canEdit()); }catch(_){ return false; } }
+let isMod = false;
+function renderComments(){
+  const el = $("cmtList"); if(!el || !modal || modal.kind!=="song") return;
+  const d = modal.draft; const live = songs.find(x=>x.id===d.id) || d;
+  const cs = songComments(d.id);
+  if(!cs.length){ el.innerHTML = `<span class="hint">Ingen kommentarer ennå. Skriv den første under.</span>`; return; }
+  el.innerHTML = cs.map(c=>{
+    const st = c.stepId && (live.steps||[]).find(x=>x.id===c.stepId);
+    const mine = !userNs || (me && me.id && c.authorId===me.id) || isMod;
+    return `<div class="cmt"><img src="${esc(authorAvatar(c))}" alt=""><div>
+      <div class="meta"><b>${esc(authorName(c))}</b><span>${esc(when(c.createdAt))}</span>${st?`<span class="pill tag" style="--c:${stageOf(st.type).c}">${esc(st.label||stageOf(st.type).n)}</span>`:""}
+      ${mine?`<button type="button" class="del ${modal.armedCmt===c.id?"armed":""}" data-act="delCmt" data-id="${esc(c.id)}">${modal.armedCmt===c.id?"Trykk igjen for å slette":"Slett"}</button>`:""}</div>
+      <div class="body">${esc(c.text)}</div></div></div>`;
+  }).join("");
+}
+async function sendComment(){
+  const text = (modal.cText||"").trim(); if(!text){ const ta=$("c-text"); if(ta) ta.focus(); return; }
+  const sign = (me && me.name) ? "" : (modal.cSign!=null ? modal.cSign : getSign()).trim();
+  if(!(me && me.name) && sign) setSign(sign);
+  const doc = {songId: modal.draft.id, stepId: modal.cStep||"", text: text.slice(0,4000), authorId: (me && me.id) || null, sign, createdAt: Date.now()};
+  const id = uid("c");
+  let ok;
+  ok = await saveComment({id, ...doc});
+  if(ok && modal){ modal.cText=""; const ta=$("c-text"); if(ta) ta.value=""; renderComments(); render(); const l=$("cmtList"); if(l && l.lastElementChild) l.lastElementChild.scrollIntoView({block:"nearest"}); }
+}
+function closeModal(){ modal=null; renderModal(); }
+
+/* ---------- Hendelser ---------- */
+document.addEventListener("click", async e=>{
+  const t = e.target.closest("[data-act],[data-artist],[data-comments],[data-song],[data-zoom],[data-edit-artist],#addArtist,#newSong,#prev,#next,#todayBtn");
+  if(!t) return;
+  if(t.matches("[data-edit-artist]")){ e.stopPropagation(); openArtist(t.dataset.editArtist); return; }
+  if(t.id==="addArtist" || t.dataset.act==="addArtist"){ openArtist(); return; }
+  if(t.id==="newSong"){ if(!artists.length){ toast("Legg til en artist først."); openArtist(); return; } openSong(); return; }
+  if(t.id==="prev"||t.id==="next"){ const z=ZOOMS[view.zoom]; const step=Math.max(7, Math.round(z.days/3/7)*7); view.start += t.id==="prev"?-step:step; render(); return; }
+  if(t.id==="todayBtn"){ view.start = mondayOf(todayN-14); render(); return; }
+  if(t.dataset.zoom!=null && !t.dataset.act){ view.zoom=+t.dataset.zoom; render(); return; }
+  if(t.dataset.artist && !t.dataset.act){ location.hash = t.dataset.artist==="alle" ? "alle" : "artist-"+t.dataset.artist; return; }
+  if(t.dataset.comments && !modal){ openSong(t.dataset.comments, null, true); return; }
+  if(t.dataset.song && !t.dataset.act && !modal){ openSong(t.dataset.song, t.dataset.step); return; }
+
+  const act = t.dataset.act; if(!act || !modal) return;
+  if(act==="close"){ if(t.classList.contains("scrim") && e.target!==t) return; closeModal(); return; }
+  const d = modal.draft;
+  if(modal.kind==="song"){
+    if(act==="addTeam"){ d.team.push({id:uid("m"), name:"", role:""}); renderModal(); const i=d.team.length-1; const f=$("tm-n-"+i); if(f) f.focus(); return; }
+    if(act==="rmTeam"){ const m=d.team.splice(+t.dataset.i,1)[0]; if(m) d.steps.forEach(s=>s.who=(s.who||[]).filter(x=>x!==m.id)); renderModal(); return; }
+    if(act==="addStep"){ const st=newStep(d); d.steps.push(st); modal.focusStep=st.id; renderModal(); const el=document.getElementById("step-"+st.id); if(el) el.scrollIntoView({block:"nearest"}); return; }
+    if(act==="flow"){ standardFlow(d); renderModal(); return; }
+    if(act==="rmStep"){ d.steps.splice(+t.dataset.i,1); renderModal(); return; }
+    if(act==="status"){ d.steps[+t.dataset.i].status=t.dataset.v; renderModal(); return; }
+    if(act==="who"){ const st=d.steps[+t.dataset.i]; st.who=st.who||[]; const m=t.dataset.m; st.who = st.who.includes(m) ? st.who.filter(x=>x!==m) : [...st.who, m]; renderModal(); return; }
+    if(act==="sendCmt"){ t.disabled=true; await sendComment(); t.disabled=false; return; }
+    if(act==="delCmt"){ const id=t.dataset.id; if(modal.armedCmt!==id){ modal.armedCmt=id; renderComments(); return; } modal.armedCmt=null; await deleteComment(id); renderComments(); render(); return; }
+    if(act==="delSong"){ if(!modal.armed){ modal.armed=true; renderModal(); return; } const id=d.id; closeModal(); for(const c of songComments(id)) await deleteComment(c.id); await deleteSong(id); return; }
+    if(act==="saveSong"){
+      d.title = (d.title||"").trim();
+      if(!d.title){ toast("Gi låten en tittel."); const f=$("f-title"); if(f) f.focus(); return; }
+      if(!d.artistId){ toast("Velg en artist."); return; }
+      d.team = d.team.filter(m=>m.name.trim()).map(m=>({...m, name:m.name.trim(), role:(m.role||"").trim()}));
+      const ids = new Set(d.team.map(m=>m.id));
+      d.steps.forEach(s=>{ s.who=(s.who||[]).filter(x=>ids.has(x)); if(s.start && s.end && dn(s.end)<dn(s.start)){ const x=s.start; s.start=s.end; s.end=x; } if(s.start && !s.end) s.end=s.start; if(s.end && !s.start) s.start=s.end; });
+      d.steps = sortedSteps(d);
+      const btn=t; btn.disabled=true; btn.textContent="Lagrer …";
+      const ok = await saveSong(d);
+      if(ok) closeModal(); else { btn.disabled=false; btn.textContent="Lagre"; }
+      return;
+    }
+  } else {
+    if(act==="color"){ d.color=t.dataset.v; renderModal(); return; }
+    if(act==="delArtist"){
+      if(!modal.armed){ modal.armed=true; renderModal(); return; }
+      const id=d.id; closeModal();
+      for(const s of songs.filter(s=>s.artistId===id)) await deleteSong(s.id);
+      await deleteArtist(id); location.hash="alle"; return;
+    }
+    if(act==="saveArtist"){
+      d.name=(d.name||"").trim(); if(!d.name){ toast("Skriv inn et navn."); return; }
+      d.dropbox=(d.dropbox||"").trim(); if(d.dropbox && !/^https?:\/\//i.test(d.dropbox)) d.dropbox="https://"+d.dropbox;
+      if(d.dropbox && !safeUrl(d.dropbox)){ toast("Lenken må starte med https:// og kan ikke ha mellomrom."); const f=$("a-dbx"); if(f) f.focus(); return; }
+      const ok = await saveArtist(d);
+      if(ok){ const isNew=modal.isNew; closeModal(); if(isNew) location.hash="artist-"+d.id; }
+      return;
+    }
+  }
+});
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape" && modal) closeModal();
+  if(e.key==="Enter" && (e.metaKey||e.ctrlKey) && e.target.id==="c-text" && modal){ e.preventDefault(); sendComment(); }
+  if((e.key==="Enter"||e.key===" ") && e.target.matches("[data-edit-artist]")){ e.preventDefault(); openArtist(e.target.dataset.editArtist); }
+});
+document.addEventListener("input", e=>{
+  if(!modal) return; const t=e.target, d=modal.draft;
+  if(t.dataset.c){ modal[t.dataset.c]=t.value; return; }
+  if(t.dataset.f){ d[t.dataset.f]=t.value; }
+  else if(t.dataset.af){ d[t.dataset.af]=t.value; }
+  else if(t.dataset.team!=null){ d.team[+t.dataset.team][t.dataset.tf]=t.value; }
+  else if(t.dataset.step!=null){ d.steps[+t.dataset.step][t.dataset.sf]=t.value; }
+});
+document.addEventListener("change", e=>{
+  const t=e.target;
+  if(t.id==="person"){ view.person=t.value; render(); return; }
+  if(t.id==="artistSel"){ location.hash = t.value==="alle" ? "alle" : "artist-"+t.value; return; }
+  if(!modal) return;
+  if(t.dataset.c){ modal[t.dataset.c]=t.value; return; }
+  if(t.dataset.f==="artistId"){ modal.draft.artistId=t.value; return; }
+  if(t.dataset.step!=null && t.dataset.sf==="type"){ renderModal(); return; }
+  if(t.dataset.team!=null && t.dataset.tf==="name"){ renderModal(); return; } // oppdater navnebrikker
+  if(t.dataset.step!=null && t.dataset.sf==="start"){ const st=modal.draft.steps[+t.dataset.step]; if(st.start && (!st.end || dn(st.end)<dn(st.start))){ st.end=st.start; renderModal(); } }
+});
+
+/* ---------- Oppstart ---------- */
+render();
+(function init(){
+  if(!window.supabase || !window.supabase.createClient){
+    loaded.a = loaded.s = true;
+    setBanner("Kunne ikke laste databasebiblioteket. Sjekk nettforbindelsen og last inn siden på nytt.");
+    render(); return;
+  }
+  sb = window.supabase.createClient(SB_URL, SB_KEY);
+  refresh();
+  try{
+    const ch = sb.channel("produksjonskalender");
+    ch.on("postgres_changes", {event:"*", schema:"public", table:TABLE.artist}, ()=>refreshSoon("artist"))
+      .on("postgres_changes", {event:"*", schema:"public", table:TABLE.song}, ()=>refreshSoon("song"))
+      .on("postgres_changes", {event:"*", schema:"public", table:TABLE.comment}, ()=>refreshSoon("comment"))
+      .subscribe();
+  }catch(_){}
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) refresh(); });
+  setInterval(()=>{ if(!document.hidden) refresh(); }, 60000);
+})();
+</script>
+</body>
+</html>
