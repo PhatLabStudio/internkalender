@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phat Lab Review</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#0A0A0F; --panel:#15121F; --panel2:#1E1A2B; --line:#2D2640; --text:#F5F3FF; --muted:#8B7FB8;
+  --accent:#D946EF; --accent2:#F0ABFC; --ok:#3ddc97; --warn:#ffb547; --wave:#3a3a46;
+  --r:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;color-scheme:dark;background:var(--bg);color:var(--text);font:15px/1.5 Inter,system-ui,sans-serif}
+h1,h2,h3,.brand{font-family:"Space Grotesk",Inter,sans-serif;margin:0}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent2)}
+.hidden{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;padding:20px}
+header.top{display:flex;align-items:center;gap:14px;padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(10,10,15,.92);backdrop-filter:blur(8px);z-index:5}
+.brand{font-weight:700;font-size:18px;letter-spacing:.2px;display:flex;align-items:center;gap:10px}
+.brand .dot{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#F97316,#EC4899);display:grid;place-items:center;font-size:13px}
+.brand a{color:inherit;text-decoration:none;display:flex;align-items:center;gap:10px}
+.brand small{font-family:Inter;font-weight:500;color:var(--muted);font-size:13px}
+.spacer{flex:1}
+.btn{border:1px solid var(--line);background:var(--panel2);padding:8px 14px;border-radius:10px;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;transition:.15s}
+.btn:hover{border-color:#44444f;background:#24242c}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.primary{background:linear-gradient(135deg,#D946EF,#7C3AED);border-color:transparent}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.ghost{background:transparent}
+.btn.ok{background:var(--ok);border-color:var(--ok);color:#06281a;font-weight:600}
+.btn.danger{color:#ff7a7a}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+input[type=text],input[type=password],textarea{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;outline:none}
+input:focus,textarea:focus{border-color:var(--accent)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r)}
+.muted{color:var(--muted)}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:#24242c;border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:50;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+.toast.err{border-color:#ff6b6b;color:#ffb3b3}
+
+/* Login */
+.center{min-height:calc(100vh - 70px);display:grid;place-items:center;padding:20px}
+.login{width:100%;max-width:360px;padding:28px;text-align:center}
+.login h2{margin-bottom:6px}
+.login input{text-align:center;font-size:22px;letter-spacing:8px;margin:18px 0 12px}
+
+/* Liste */
+.listhead{display:flex;align-items:center;gap:12px;margin:10px 0 18px;flex-wrap:wrap}
+.listhead h1{font-size:26px}
+.search{max-width:260px}
+.projects{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.proj{padding:16px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:8px}
+.proj:hover{border-color:#44444f;transform:translateY(-1px)}
+.proj h3{font-size:17px}
+.proj .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.pill{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line)}
+.pill.ok{color:var(--ok);border-color:rgba(61,220,151,.35)}
+.pill.new{color:var(--accent2);border-color:rgba(217,70,239,.4)}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.newform{padding:16px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.newform input{flex:1;min-width:180px}
+
+/* Prosjekt */
+.phead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:6px 0 16px}
+.phead h1{font-size:24px;line-height:1.2}
+.phead .actions{display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
+@media (max-width:920px){.grid{grid-template-columns:1fr}}
+.player{padding:18px}
+.fileline{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.fileline .name{font-weight:600;word-break:break-word}
+.vtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.vtab{padding:6px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-size:13px}
+.vtab.on{border-color:var(--accent);background:rgba(217,70,239,.12)}
+.vtab .ok{color:var(--ok)}
+video{width:100%;border-radius:10px;background:#000;margin-bottom:14px;max-height:56vh}
+.wavebox{position:relative;height:150px;background:#111116;border-radius:12px;overflow:visible;cursor:pointer;user-select:none;margin-top:22px}
+canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
+.marker{position:absolute;top:-22px;transform:translateX(-50%);width:18px;height:18px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);font-size:10px;font-weight:700;display:grid;place-items:center;color:#fff;cursor:pointer;z-index:2}
+.marker{background:#F97316}
+.marker.studio{background:#7C3AED}
+.marker.res{opacity:.35}
+.marker::after{content:"";position:absolute;left:50%;top:16px;width:1px;height:150px;background:rgba(255,255,255,.12);pointer-events:none}
+.hover-t{position:absolute;top:6px;font-size:11px;background:#000c;padding:1px 6px;border-radius:5px;transform:translateX(-50%);pointer-events:none}
+.tip{position:absolute;bottom:calc(100% + 30px);transform:translateX(-50%);background:#24242c;border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:13px;width:max-content;max-width:260px;z-index:6;pointer-events:none}
+.controls{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap}
+.play{width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#D946EF,#7C3AED);border:0;display:grid;place-items:center;color:#fff;flex:none}
+.play svg{width:22px;height:22px}
+.time{font-variant-numeric:tabular-nums;color:var(--muted)}
+.time b{color:var(--text);font-weight:600}
+.vol{width:90px;accent-color:var(--accent)}
+.drop{margin-top:16px;border:1.5px dashed var(--line);border-radius:12px;padding:16px;text-align:center;color:var(--muted);transition:.15s}
+.drop.over{border-color:var(--accent);background:rgba(217,70,239,.06);color:var(--text)}
+.progress{height:6px;background:var(--panel2);border-radius:9px;overflow:hidden;margin-top:10px}
+.progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.approved{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.35);color:var(--ok);margin-bottom:14px;font-size:14px}
+
+/* Kommentarer */
+.comments{display:flex;flex-direction:column;max-height:calc(100vh - 120px);position:sticky;top:76px}
+@media (max-width:920px){.comments{position:static;max-height:none}}
+.chead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+.chead h3{font-size:16px}
+.compose{padding:12px 16px;border-bottom:1px solid var(--line)}
+.compose textarea{resize:vertical;min-height:64px}
+.compose .row{display:flex;align-items:center;gap:10px;margin-top:8px}
+.stamp{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none}
+.stamp input{accent-color:var(--accent)}
+.stamp b{color:var(--accent2);font-variant-numeric:tabular-nums}
+.clist{overflow:auto;padding:6px 8px 12px;flex:1}
+.c{padding:10px 10px;border-radius:10px;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;cursor:pointer}
+.c:hover{background:var(--panel2)}
+.c.active{background:rgba(217,70,239,.12)}
+.c.res .body{opacity:.5;text-decoration:line-through}
+.c .ts{font-size:12px;font-weight:600;color:var(--accent2);background:rgba(217,70,239,.14);padding:2px 7px;border-radius:6px;height:fit-content;font-variant-numeric:tabular-nums}
+.c .ts.gen{color:var(--muted);background:var(--panel2)}
+.c .who{font-size:13px;font-weight:600}
+.c .who span{font-weight:400;color:var(--muted);margin-left:6px}
+.c .badge{font-size:11px;color:#b6a5ff;margin-left:6px}
+.c .body{grid-column:2;white-space:pre-wrap;word-break:break-word;font-size:14px}
+.c .tools{grid-column:2;display:flex;gap:6px;margin-top:2px}
+.c .tools button{background:none;border:0;color:var(--muted);font-size:12px;padding:0}
+.c .tools button:hover{color:var(--text)}
+.filters{display:flex;gap:6px;margin-left:auto}
+.kbd{font-size:12px;color:var(--muted);margin-top:10px}
+.kbd kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-family:inherit}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="brand"><a id="homeLink" href="./"><div class="dot">PL</div>Phat Lab</a> <small>Review</small></div>
+  <div class="spacer"></div>
+  <button class="btn ghost sm hidden" id="backBtn">← Alle prosjekter</button>
+  <button class="btn ghost sm hidden" id="logoutBtn">Logg ut</button>
+</header>
+
+<!-- Innlogging (studio) -->
+<section id="vLogin" class="center hidden">
+  <form class="card login" id="loginForm">
+    <h2>Studio-innlogging</h2>
+    <div class="muted">Bruk samme PIN som produksjonstrackeren.</div>
+    <input type="password" inputmode="numeric" autocomplete="current-password" id="pin" maxlength="8" placeholder="••••" required>
+    <button class="btn primary" style="width:100%;justify-content:center">Logg inn</button>
+    <div id="loginErr" class="muted" style="margin-top:10px;color:#ff9b9b"></div>
+  </form>
+</section>
+
+<!-- Prosjektliste (studio) -->
+<section id="vList" class="wrap hidden">
+  <div class="listhead">
+    <h1>Prosjekter</h1>
+    <div class="spacer"></div>
+    <input type="text" class="search" id="search" placeholder="Søk…">
+    <button class="btn primary" id="newBtn">+ Nytt prosjekt</button>
+  </div>
+  <form class="card newform hidden" id="newForm">
+    <input type="text" id="newTitle" placeholder="Låt / prosjektnavn" required>
+    <input type="text" id="newClient" placeholder="Artist / kunde (valgfritt)">
+    <button class="btn primary">Opprett</button>
+    <button type="button" class="btn ghost" id="newCancel">Avbryt</button>
+  </form>
+  <div class="projects" id="projects"></div>
+  <label class="stamp" style="margin-top:16px"><input type="checkbox" id="showArchived"> Vis arkiverte</label>
+</section>
+
+<!-- Prosjekt (studio + kunde) -->
+<section id="vProject" class="wrap hidden">
+  <div class="phead">
+    <div>
+      <h1 id="pTitle"></h1>
+      <div class="muted" id="pClient"></div>
+    </div>
+    <div class="spacer"></div>
+    <div class="actions" id="studioActions">
+      <button class="btn primary" id="copyLink">🔗 Kopier kundelenke</button>
+      <button class="btn" id="renameBtn">Endre navn</button>
+      <button class="btn" id="archiveBtn">Arkiver</button>
+      <button class="btn danger" id="newLinkBtn" title="Gjør gammel lenke ugyldig">Ny lenke</button>
+      <button class="btn danger" id="deleteProjBtn">Slett</button>
+    </div>
+  </div>
+
+  <div class="grid">
+    <div>
+      <div class="card player">
+        <div class="vtabs" id="vtabs"></div>
+        <div id="approvedBox" class="approved hidden"></div>
+        <div id="noFile" class="empty hidden">Ingen filer ennå. Last opp en miks under for å komme i gang.</div>
+        <div id="playerUI" class="hidden">
+          <div class="fileline">
+            <div class="name" id="fileName"></div>
+            <span class="muted" id="fileMeta" style="font-size:13px"></span>
+            <div class="spacer"></div>
+            <button class="btn sm" id="downloadBtn">⬇ Last ned</button>
+            <button class="btn sm danger hidden" id="deleteVerBtn">Slett versjon</button>
+            <button class="btn sm ok hidden" id="approveBtn">✓ Godkjenn versjon</button>
+          </div>
+          <video id="video" class="hidden" playsinline></video>
+          <div class="wavebox" id="wavebox"><canvas id="wave"></canvas></div>
+          <div class="controls">
+            <button class="play" id="playBtn" aria-label="Spill av"></button>
+            <div class="time"><b id="tCur">0:00</b> / <span id="tDur">0:00</span></div>
+            <div class="spacer"></div>
+            <span class="muted" style="font-size:13px">Volum</span>
+            <input type="range" class="vol" id="vol" min="0" max="1" step="0.01" value="1">
+          </div>
+          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
+        </div>
+        <div class="drop" id="drop">
+          <div><b>Last opp ny versjon</b> – dra en fil hit eller <a href="#" id="pickFile">velg fil</a></div>
+          <div style="font-size:13px;margin-top:4px">MP3, WAV, AIFF, M4A eller video · maks 50 MB</div>
+          <input type="file" id="fileInput" accept="audio/*,video/mp4,video/quicktime,video/webm" hidden>
+          <div id="upStatus" class="hidden" style="margin-top:10px">
+            <div id="upText" style="font-size:13px"></div>
+            <div class="progress"><i id="upBar"></i></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="card comments">
+      <div class="chead">
+        <h3>Kommentarer</h3><span class="pill" id="cCount">0</span>
+        <div class="filters">
+          <button class="btn sm ghost" id="fltOpen" title="Skjul løste">Åpne</button>
+        </div>
+      </div>
+      <form class="compose" id="compose">
+        <div id="nameRow" class="hidden" style="margin-bottom:8px">
+          <input type="text" id="authorName" placeholder="Navnet ditt" maxlength="80">
+        </div>
+        <textarea id="cText" placeholder="Skriv en kommentar…" maxlength="4000"></textarea>
+        <div class="row">
+          <label class="stamp"><input type="checkbox" id="useStamp" checked> ved <b id="stampT">0:00</b></label>
+          <div class="spacer"></div>
+          <button class="btn primary sm" id="cSend">Send</button>
+        </div>
+      </form>
+      <div class="clist" id="clist"></div>
+    </aside>
+  </div>
+</section>
+
+<section id="vError" class="center hidden">
+  <div class="card login"><h2>Hmm…</h2><p class="muted" id="errText"></p></div>
+</section>
+
+<script>
+(() => {
+"use strict";
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co";
+const SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
+const FN_URL = SB_URL + "/functions/v1/review-files";
+const TOKEN_KEY = "plk-token"; // samme innlogging som produksjonskalenderen
+const NAME_KEY = "phatlab_review_name";
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const fmt = (s) => { if (s == null || isNaN(s)) return "0:00"; s = Math.max(0, s); const m = Math.floor(s / 60), x = Math.floor(s % 60); return m + ":" + String(x).padStart(2, "0"); };
+const fmtSize = (b) => b ? (b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.round(b / 1024) + " kB") : "";
+const ago = (iso) => { const d = (Date.now() - new Date(iso)) / 1000; if (d < 60) return "nå"; if (d < 3600) return Math.floor(d/60) + " min siden"; if (d < 86400) return Math.floor(d/3600) + " t siden"; return new Date(iso).toLocaleDateString("nb-NO", {day:"numeric", month:"short"}); };
+function toast(msg, err) { const t = el("div", "toast" + (err ? " err" : ""), msg); document.body.appendChild(t); setTimeout(() => t.remove(), err ? 5000 : 2600); }
+const store = { get(k){ try { return localStorage.getItem(k); } catch { return null; } }, set(k,v){ try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} } };
+
+const params = new URLSearchParams(location.search);
+const SHARE = params.get("s");
+const isClient = !!SHARE;
+let token = isClient ? null : store.get(TOKEN_KEY);
+let sb = makeClient();
+function makeClient() {
+  return supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-prod-token": token } : {} } });
+}
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args || {});
+  if (error) { if (/Ikke innlogget/.test(error.message)) { logout(); } throw new Error(error.message); }
+  return data;
+}
+async function fn(action, payload) {
+  const headers = { "content-type": "application/json", apikey: SB_KEY };
+  if (token) headers["x-prod-token"] = token;
+  const body = Object.assign({ action }, payload, SHARE ? { share: SHARE } : {});
+  const r = await fetch(FN_URL, { method: "POST", headers, body: JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Noe gikk galt (" + r.status + ")");
+  return j;
+}
+
+if (isClient) { const hl = document.getElementById("homeLink"); hl.removeAttribute("href"); hl.style.cursor = "default"; }
+function show(view) {
+  for (const v of ["vLogin", "vList", "vProject", "vError"]) $(v).classList.toggle("hidden", v !== view);
+  $("backBtn").classList.toggle("hidden", isClient || view !== "vProject");
+  $("logoutBtn").classList.toggle("hidden", isClient || view === "vLogin");
+}
+
+/* ---------- Studio: innlogging ---------- */
+$("loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("loginErr").textContent = "";
+  try {
+    const { data, error } = await makeClient().rpc("prod_login", { pin: $("pin").value });
+    if (error) throw error;
+    if (!data) { $("loginErr").textContent = "Feil PIN"; return; }
+    token = data; store.set(TOKEN_KEY, token); sb = makeClient(); $("pin").value = "";
+    route();
+  } catch (err) { $("loginErr").textContent = err.message; }
+});
+function logout() {
+  try { if (token) sb.rpc("prod_logout"); } catch {}
+  token = null; store.set(TOKEN_KEY, null); sb = makeClient(); stopPoll(); history.replaceState(null, "", location.pathname); show("vLogin");
+}
+$("logoutBtn").onclick = logout;
+$("backBtn").onclick = () => { history.pushState(null, "", location.pathname); route(); };
+window.addEventListener("popstate", route);
+
+/* ---------- Studio: prosjektliste ---------- */
+let allProjects = [];
+async function loadList() {
+  show("vList"); stopPoll(); pause();
+  try { allProjects = await rpc("rv_list_projects"); renderList(); }
+  catch (e) { if (token) toast(e.message, true); }
+}
+function renderList() {
+  const q = $("search").value.trim().toLowerCase(), showArch = $("showArchived").checked;
+  const box = $("projects"); box.replaceChildren();
+  const list = allProjects.filter(p => (showArch || !p.archived) && (!q || (p.title + " " + (p.client || "")).toLowerCase().includes(q)));
+  if (!list.length) { box.appendChild(el("div", "empty card", allProjects.length ? "Ingen treff." : "Ingen prosjekter ennå. Trykk «+ Nytt prosjekt» for å starte.")); return; }
+  for (const p of list) {
+    const c = el("div", "card proj");
+    c.appendChild(el("h3", null, p.title));
+    if (p.client) c.appendChild(el("div", "muted", p.client));
+    const m = el("div", "meta");
+    m.appendChild(el("span", "pill", p.versions + (p.versions === 1 ? " versjon" : " versjoner")));
+    if (p.open_comments) m.appendChild(el("span", "pill new", p.open_comments + " åpne kommentarer"));
+    if (p.approved) m.appendChild(el("span", "pill ok", "✓ Godkjent"));
+    if (p.archived) m.appendChild(el("span", "pill", "Arkivert"));
+    m.appendChild(el("span", null, ago(p.updated_at)));
+    c.appendChild(m);
+    c.onclick = () => { history.pushState(null, "", "?p=" + p.id); route(); };
+    box.appendChild(c);
+  }
+}
+$("search").oninput = renderList; $("showArchived").onchange = renderList;
+$("newBtn").onclick = () => { $("newForm").classList.remove("hidden"); $("newTitle").focus(); };
+$("newCancel").onclick = () => $("newForm").classList.add("hidden");
+$("newForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try {
+    const id = await rpc("rv_create_project", { title: $("newTitle").value, client: $("newClient").value });
+    $("newForm").reset(); $("newForm").classList.add("hidden");
+    history.pushState(null, "", "?p=" + id); route();
+  } catch (err) { toast(err.message, true); }
+});
+
+/* ---------- Prosjektvisning ---------- */
+let project = null, curVid = null, hideResolved = false, pollT = null, activeCid = null;
+const audio = new Audio(); audio.preload = "metadata";
+const video = $("video");
+let media = audio, loadedVid = null;
+
+async function loadProject(pid, keepVersion) {
+  try {
+    project = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid });
+    if (!project) throw new Error("Fant ikke prosjektet");
+  } catch (e) {
+    if (isClient) { $("errText").textContent = e.message; show("vError"); } else if (token) { toast(e.message, true); loadList(); }
+    return;
+  }
+  show("vProject");
+  document.title = project.title + " · Phat Lab Review";
+  if (!keepVersion || !project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null;
+  renderProject();
+  startPoll();
+}
+function curVersion() { return project?.versions.find(v => v.id === curVid) || null; }
+
+function renderProject() {
+  $("pTitle").textContent = project.title;
+  $("pClient").textContent = project.client || "";
+  $("studioActions").classList.toggle("hidden", isClient);
+  $("deleteVerBtn").classList.toggle("hidden", isClient);
+  $("nameRow").classList.toggle("hidden", !isClient);
+  if (isClient) $("authorName").value = $("authorName").value || store.get(NAME_KEY) || "";
+  $("archiveBtn").textContent = project.archived ? "Gjenopprett" : "Arkiver";
+
+  // Versjonsfaner
+  const tabs = $("vtabs"); tabs.replaceChildren();
+  for (const v of project.versions) {
+    const b = el("button", "vtab" + (v.id === curVid ? " on" : ""));
+    b.appendChild(document.createTextNode("v" + v.version + (v.label ? " · " + v.label : "")));
+    if (v.approved_at) { b.appendChild(document.createTextNode(" ")); b.appendChild(el("span", "ok", "✓")); }
+    const open = v.comments.filter(c => !c.resolved && c.t !== null).length;
+    if (open) b.appendChild(el("span", "muted", "  💬" + open));
+    b.onclick = () => { curVid = v.id; renderProject(); };
+    tabs.appendChild(b);
+  }
+  tabs.classList.toggle("hidden", project.versions.length < 2);
+
+  const v = curVersion();
+  $("noFile").classList.toggle("hidden", !!v);
+  $("playerUI").classList.toggle("hidden", !v);
+  $("compose").classList.toggle("hidden", !v);
+  if (v) {
+    $("fileName").textContent = v.file_name;
+    $("fileMeta").textContent = ["v" + v.version, fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
+    const ab = $("approvedBox");
+    ab.classList.toggle("hidden", !v.approved_at);
+    if (v.approved_at) ab.textContent = "✓ Godkjent av " + (v.approved_by || "kunde") + " " + ago(v.approved_at);
+    $("approveBtn").classList.toggle("hidden", !isClient);
+    $("approveBtn").textContent = v.approved_at ? "Angre godkjenning" : "✓ Godkjenn versjon";
+    $("approveBtn").className = "btn sm " + (v.approved_at ? "" : "ok");
+    if (loadedVid !== v.id) loadMedia(v);
+  } else { pause(); loadedVid = null; }
+  renderComments(); drawWave();
+}
+
+async function loadMedia(v) {
+  pause(); loadedVid = v.id;
+  const isVideo = /^video\//.test(v.mime || "");
+  media = isVideo ? video : audio;
+  video.classList.toggle("hidden", !isVideo);
+  audio.removeAttribute("src"); video.removeAttribute("src");
+  media.volume = +$("vol").value;
+  try {
+    const { url } = await fn("play_url", { version_id: v.id, project_id: project.id });
+    if (loadedVid !== v.id) return;
+    media.src = url; media.load();
+  } catch (e) { toast("Kunne ikke laste filen: " + e.message, true); }
+  updateTime();
+}
+function duration() { const v = curVersion(); return (isFinite(media.duration) && media.duration) || (v && +v.duration) || 0; }
+function pause() { audio.pause(); video.pause(); }
+function togglePlay() { if (!curVersion()) return; media.paused ? media.play().catch(e => toast(e.message, true)) : media.pause(); }
+function seek(t) { const d = duration(); if (!d) return; media.currentTime = Math.max(0, Math.min(d - 0.01, t)); updateTime(); }
+const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
+function updateTime() {
+  $("tCur").textContent = fmt(media.currentTime); $("tDur").textContent = fmt(duration());
+  $("stampT").textContent = fmt(media.currentTime);
+  $("playBtn").innerHTML = media.paused ? ICON_PLAY : ICON_PAUSE;
+  drawWave();
+}
+for (const m of [audio, video]) for (const ev of ["timeupdate", "play", "pause", "loadedmetadata", "ended", "seeked"]) m.addEventListener(ev, () => { if (m === media) updateTime(); });
+let raf = null;
+(function tick() { if (!media.paused) { drawWave(); $("tCur").textContent = fmt(media.currentTime); $("stampT").textContent = fmt(media.currentTime); } raf = requestAnimationFrame(tick); })();
+$("playBtn").onclick = togglePlay;
+$("vol").oninput = () => { audio.volume = video.volume = +$("vol").value; };
+$("downloadBtn").onclick = async () => {
+  try { const { url } = await fn("play_url", { version_id: curVid, project_id: project.id, download: true }); location.href = url; }
+  catch (e) { toast(e.message, true); }
+};
+
+/* ---------- Bølgeform ---------- */
+const canvas = $("wave"), wbox = $("wavebox");
+let hoverX = null;
+function drawWave() {
+  const v = curVersion(); if (!v) return;
+  const dpr = window.devicePixelRatio || 1, W = wbox.clientWidth, H = wbox.clientHeight;
+  if (canvas.width !== W * dpr || canvas.height !== H * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; }
+  const ctx = canvas.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
+  const peaks = Array.isArray(v.peaks) && v.peaks.length ? v.peaks : null;
+  const bar = 3, gap = 1, n = Math.floor(W / (bar + gap));
+  const d = duration(), prog = d ? media.currentTime / d : 0;
+  const mid = H / 2;
+  for (let i = 0; i < n; i++) {
+    let a;
+    if (peaks) { const s = Math.floor(i / n * peaks.length), e = Math.max(s + 1, Math.floor((i + 1) / n * peaks.length)); a = 0; for (let k = s; k < e; k++) a = Math.max(a, peaks[k] || 0); }
+    else a = 0.25 + 0.15 * Math.sin(i * 0.37) * Math.sin(i * 0.11);
+    const h = Math.max(2, a * (H - 20));
+    const x = i * (bar + gap);
+    const played = (x + bar / 2) / W <= prog;
+    const hovered = hoverX != null && x <= hoverX;
+    ctx.fillStyle = played ? "#D946EF" : (hovered ? "#5B4F80" : "#3A3352");
+    ctx.fillRect(x, mid - h / 2, bar, h);
+  }
+  // spillehode
+  if (d) { ctx.fillStyle = "#fff"; ctx.fillRect(Math.round(prog * W), 0, 1.5, H); }
+}
+function xToTime(clientX) { const r = wbox.getBoundingClientRect(); return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * duration(); }
+wbox.addEventListener("click", (e) => { if (e.target.classList.contains("marker")) return; seek(xToTime(e.clientX)); });
+let hoverLabel = null;
+wbox.addEventListener("mousemove", (e) => {
+  const r = wbox.getBoundingClientRect(); hoverX = e.clientX - r.left;
+  if (!hoverLabel) { hoverLabel = el("div", "hover-t"); wbox.appendChild(hoverLabel); }
+  hoverLabel.style.left = hoverX + "px"; hoverLabel.textContent = fmt(xToTime(e.clientX));
+  if (media.paused) drawWave();
+});
+wbox.addEventListener("mouseleave", () => { hoverX = null; hoverLabel?.remove(); hoverLabel = null; drawWave(); });
+window.addEventListener("resize", () => { drawWave(); renderMarkers(); });
+
+function renderMarkers() {
+  wbox.querySelectorAll(".marker,.tip").forEach(m => m.remove());
+  const v = curVersion(), d = duration(); if (!v || !d) return;
+  for (const c of v.comments) {
+    if (c.t == null) continue;
+    if (hideResolved && c.resolved) continue;
+    const m = el("div", "marker" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""), (c.author || "?").trim().charAt(0).toUpperCase());
+    m.style.left = (Math.min(1, c.t / d) * 100) + "%";
+    m.onclick = (e) => { e.stopPropagation(); jumpTo(c); };
+    m.onmouseenter = () => { const t = el("div", "tip"); t.appendChild(el("b", null, c.author + " · " + fmt(c.t))); t.appendChild(el("div", null, c.body.length > 140 ? c.body.slice(0, 140) + "…" : c.body)); t.style.left = m.style.left; wbox.appendChild(t); m._tip = t; };
+    m.onmouseleave = () => m._tip?.remove();
+    wbox.appendChild(m);
+  }
+}
+for (const m of [audio, video]) m.addEventListener("loadedmetadata", () => { if (m === media) renderMarkers(); });
+
+/* ---------- Kommentarer ---------- */
+function jumpTo(c) {
+  activeCid = c.id; if (c.t != null) seek(+c.t);
+  renderComments();
+  document.querySelector('.c[data-id="' + c.id + '"]')?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+}
+function renderComments() {
+  const v = curVersion(), list = $("clist"); list.replaceChildren();
+  const cs = v ? v.comments.filter(c => !(hideResolved && c.resolved)) : [];
+  $("cCount").textContent = v ? v.comments.filter(c => !c.resolved).length : 0;
+  $("fltOpen").classList.toggle("primary", hideResolved);
+  if (!v) { list.appendChild(el("div", "empty", "Last opp en fil for å kommentere.")); renderMarkers(); return; }
+  if (!cs.length) list.appendChild(el("div", "empty", "Ingen kommentarer ennå. Spill av, pause der du vil si noe, og skriv."));
+  for (const c of cs) {
+    const row = el("div", "c" + (c.resolved ? " res" : "") + (c.id === activeCid ? " active" : ""));
+    row.dataset.id = c.id;
+    row.appendChild(el("span", "ts" + (c.t == null ? " gen" : ""), c.t == null ? "Generelt" : fmt(+c.t)));
+    const who = el("div", "who", c.author);
+    if (c.from_studio) who.appendChild(el("span", "badge", "Phat Lab"));
+    who.appendChild(el("span", null, ago(c.created_at)));
+    row.appendChild(who);
+    row.appendChild(el("div", "body", c.body));
+    if (!isClient) {
+      const tools = el("div", "tools");
+      const rb = el("button", null, c.resolved ? "Gjenåpne" : "✓ Løst");
+      rb.onclick = async (e) => { e.stopPropagation(); try { await rpc("rv_set_resolved", { cid: c.id, val: !c.resolved }); c.resolved = !c.resolved; renderComments(); } catch (err) { toast(err.message, true); } };
+      const db = el("button", null, "Slett");
+      db.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(db)) return; try { await fn("delete_comment", { comment_id: c.id }); v.comments = v.comments.filter(x => x.id !== c.id); renderComments(); } catch (err) { toast(err.message, true); } };
+      tools.append(rb, db); row.appendChild(tools);
+    }
+    row.onclick = () => jumpTo(c);
+    list.appendChild(row);
+  }
+  renderMarkers();
+}
+// To-klikks bekreftelse uten nettleserdialog
+function confirmInline(btn) {
+  if (btn.dataset.armed) return true;
+  const old = btn.textContent; btn.dataset.armed = "1"; btn.textContent = "Sikker? Klikk igjen";
+  setTimeout(() => { delete btn.dataset.armed; btn.textContent = old; }, 3000);
+  return false;
+}
+$("fltOpen").onclick = () => { hideResolved = !hideResolved; renderComments(); };
+$("cText").addEventListener("focus", () => { if ($("useStamp").checked) $("stampT").textContent = fmt(media.currentTime); });
+$("cText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("compose").requestSubmit(); });
+$("compose").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const body = $("cText").value.trim(); if (!body) return;
+  const v = curVersion(); if (!v) return;
+  const t = $("useStamp").checked ? Math.round(media.currentTime * 100) / 100 : null;
+  let author = "Phat Lab";
+  if (isClient) {
+    author = $("authorName").value.trim();
+    if (!author) { $("authorName").focus(); toast("Skriv navnet ditt først", true); return; }
+    store.set(NAME_KEY, author);
+  }
+  $("cSend").disabled = true;
+  try {
+    if (isClient) await rpc("rv_share_comment", { token: SHARE, vid: v.id, t, body, author });
+    else await rpc("rv_studio_comment", { vid: v.id, t, body, author });
+    $("cText").value = "";
+    await loadProject(project.id, true);
+  } catch (err) { toast(err.message, true); }
+  $("cSend").disabled = false;
+});
+
+/* ---------- Godkjenning (kunde) ---------- */
+$("approveBtn").onclick = async () => {
+  const v = curVersion(); const author = $("authorName").value.trim();
+  if (!author) { $("authorName").focus(); toast("Skriv navnet ditt først", true); return; }
+  store.set(NAME_KEY, author);
+  try { await rpc("rv_share_approve", { token: SHARE, vid: v.id, author, approve: !v.approved_at }); await loadProject(project.id, true); toast(v.approved_at ? "Godkjenning trukket tilbake" : "Takk! Versjonen er godkjent 🎉"); }
+  catch (e) { toast(e.message, true); }
+};
+
+/* ---------- Studio-handlinger ---------- */
+$("copyLink").onclick = async () => {
+  const url = location.origin + location.pathname + "?s=" + project.share_token;
+  try { await navigator.clipboard.writeText(url); toast("Kundelenke kopiert"); }
+  catch { toast(url); }
+};
+$("newLinkBtn").onclick = async () => {
+  if (!confirmInline($("newLinkBtn"))) return;
+  try { project.share_token = await rpc("rv_new_share_token", { pid: project.id }); toast("Ny lenke laget. Den gamle virker ikke lenger."); } catch (e) { toast(e.message, true); }
+};
+$("renameBtn").onclick = () => {
+  const h = $("pTitle"); h.contentEditable = "true"; h.focus();
+  document.getSelection().selectAllChildren(h);
+  const done = async () => { h.contentEditable = "false"; h.removeEventListener("blur", done); const t = h.textContent.trim(); if (t && t !== project.title) { try { await rpc("rv_update_project", { pid: project.id, new_title: t, new_client: project.client, new_archived: null }); project.title = t; toast("Lagret"); } catch (e) { toast(e.message, true); } } h.textContent = project.title; };
+  h.addEventListener("blur", done);
+  h.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); h.blur(); } };
+};
+$("archiveBtn").onclick = async () => {
+  try { await rpc("rv_update_project", { pid: project.id, new_title: null, new_client: project.client, new_archived: !project.archived }); toast(project.archived ? "Gjenopprettet" : "Arkivert – kundelenken er satt på pause"); project.archived = !project.archived; renderProject(); } catch (e) { toast(e.message, true); }
+};
+$("deleteProjBtn").onclick = async () => {
+  if (!confirmInline($("deleteProjBtn"))) return;
+  try { await fn("delete_project", { project_id: project.id }); toast("Prosjektet er slettet"); history.pushState(null, "", location.pathname); route(); } catch (e) { toast(e.message, true); }
+};
+$("deleteVerBtn").onclick = async () => {
+  if (!confirmInline($("deleteVerBtn"))) return;
+  try { await fn("delete_version", { version_id: curVid, project_id: project.id }); loadedVid = null; await loadProject(project.id, false); toast("Versjonen er slettet"); } catch (e) { toast(e.message, true); }
+};
+
+/* ---------- Opplasting ---------- */
+const drop = $("drop");
+$("pickFile").onclick = (e) => { e.preventDefault(); $("fileInput").click(); };
+$("fileInput").onchange = () => { const f = $("fileInput").files[0]; if (f) upload(f); $("fileInput").value = ""; };
+drop.addEventListener("dragover", (e) => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", (e) => { e.preventDefault(); drop.classList.remove("over"); const f = e.dataTransfer.files[0]; if (f) upload(f); });
+
+function guessMime(f) {
+  if (f.type) return f.type === "audio/x-m4a" ? "audio/mp4" : f.type;
+  const ext = f.name.split(".").pop().toLowerCase();
+  return ({ wav: "audio/wav", mp3: "audio/mpeg", aif: "audio/aiff", aiff: "audio/aiff", m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg", mp4: "video/mp4", mov: "video/quicktime" })[ext] || "";
+}
+async function analyze(file) {
+  // Lager bølgeform (1000 punkter) og finner lengde lokalt i nettleseren
+  try {
+    const buf = await file.arrayBuffer();
+    const Ctx = window.AudioContext || window.webkitAudioContext;
+    const ctx = new Ctx();
+    const ab = await ctx.decodeAudioData(buf);
+    ctx.close?.();
+    const N = 1000, len = ab.length, ch = Math.min(2, ab.numberOfChannels), step = Math.max(1, Math.floor(len / N));
+    const data = []; for (let c = 0; c < ch; c++) data.push(ab.getChannelData(c));
+    const peaks = new Array(N).fill(0);
+    for (let i = 0; i < N; i++) {
+      let m = 0; const s = i * step, e = Math.min(len, s + step), inc = Math.max(1, Math.floor((e - s) / 400));
+      for (let k = s; k < e; k += inc) for (let c = 0; c < ch; c++) { const a = Math.abs(data[c][k]); if (a > m) m = a; }
+      peaks[i] = m;
+    }
+    const max = Math.max(...peaks) || 1;
+    return { duration: ab.duration, peaks: peaks.map(p => p / max) };
+  } catch { return { duration: null, peaks: null }; }
+}
+let uploading = false;
+async function upload(file) {
+  if (uploading) return;
+  const mime = guessMime(file);
+  if (!/^audio\/|^video\/(mp4|quicktime|webm)$/.test(mime)) { toast("Det ser ikke ut som en lyd- eller videofil", true); return; }
+  if (file.size > 50 * 1024 * 1024) { toast("Filen er " + fmtSize(file.size) + ". Maks er 50 MB – eksporter gjerne som MP3 (320 kbps).", true); return; }
+  let uploader = "Phat Lab";
+  if (isClient) { uploader = $("authorName").value.trim(); if (!uploader) { $("authorName").focus(); toast("Skriv navnet ditt først", true); return; } store.set(NAME_KEY, uploader); }
+  uploading = true;
+  const st = $("upStatus"), bar = $("upBar"), txt = $("upText");
+  st.classList.remove("hidden"); bar.style.width = "0%"; txt.textContent = "Analyserer " + file.name + "…";
+  try {
+    const info = await analyze(file);
+    txt.textContent = "Laster opp " + file.name + "…";
+    const up = await fn("upload_url", { project_id: project.id, file_name: file.name, mime, size: file.size });
+    await new Promise((res, rej) => {
+      const fd = new FormData(); fd.append("cacheControl", "3600"); fd.append("", new File([file], file.name, { type: mime }));
+      const x = new XMLHttpRequest(); x.open("PUT", up.signedUrl);
+      x.setRequestHeader("apikey", SB_KEY); x.setRequestHeader("x-upsert", "false");
+      x.upload.onprogress = (e) => { if (e.lengthComputable) { bar.style.width = (e.loaded / e.total * 100).toFixed(1) + "%"; txt.textContent = "Laster opp " + file.name + " – " + Math.round(e.loaded / e.total * 100) + " %"; } };
+      x.onload = () => x.status < 300 ? res() : rej(new Error("Opplasting feilet (" + x.status + "): " + (x.responseText || "").slice(0, 160)));
+      x.onerror = () => rej(new Error("Nettverksfeil under opplasting"));
+      x.send(fd);
+    });
+    txt.textContent = "Lagrer…";
+    const label = file.name.replace(/\.[^.]+$/, "").slice(0, 60);
+    const { id } = await fn("register", { project_id: project.id, path: up.path, file_name: file.name, mime, size: file.size, duration: info.duration, peaks: info.peaks, label: null, uploaded_by: uploader });
+    curVid = id; loadedVid = null;
+    await loadProject(project.id, true);
+    toast("Ny versjon lastet opp 🎧");
+  } catch (e) { toast(e.message, true); }
+  uploading = false; st.classList.add("hidden");
+}
+
+/* ---------- Tastatur ---------- */
+document.addEventListener("keydown", (e) => {
+  if ($("vProject").classList.contains("hidden")) return;
+  const tag = (e.target.tagName || "").toLowerCase();
+  if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
+  if (e.code === "Space") { e.preventDefault(); togglePlay(); }
+  else if (e.key === "ArrowLeft") seek(media.currentTime - 5);
+  else if (e.key === "ArrowRight") seek(media.currentTime + 5);
+  else if (e.key.toLowerCase() === "c") { e.preventDefault(); pause(); $("cText").focus(); }
+});
+
+/* ---------- Automatisk oppdatering ---------- */
+function startPoll() { stopPoll(); pollT = setInterval(async () => {
+  if (document.hidden || !project || uploading || document.activeElement === $("cText")) return;
+  try {
+    const p = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id });
+    if (p && JSON.stringify(p) !== JSON.stringify(project)) { project = p; if (!project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null; renderProject(); }
+  } catch {}
+}, 10000); }
+function stopPoll() { if (pollT) clearInterval(pollT); pollT = null; }
+
+/* ---------- Ruting ---------- */
+function route() {
+  if (isClient) { loadProject(null); return; }
+  if (!token) { show("vLogin"); setTimeout(() => $("pin").focus(), 50); return; }
+  const pid = new URLSearchParams(location.search).get("p");
+  if (pid) loadProject(pid); else loadList();
+}
+updateTime();
+route();
+})();
+</script>
+</body>
+</html>
