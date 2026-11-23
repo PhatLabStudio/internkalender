@@ -403,7 +403,10 @@ function renderProject() {
   const v = curVersion();
   $("noFile").classList.toggle("hidden", !!v);
   $("playerUI").classList.toggle("hidden", !v);
-  $("compose").classList.toggle("hidden", !v);
+  // Kunden må kunne skrive navnet sitt før første opplasting; selve kommentarfeltet krever en fil
+  $("compose").classList.toggle("hidden", !v && !isClient);
+  $("cText").classList.toggle("hidden", !v);
+  $("compose").querySelector(".row").classList.toggle("hidden", !v);
   if (v) {
     $("fileName").textContent = v.file_name;
     $("fileMeta").textContent = ["v" + v.version, fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
