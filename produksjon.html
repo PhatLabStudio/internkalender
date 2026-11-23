@@ -218,6 +218,12 @@ textarea.inp{resize:vertical;min-height:54px}
 .ccount:hover{color:var(--accent)}
 .ccount svg{width:14px;height:14px}
 .ccount.has{color:var(--ink)}
+.rvchip{display:inline-flex;align-items:center;gap:5px;margin-top:6px;font:600 12px var(--f-display);color:var(--ink);text-decoration:none;border:1px solid var(--line);background:color-mix(in srgb,#D946EF 10%,transparent);border-radius:999px;padding:3px 10px;cursor:pointer;white-space:nowrap}
+.rvchip:hover{border-color:#D946EF}
+.rvchip .rvs{font-size:10px;letter-spacing:.06em;opacity:.8}
+.rvchip .rvc{color:#F0ABFC}
+.rvchip.new{background:none;color:var(--muted);border-style:dashed}
+.rvchip.new:hover{color:var(--ink)}
 .lastc{font-size:13px;max-width:260px}
 .lastc .who{font-size:12px;color:var(--muted)}
 .lastc .txt{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
@@ -338,6 +344,7 @@ const $ = id => document.getElementById(id);
 /* ---------- Tilstand ---------- */
 let db = null, local = false;
 let artists = [], songs = [], comments = [];
+let reviewLinks = {}; // låt-id -> review-prosjekt (Phat Lab Review)
 let userNs = null, me = null, profCache = {};
 const loaded = {a:false, s:false};
 const view = { artist:"alle", zoom:1, start: mondayOf(todayN - 14), person:"" };
@@ -463,7 +470,8 @@ function songLabel(s, showArtist){
     ${showArtist && a?`<div class="song-a">${esc(a.name)}</div>`:""}
     <div class="nn"><div><b>Nå</b>${now}</div><div><b>Neste</b>${nx}</div></div>
     ${team.length?`<div class="team">${av}</div>`:""}
-    ${(()=>{ const n=songComments(s.id).length; return `<button type="button" class="ccount ${n?"has":""}" data-comments="${esc(s.id)}" title="Kommentarer">${BUBBLE}${n?n+(n===1?" kommentar":" kommentarer"):"Kommenter"}</button>`; })()}`;
+    ${(()=>{ const n=songComments(s.id).length; return `<button type="button" class="ccount ${n?"has":""}" data-comments="${esc(s.id)}" title="Kommentarer">${BUBBLE}${n?n+(n===1?" kommentar":" kommentarer"):"Kommenter"}</button>`; })()}
+    <div>${reviewChip(s)}</div>`;
 }
 
 function renderTimeline(){
@@ -555,7 +563,7 @@ function renderTable(){
     const nx = p.next ? `<span class="pill" style="--c:${stageOf(p.next.type).c}">${esc(p.next.label||stageOf(p.next.type).n)}</span>${p.next.start?`<div class="sub">${fmt(p.next.start)}${whoNames(s,p.next).length?" · "+esc(whoNames(s,p.next).join(", ")):""}</div>`:""}` : `<span class="pill none">–</span>`;
     const team = (s.team||[]).map(m=>`${esc(m.name)}${m.role?` <span>(${esc(m.role)})</span>`:""}`).join("<br>") || `<span>Ingen lagt inn</span>`;
     const pct = p.total ? Math.round(p.done/p.total*100) : 0;
-    h += `<tr><td><button class="song-t" type="button" data-song="${esc(s.id)}">${esc(s.title||"Uten tittel")}</button>${s.note?`<div class="sub" style="font-family:var(--f-body)">${esc(s.note)}</div>`:""}</td>${showArtist?`<td>${a?esc(a.name):"–"}${a&&safeUrl(a.dropbox)?` <a class="glink" href="${esc(safeUrl(a.dropbox))}" target="_blank" rel="noopener noreferrer" title="Åpne Dropbox">${DBX}</a>`:""}</td>`:""}<td>${now}</td><td>${nx}</td><td class="names">${team}</td><td class="lastc">${(()=>{ const cs=songComments(s.id); const c=cs[cs.length-1]; return c?`<div class="who">${esc(authorName(c))} · ${esc(when(c.createdAt))}</div><div class="txt">${esc(c.text)}</div><button type="button" class="ccount has" data-comments="${esc(s.id)}">${BUBBLE}Alle ${cs.length}</button>`:`<button type="button" class="ccount" data-comments="${esc(s.id)}">${BUBBLE}Kommenter</button>`; })()}</td><td><div class="prog"><span class="b"><i style="width:${pct}%"></i></span>${p.done}/${p.total}</div></td></tr>`;
+    h += `<tr><td><button class="song-t" type="button" data-song="${esc(s.id)}">${esc(s.title||"Uten tittel")}</button>${s.note?`<div class="sub" style="font-family:var(--f-body)">${esc(s.note)}</div>`:""}<div>${reviewChip(s)}</div></td>${showArtist?`<td>${a?esc(a.name):"–"}${a&&safeUrl(a.dropbox)?` <a class="glink" href="${esc(safeUrl(a.dropbox))}" target="_blank" rel="noopener noreferrer" title="Åpne Dropbox">${DBX}</a>`:""}</td>`:""}<td>${now}</td><td>${nx}</td><td class="names">${team}</td><td class="lastc">${(()=>{ const cs=songComments(s.id); const c=cs[cs.length-1]; return c?`<div class="who">${esc(authorName(c))} · ${esc(when(c.createdAt))}</div><div class="txt">${esc(c.text)}</div><button type="button" class="ccount has" data-comments="${esc(s.id)}">${BUBBLE}Alle ${cs.length}</button>`:`<button type="button" class="ccount" data-comments="${esc(s.id)}">${BUBBLE}Kommenter</button>`; })()}</td><td><div class="prog"><span class="b"><i style="width:${pct}%"></i></span>${p.done}/${p.total}</div></td></tr>`;
   }
   el.innerHTML = h + `</tbody></table>`;
 }
@@ -606,10 +614,32 @@ async function fetchTable(kind){
   const list = (data||[]).map(fromRow[kind]);
   if(kind==="artist") artists = list; else if(kind==="song") songs = list; else comments = list;
 }
+async function fetchReviewLinks(){
+  try{
+    const {data, error} = await sb.rpc("rv_song_links");
+    if(error) return;
+    reviewLinks = {}; for(const r of (data||[])) reviewLinks[r.song_id] = r;
+  }catch(_){}
+}
+function reviewChip(s){
+  const r = reviewLinks[s.id];
+  if(!r) return `<button type="button" class="rvchip new" data-review-new="${esc(s.id)}" title="Lag et review-prosjekt for denne låten">＋ Review</button>`;
+  const sg = r.latest_stage ? stageOf(r.latest_stage) : null;
+  return `<a class="rvchip" href="review.html?p=${encodeURIComponent(r.project_id)}" title="Åpne i Phat Lab Review">🎧 ${r.latest ? "v"+Number(r.latest) : "Review"}${sg ? ` <span class="rvs">${esc(sg.n.toUpperCase())}</span>` : ""}${Number(r.open_comments) ? ` <span class="rvc">💬 ${Number(r.open_comments)}</span>` : ""}</a>`;
+}
+document.addEventListener("click", async e=>{
+  const b = e.target.closest("[data-review-new]"); if(!b) return;
+  e.preventDefault(); e.stopPropagation();
+  if(!sb) return;
+  b.disabled = true; b.textContent = "Lager…";
+  const {data, error} = await sb.rpc("rv_create_project_for_song", {sid: b.dataset.reviewNew});
+  if(error){ toast(errMsg(error)); b.disabled = false; b.textContent = "＋ Review"; return; }
+  location.href = "review.html?p=" + encodeURIComponent(data);
+}, true);
 async function refresh(kinds){
   if(!sb) return;
   kinds = kinds || ["artist","song","comment"];
-  try{ await Promise.all(kinds.map(fetchTable)); setBanner(""); }
+  try{ await Promise.all([...kinds.map(fetchTable), fetchReviewLinks()]); setBanner(""); }
   catch(e){ setBanner(errMsg(e)); }
   loaded.a = loaded.s = true;
   render(); if(modal && modal.kind==="song") renderComments();

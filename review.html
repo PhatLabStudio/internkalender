@@ -163,6 +163,33 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .replybox{grid-column:1/-1;margin:6px 0 0 18px;display:flex;flex-direction:column;gap:6px}
 .replybox textarea{min-height:52px;resize:vertical;font-size:14px}
 .replybox .row{display:flex;gap:6px;justify-content:flex-end}
+/* Produksjonsløp */
+.pipe{padding:14px 16px;margin:0 0 16px}
+.pipe .ph{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.pipe .ph h3{font-size:14px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-family:Inter;font-weight:600}
+.pipe .ph .now{font-size:14px}
+.pipe .ph .now b{font-weight:600}
+.pipe .ph a,.pipe .ph .lnk{font-size:13px;color:var(--muted);text-decoration:none;background:none;border:0;padding:0}
+.pipe .ph a:hover,.pipe .ph .lnk:hover{color:var(--text)}
+.steps{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.step{flex:1 1 0;min-width:112px;position:relative;text-align:left;background:var(--panel2);border:1px solid var(--line);border-radius:11px;padding:10px 12px 9px;color:var(--text);font:inherit}
+.step::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;border-radius:11px 11px 0 0;background:var(--sc);opacity:.35}
+.step .sn{font-weight:600;font-size:13px;display:flex;align-items:center;gap:6px}
+.step .sd{font-size:11px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.step .ss{font-size:11px;margin-top:6px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.step.pagar{border-color:var(--sc);background:color-mix(in srgb,var(--sc) 12%,var(--panel2))}
+.step.pagar::before,.step.ferdig::before{opacity:1}
+.step.pagar .ss{color:var(--text)}
+.step.pagar .ss i{width:7px;height:7px;border-radius:50%;background:var(--sc);animation:pulse 1.6s ease-in-out infinite}
+.step.ferdig .ss{color:#3DDC97}
+.step.ferdig .sn::after{content:"✓";color:#3DDC97;font-size:12px}
+button.step{cursor:pointer;transition:.12s}
+button.step:hover{border-color:var(--sc)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.step.pagar .ss i{animation:none}}
+.pipe.unlinked{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px}
+.pipe.unlinked .muted{font-size:13px}
+.vstage{font:700 10px Inter;letter-spacing:.06em;padding:2px 6px;border-radius:5px;margin-right:6px;vertical-align:1px;color:#0A0A0F;background:var(--sc)}
 /* Deling */
 .share-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .share-modal{max-width:520px}
@@ -328,6 +355,8 @@ table.stream td.n{font-variant-numeric:tabular-nums}
       <button class="btn danger" id="deleteProjBtn">Slett</button>
     </div>
   </div>
+
+  <div class="card pipe hidden" id="pipe"></div>
 
   <div class="grid">
     <div>
@@ -682,7 +711,7 @@ function renderProject() {
   $("nameRow").classList.toggle("hidden", !isClient);
   if (isClient) $("authorName").value = $("authorName").value || store.get(NAME_KEY) || "";
   $("archiveBtn").textContent = project.archived ? "Gjenopprett" : "Arkiver";
-  renderShareChips(); renderNotes();
+  renderShareChips(); renderNotes(); renderPipe();
   const canDl = !isClient || project.allow_download !== false;
   $("downloadBtn").classList.toggle("hidden", !canDl);
 
@@ -764,7 +793,9 @@ function renderVersionList() {
     const vb = el("div", "vb");
     if (on && !media.paused) { const eq = el("span", "eq"); eq.append(el("i"), el("i"), el("i")); vb.appendChild(eq); }
     vb.appendChild(document.createTextNode("v" + v.version));
-    const vn = el("div", "vn"); const fEl = el("div", "f", v.label || v.file_name); if (v.label) fEl.title = "Original: " + v.file_name; vn.appendChild(fEl);
+    const vn = el("div", "vn"); const fEl = el("div", "f"); if (v.label) fEl.title = "Original: " + v.file_name;
+    if (v.stage) { const sb2 = el("span", "vstage", stg(v.stage).n.toUpperCase()); sb2.style.setProperty("--sc", stg(v.stage).c); fEl.appendChild(sb2); }
+    fEl.appendChild(document.createTextNode(v.label || v.file_name)); vn.appendChild(fEl);
     const m = el("div", "m");
     m.appendChild(el("span", null, (v.uploaded_by || "") + " · " + new Date(v.created_at).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })));
     if (v.duration) m.appendChild(el("span", null, fmt(+v.duration)));
@@ -994,6 +1025,81 @@ $("compose").addEventListener("submit", async (e) => {
 });
 
 
+/* ---------- Produksjonsløp (kobling til produksjonskalenderen) ---------- */
+const STAGES = { demo: { n: "Demo", c: "#8B7FB8" }, produksjon: { n: "Produksjon", c: "#7C3AED" }, vokal: { n: "Vokal", c: "#D946EF" },
+  mix: { n: "Mix", c: "#F97316" }, master: { n: "Master", c: "#22C55E" }, annet: { n: "Annet", c: "#64748B" } };
+const LEGACY = { skisse: "demo", preprod: "produksjon", innspilling: "produksjon", miks: "mix", release: "annet" };
+const stageKey = (k) => STAGES[LEGACY[k] || k] ? (LEGACY[k] || k) : "annet";
+const stg = (k) => STAGES[stageKey(k)];
+const STATUS_TXT = { planlagt: "Planlagt", pagar: "Pågår", ferdig: "Ferdig" };
+const dShort = (iso) => { if (!iso) return ""; const d = new Date(iso + "T12:00:00"); return d.getDate() + ". " + ["jan","feb","mar","apr","mai","jun","jul","aug","sep","okt","nov","des"][d.getMonth()]; };
+function curStep(song) {
+  const st = song?.steps || [];
+  return st.find(s => s.status === "pagar") || st.find(s => s.status !== "ferdig") || null;
+}
+let prodSongs = null;
+async function renderPipe() {
+  const box = $("pipe"); box.replaceChildren(); box.className = "card pipe";
+  const s = project.song;
+  if (!s) {
+    if (isClient) { box.classList.add("hidden"); return; }
+    box.classList.add("unlinked");
+    box.append(el("span", null, "🎛"), el("b", null, "Koble til produksjonskalenderen"));
+    const sel = el("select", "sel sm"); const o0 = el("option", null, "Velg låt…"); o0.value = ""; sel.appendChild(o0);
+    box.appendChild(sel);
+    const mk = el("button", "btn sm", "+ Lag låt i produksjonskalenderen"); mk.type = "button";
+    mk.onclick = () => { location.href = "produksjon.html" + (project.artist_id ? "#artist-" + project.artist_id : ""); };
+    box.appendChild(mk);
+    box.appendChild(el("span", "muted", "Da ser du og kunden hvor låta står i løpet."));
+    try {
+      if (!prodSongs) prodSongs = await rpc("rv_list_songs");
+      const mineFirst = [...prodSongs].sort((a, b) => ((b.artist_id === project.artist_id) - (a.artist_id === project.artist_id)));
+      for (const so of mineFirst) { const o = el("option", null, so.title + (so.artist_name ? " – " + so.artist_name : "") + (so.linked_project && so.linked_project !== project.id ? " (koblet)" : "")); o.value = so.id; sel.appendChild(o); }
+      if (!prodSongs.length) { o0.textContent = "Ingen låter i produksjonskalenderen ennå"; sel.disabled = true; }
+    } catch {}
+    sel.onchange = async () => { if (!sel.value) return;
+      try { await rpc("rv_link_song", { pid: project.id, sid: sel.value }); prodSongs = null; toast("Koblet til produksjonskalenderen 🎛"); await loadProject(project.id, true); }
+      catch (e) { toast(e.message, true); } };
+    return;
+  }
+  const steps = s.steps || [], cur = curStep(s), done = steps.filter(x => x.status === "ferdig").length;
+  const ph = el("div", "ph"); ph.appendChild(el("h3", null, "🎛 Produksjon"));
+  const now = el("div", "now");
+  if (!steps.length) now.textContent = "Ingen steg planlagt ennå";
+  else if (done === steps.length) now.append("✓ ", el("b", null, "Alle steg er ferdige"));
+  else if (cur && cur.status === "pagar") {
+    now.append(el("b", null, (cur.label || stg(cur.type).n) + " pågår"));
+    if (cur.end) now.append(" · ferdig ca. " + dShort(cur.end));
+    const nx = steps[steps.indexOf(cur) + 1]; if (nx && nx.status !== "ferdig") now.append(" · deretter " + (nx.label || stg(nx.type).n).toLowerCase() + (nx.start ? " fra " + dShort(nx.start) : ""));
+  } else if (cur) now.append("Neste: ", el("b", null, cur.label || stg(cur.type).n), cur.start ? " fra " + dShort(cur.start) : "");
+  ph.appendChild(now);
+  ph.appendChild(el("div", "spacer"));
+  if (!isClient) {
+    const a = el("a", null, "Åpne i produksjonskalenderen ↗"); a.href = "produksjon.html" + (s.artist_id ? "#artist-" + s.artist_id : ""); ph.appendChild(a);
+    const un = el("button", "lnk", "Koble fra"); un.type = "button";
+    un.onclick = async () => { if (!confirmInline(un)) return; try { await rpc("rv_link_song", { pid: project.id, sid: "" }); await loadProject(project.id, true); } catch (e) { toast(e.message, true); } };
+    ph.appendChild(un);
+  }
+  box.appendChild(ph);
+  const row = el("div", "steps");
+  for (const st of steps) {
+    const S = stg(st.type);
+    const b = el(isClient ? "div" : "button", "step " + (st.status || "planlagt")); b.style.setProperty("--sc", S.c);
+    if (!isClient) { b.type = "button"; b.title = "Klikk for å endre status (oppdateres i produksjonskalenderen)"; }
+    b.appendChild(el("div", "sn", st.label || S.n));
+    if (st.start) b.appendChild(el("div", "sd", st.start === st.end || !st.end ? dShort(st.start) : dShort(st.start) + "–" + dShort(st.end)));
+    const ss = el("div", "ss"); if (st.status === "pagar") ss.appendChild(el("i")); ss.appendChild(document.createTextNode(STATUS_TXT[st.status] || "Planlagt")); b.appendChild(ss);
+    if (!isClient) b.onclick = async () => {
+      const order = ["planlagt", "pagar", "ferdig"], nxt = order[(order.indexOf(st.status || "planlagt") + 1) % 3];
+      b.disabled = true;
+      try { await rpc("rv_set_step_status", { sid: s.id, step_id: st.id, new_status: nxt }); st.status = nxt; renderPipe(); toast((st.label || S.n) + ": " + STATUS_TXT[nxt]); }
+      catch (e) { toast(e.message, true); b.disabled = false; }
+    };
+    row.appendChild(b);
+  }
+  if (steps.length) box.appendChild(row);
+}
+
 /* ---------- Passord (kunde) ---------- */
 $("pwForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -1201,6 +1307,7 @@ async function upload(file) {
     txt.textContent = "Lagrer…";
     const label = file.name.replace(/\.[^.]+$/, "").slice(0, 60);
     const { id } = await fn("register", { project_id: project.id, path: up.path, file_name: file.name, mime, size: file.size, duration: info.duration, peaks: info.peaks, lufs: info.lufs, true_peak: info.true_peak, label: null, uploaded_by: uploader });
+    if (!isClient && project.song) { const cs = curStep(project.song); if (cs) { try { await rpc("rv_set_version_stage", { vid: id, new_stage: stageKey(cs.type) }); } catch {} } }
     curVid = id; loadedVid = null;
     await loadProject(project.id, true);
     toast("Ny versjon lastet opp 🎧");
