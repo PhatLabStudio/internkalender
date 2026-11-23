@@ -57,9 +57,11 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .listhead h1{font-size:26px}
 .search{max-width:260px}
 .projects{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
-.proj{padding:16px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:8px}
-.proj:hover{border-color:#44444f;transform:translateY(-1px)}
-.proj h3{font-size:17px}
+.proj{padding:16px;cursor:pointer;transition:.15s;display:flex;flex-direction:column;gap:8px;position:relative;overflow:hidden;--pc:#8B7FB8}
+.proj::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--pc)}
+.proj:hover{border-color:var(--pc);transform:translateY(-1px)}
+.proj h3{font-size:17px;display:flex;align-items:center;gap:10px}
+.proj .pi{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;background:color-mix(in srgb,var(--pc) 18%,transparent);color:var(--pc);font:700 14px "Space Grotesk",Inter}
 .proj .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .pill{font-size:12px;padding:2px 8px;border-radius:99px;background:var(--panel2);border:1px solid var(--line)}
 .pill.ok{color:var(--ok);border-color:rgba(61,220,151,.35)}
@@ -86,7 +88,9 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .proj .adot{display:inline-block;margin-right:6px}
 
 /* Prosjekt */
-.phead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:6px 0 16px}
+.phead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:6px 0 16px;padding-left:14px;border-left:4px solid var(--pc,#8B7FB8)}
+#vProject{--pc:#8B7FB8}
+#vProject .player{border-top:3px solid var(--pc)}
 .phead h1{font-size:24px;line-height:1.2}
 .phead .actions{display:flex;gap:8px;flex-wrap:wrap}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:16px;align-items:start}
@@ -635,7 +639,8 @@ function renderList() {
   if (!list.length) { box.appendChild(el("div", "empty card", q ? "Ingen treff." : "Ingen prosjekter her ennå. Trykk «+ Nytt prosjekt» for å starte.")); return; }
   for (const p of list) {
     const c = el("div", "card proj");
-    c.appendChild(el("h3", null, p.title));
+    if (p.artist_color) c.style.setProperty("--pc", p.artist_color);
+    const h3 = el("h3"); h3.append(el("span", "pi", (p.title || "?").trim().charAt(0).toUpperCase()), document.createTextNode(p.title)); c.appendChild(h3);
     if (q && p.artist_name) { const a = el("div", "muted"); const d = el("span", "adot"); if (p.artist_color) d.style.background = p.artist_color; a.append(d, document.createTextNode(p.artist_name)); c.appendChild(a); }
     if (p.client) c.appendChild(el("div", "muted", p.client));
     const m = el("div", "meta");
@@ -704,7 +709,7 @@ function renderProject() {
   $("pArtistWrap").classList.toggle("hidden", isClient && !project.artist_name);
   $("pArtistName").textContent = project.artist_name || "Uten artist";
   if (!isClient) $("backBtn").textContent = "← " + (project.artist_name || "Uten artist");
-  $("pArtistDot").style.background = project.artist_color || "#8B7FB8";
+  $("pArtistDot").style.background = project.artist_color || "#8B7FB8"; $("vProject").style.setProperty("--pc", project.artist_color || "#8B7FB8");
   if (!isClient) {
     const sel = $("pArtistSel"); sel.classList.remove("hidden");
     if (!artists.length) rpc("rv_list_artists").then(a => { artists = a; fillArtistSelect(sel, project.artist_id, false); }).catch(() => {});
@@ -1207,7 +1212,7 @@ $("pArtistSel").onchange = async () => {
   const aid = $("pArtistSel").value;
   try { await rpc("rv_set_project_artist", { pid: project.id, aid }); const a = artistById(aid);
     project.artist_id = aid || null; project.artist_name = a ? a.name : null; project.artist_color = a ? a.color : null;
-    $("pArtistDot").style.background = project.artist_color || "#8B7FB8"; toast(a ? "Flyttet til " + a.name : "Flyttet til «Uten artist»"); }
+    $("pArtistDot").style.background = project.artist_color || "#8B7FB8"; $("vProject").style.setProperty("--pc", project.artist_color || "#8B7FB8"); toast(a ? "Flyttet til " + a.name : "Flyttet til «Uten artist»"); }
   catch (e) { toast(e.message, true); }
 };
 $("copyLink").onclick = async () => {
