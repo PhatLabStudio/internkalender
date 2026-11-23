@@ -148,9 +148,14 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 @media (max-width:760px){.two{grid-template-columns:1fr}}
 .bands{display:flex;flex-direction:column;gap:8px;padding:6px 4px}
-.band{display:grid;grid-template-columns:120px 1fr 46px;gap:10px;align-items:center;font-size:13px}
+.band{display:grid;grid-template-columns:120px 1fr 64px;gap:10px;align-items:center;font-size:13px}
 .band .track{height:10px;background:#2A2440;border-radius:5px;overflow:hidden}
 .band .fill{height:100%;background:#D946EF;border-radius:0 4px 4px 0}
+.band .track.div{position:relative}
+.band .track.div::after{content:"";position:absolute;left:50%;top:-2px;bottom:-2px;width:1px;background:#8B7FB8}
+.band .track.div .fill{position:absolute;top:0}
+.band .fill.pos{background:#D946EF;border-radius:0 4px 4px 0}
+.band .fill.neg{background:#38BDF8;border-radius:4px 0 0 4px}
 .band .pct{text-align:right;font-variant-numeric:tabular-nums}
 table.stream{width:100%;border-collapse:collapse;font-size:14px}
 table.stream th,table.stream td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
@@ -421,9 +426,10 @@ $("newForm").addEventListener("submit", async (e) => {
 
 /* ---------- Prosjektvisning ---------- */
 let project = null, curVid = null, hideResolved = false, pollT = null, activeCid = null;
-const audio = new Audio(); audio.preload = "metadata";
 const video = $("video");
-let media = audio, loadedVid = null;
+// Hver lydversjon får sitt eget forhåndslastede Audio-element, så A/B-bytte mellom versjoner er umiddelbart
+const audios = new Map(), urls = new Map();
+let media = new Audio(), loadedVid = null, pendingCarry = null;
 
 async function loadProject(pid, keepVersion) {
   try {
@@ -458,7 +464,11 @@ function renderProject() {
     if (v.approved_at) { b.appendChild(document.createTextNode(" ")); b.appendChild(el("span", "ok", "✓")); }
     const open = v.comments.filter(c => !c.resolved && c.t !== null).length;
     if (open) b.appendChild(el("span", "muted", "  💬" + open));
-    b.onclick = () => { curVid = v.id; renderProject(); };
+    b.onclick = () => {
+      if (v.id === curVid) return;
+      pendingCarry = { t: media.currentTime || 0, play: !media.paused }; // fortsett på samme sted
+      curVid = v.id; renderProject();
+    };
     tabs.appendChild(b);
   }
   tabs.classList.toggle("hidden", project.versions.length < 2);
@@ -479,27 +489,58 @@ function renderProject() {
     $("approveBtn").classList.toggle("hidden", !isClient);
     $("approveBtn").textContent = v.approved_at ? "Angre godkjenning" : "✓ Godkjenn versjon";
     $("approveBtn").className = "btn sm " + (v.approved_at ? "" : "ok");
-    if (loadedVid !== v.id) loadMedia(v);
+    preloadAll();
+    if (loadedVid !== v.id) { loadMedia(v, pendingCarry); }
+    pendingCarry = null;
   } else { pause(); loadedVid = null; }
   renderComments(); drawWave();
 }
 
-async function loadMedia(v) {
+function wire(m) {
+  for (const ev of ["timeupdate", "play", "pause", "loadedmetadata", "ended", "seeked"]) m.addEventListener(ev, () => { if (m === media) updateTime(); });
+  m.addEventListener("loadedmetadata", () => { if (m === media) renderMarkers(); });
+}
+wire(video); wire(media);
+const isVideoV = (v) => /^video\//.test(v.mime || "");
+async function signedUrl(vid) {
+  const c = urls.get(vid); if (c && Date.now() - c.at < 5 * 3600e3) return c.url;
+  const { url } = await fn("play_url", { version_id: vid, project_id: project.id });
+  urls.set(vid, { url, at: Date.now() }); return url;
+}
+function audioFor(v) {
+  let a = audios.get(v.id);
+  if (!a) {
+    a = new Audio(); a.preload = "auto"; a.volume = +$("vol").value; wire(a); audios.set(v.id, a);
+    signedUrl(v.id).then(u => { if (!a.src) { a.src = u; a.load(); } }).catch(e => { if (v.id === curVid) toast("Kunne ikke laste filen: " + e.message, true); });
+  }
+  return a;
+}
+function preloadAll() { for (const v of project.versions) if (!isVideoV(v)) audioFor(v); }
+async function loadMedia(v, carry) {
   pause(); loadedVid = v.id;
-  const isVideo = /^video\//.test(v.mime || "");
-  media = isVideo ? video : audio;
-  video.classList.toggle("hidden", !isVideo);
-  audio.removeAttribute("src"); video.removeAttribute("src");
+  const vid = isVideoV(v);
+  video.classList.toggle("hidden", !vid);
+  if (vid) {
+    media = video; video.removeAttribute("src");
+    try { const u = await signedUrl(v.id); if (loadedVid !== v.id) return; video.src = u; video.load(); }
+    catch (e) { toast("Kunne ikke laste filen: " + e.message, true); }
+  } else media = audioFor(v);
   media.volume = +$("vol").value;
-  try {
-    const { url } = await fn("play_url", { version_id: v.id, project_id: project.id });
-    if (loadedVid !== v.id) return;
-    media.src = url; media.load();
-  } catch (e) { toast("Kunne ikke laste filen: " + e.message, true); }
-  updateTime();
+  if (carry) {
+    const m = media;
+    const go = () => {
+      if (m !== media) return;
+      const d = isFinite(m.duration) ? m.duration : Infinity;
+      try { m.currentTime = Math.min(carry.t, Math.max(0, d - 0.05)); } catch {}
+      if (carry.play) m.play().catch(() => {});
+      updateTime();
+    };
+    if (m.readyState >= 1) go(); else m.addEventListener("loadedmetadata", go, { once: true });
+  } else if (media !== video) { try { media.currentTime = 0; } catch {} }
+  renderMarkers(); updateTime();
 }
 function duration() { const v = curVersion(); return (isFinite(media.duration) && media.duration) || (v && +v.duration) || 0; }
-function pause() { audio.pause(); video.pause(); }
+function pause() { video.pause(); media.pause(); audios.forEach(a => a.pause()); }
 function togglePlay() { if (!curVersion()) return; media.paused ? media.play().catch(e => toast(e.message, true)) : media.pause(); }
 function seek(t) { const d = duration(); if (!d) return; media.currentTime = Math.max(0, Math.min(d - 0.01, t)); updateTime(); }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
@@ -510,11 +551,10 @@ function updateTime() {
   $("playBtn").innerHTML = media.paused ? ICON_PLAY : ICON_PAUSE;
   drawWave();
 }
-for (const m of [audio, video]) for (const ev of ["timeupdate", "play", "pause", "loadedmetadata", "ended", "seeked"]) m.addEventListener(ev, () => { if (m === media) updateTime(); });
 let raf = null;
 (function tick() { if (!media.paused) { drawWave(); $("tCur").textContent = fmt(media.currentTime); $("stampT").textContent = fmt(media.currentTime); } raf = requestAnimationFrame(tick); })();
 $("playBtn").onclick = togglePlay;
-$("vol").oninput = () => { audio.volume = video.volume = +$("vol").value; };
+$("vol").oninput = () => { const v = +$("vol").value; video.volume = v; audios.forEach(a => { a.volume = v; }); };
 $("downloadBtn").onclick = async () => {
   try { const { url } = await fn("play_url", { version_id: curVid, project_id: project.id, download: true }); location.href = url; }
   catch (e) { toast(e.message, true); }
@@ -572,7 +612,6 @@ function renderMarkers() {
     wbox.appendChild(m);
   }
 }
-for (const m of [audio, video]) m.addEventListener("loadedmetadata", () => { if (m === media) renderMarkers(); });
 
 /* ---------- Kommentarer ---------- */
 function jumpTo(c) {
@@ -910,21 +949,32 @@ async function analyzeMaster(buf, progress) {
   let tot = 0; const bandE = bandDefs.map(() => 0);
   for (let i = 1; i < N / 2; i++) { const fq = i * binHz; if (fq < 20 || fq > fmax) continue; tot += pow[i];
     bandDefs.forEach((bd, bi) => { if (fq >= bd[1] && fq < bd[2]) bandE[bi] += pow[i]; }); }
-  R.bands = bandDefs.map((bd, bi) => ({ name: bd[0], lo: bd[1], hi: bd[2], pct: tot ? bandE[bi] / tot * 100 : 0 }));
+  R.bands = bandDefs.map((bd, bi) => ({ name: bd[0], lo: bd[1], hi: bd[2], pct: tot ? bandE[bi] / tot * 100 : 0,
+    perOct: 10 * Math.log10((bandE[bi] + 1e-20) / Math.log2(bd[2] / bd[1])) }));
+  const meanOct = R.bands.reduce((s, b) => s + b.perOct, 0) / R.bands.length;
+  R.bands.forEach(b => { b.rel = b.perOct - meanOct; });
   // Glattet spektrum, 1/12 oktav
   const spec = []; let lo = 20;
   while (lo < fmax) { const hi = lo * Math.pow(2, 1 / 12); let s = 0, c = 0;
     for (let i = Math.max(1, Math.floor(lo / binHz)); i <= Math.ceil(hi / binHz) && i < N / 2; i++) { s += pow[i]; c++; }
     if (c) spec.push([Math.sqrt(lo * hi), 10 * Math.log10(s / c + 1e-20)]); lo = hi; }
-  const smax = Math.max(...spec.map(p => p[1]));
-  R.spectrum = spec.map(([fq, v]) => [fq, v - smax]);
+  const tilt = spec.map(([fq, v]) => [fq, v + 10 * Math.log10(fq / 1000)]);
+  const smax = Math.max(...tilt.map(p => p[1]));
+  R.spectrum = tilt.map(([fq, v]) => [fq, v - smax]);
   // Høyeste innhold (der energien faller 40 dB under topp i diskanten)
-  const hiCut = [...R.spectrum].reverse().find(p => p[1] > -60 && p[0] > 1000);
+  const rawMax = Math.max(...spec.map(p => p[1]));
+  const hiCut = [...spec].reverse().find(p => p[1] - rawMax > -60 && p[0] > 1000);
   R.bandwidth = hiCut ? hiCut[0] : null;
   return R;
 }
 
-const STREAMING = [["Spotify", -14, true], ["Apple Music", -16, true], ["YouTube", -14, false], ["Tidal", -14, true], ["Amazon Music", -14, true], ["Deezer", -15, true]];
+// up: skrur opp lave låter (begrenset av true peak), false: skrur bare ned
+const STREAMING = [["Spotify", -14, true], ["Apple Music", -16, true], ["YouTube", -14, false], ["Tidal", -14, false], ["Amazon Music", -14, false], ["Deezer", -15, false]];
+function streamGain(R, target, up) {
+  let g = target - R.integrated;
+  if (g > 0) g = up ? Math.max(0, Math.min(g, -1 - R.truePeak)) : 0;
+  return g;
+}
 function anaNotes(R, v) {
   const N = [];
   const add = (lvl, txt) => N.push([lvl, txt]);
@@ -950,9 +1000,12 @@ function anaNotes(R, v) {
   else if (clips > 0) add("warn", `${clips.toLocaleString("nb-NO")} steder med mulig digital klipping (3+ samples på full skala på rad).`);
   const dc = Math.max(...R.ch.map(c => Math.abs(c.dc)));
   if (dc > 0.001) add("warn", `DC-offset på ${f1(dc * 100, 2)} %. Kan fjernes med et høypassfilter / DC-filter.`);
-  const sub = R.bands[0].pct, air = R.bands[5].pct;
-  if (sub > 25) add("info", `Mye sub-energi under 60 Hz (${f1(sub, 0)} %). Sjekk at det er kontrollert på små høyttalere og ikke spiser headroom.`);
-  if (air < 1 && R.bandwidth && R.bandwidth < 15000) add("info", `Lite innhold over ${Math.round(R.bandwidth / 100) / 10} kHz. Kan tyde på en komprimert kildefil eller en mørk miks.`);
+  const sub = R.bands[0].rel, air = R.bands[5].rel, lowmid = R.bands[2].rel, himid = R.bands[4].rel;
+  if (sub > 8) add("info", `Mye sub under 60 Hz (${sgn(sub)} dB mot balansert). Sjekk at det er kontrollert på små høyttalere og ikke spiser headroom.`);
+  if (lowmid > 5) add("info", `Litt tykt i lav-mellom (250–500 Hz, ${sgn(lowmid)} dB). Kan gi en grøtete eller boksete lyd.`);
+  if (himid > 6) add("info", `Mye høy-mellom (2–6 kHz, ${sgn(himid)} dB). Kan oppleves skarpt på høyt volum.`);
+  if (air < -10) add("info", `Lite luft over 6 kHz (${sgn(air)} dB mot balansert) – miksen kan oppleves mørk.`);
+  if (R.bandwidth && R.bandwidth < 15000) add("info", `Lite innhold over ${Math.round(R.bandwidth / 100) / 10} kHz. Kan tyde på en komprimert kildefil eller en mørk miks.`);
   if (!R.info.lossless) add("info", "Analysen er gjort på en komprimert fil (MP3/AAC). True peak og diskant kan avvike litt fra originalen – last opp WAV for mest presise tall.");
   else if (R.info.bits) add("ok", `${R.info.container} ${R.info.bits}-bit${R.info.float ? " float" : ""} / ${(R.info.sr / 1000).toLocaleString("nb-NO")} kHz – passer for distribusjon.`);
   return N;
@@ -1046,7 +1099,7 @@ function renderAna(R) {
   sec("Loudness over tid");
   const c1 = el("div", "chart"), cv1 = el("canvas"); c1.appendChild(cv1); body.appendChild(c1);
   const ys = R.timeline.map(p => p[1]).filter(isFinite);
-  const ymin = Math.floor((Math.min(-24, ...ys) - 2) / 6) * 6, ymax = Math.min(0, Math.ceil((Math.max(...ys) + 2) / 3) * 3);
+  const ymin = Math.floor((Math.min(-24, ...ys) - 2) / 6) * 6, ymax = Math.min(0, Math.max(-12, Math.ceil((Math.max(...ys) + 2) / 3) * 3));
   const yT = []; for (let y = ymax; y >= ymin; y -= (ymax - ymin > 24 ? 6 : 3)) yT.push(y);
   const step = R.duration > 300 ? 60 : R.duration > 120 ? 30 : R.duration > 40 ? 10 : 5;
   const xT = []; for (let t = 0; t <= R.duration; t += step) xT.push([t, fmt(t)]);
@@ -1056,17 +1109,20 @@ function renderAna(R) {
   const two = el("div", "two"); body.appendChild(two);
   const c2 = el("div", "chart"), cv2 = el("canvas"); c2.appendChild(cv2); two.appendChild(c2);
   const bandsBox = el("div", "chart bands"); two.appendChild(bandsBox);
-  const maxPct = Math.max(...R.bands.map(b => b.pct), 1);
+  const span = 12;
   for (const b of R.bands) {
     const row = el("div", "band");
     const lab = el("div"); lab.appendChild(el("div", null, b.name)); lab.appendChild(el("div", "muted", (b.lo >= 1000 ? b.lo / 1000 + "k" : b.lo) + "–" + (b.hi >= 1000 ? Math.round(b.hi / 100) / 10 + "k" : b.hi) + " Hz"));
     lab.lastChild.style.fontSize = "11px";
-    const tr = el("div", "track"), fl = el("div", "fill"); fl.style.width = (b.pct / maxPct * 100) + "%"; tr.appendChild(fl);
-    row.append(lab, tr, el("div", "pct", f1(b.pct, 0) + " %")); bandsBox.appendChild(row);
+    const tr = el("div", "track div"), fl = el("div", "fill"); const r = Math.max(-span, Math.min(span, b.rel));
+    fl.style.width = (Math.abs(r) / span * 50) + "%"; fl.style.left = r >= 0 ? "50%" : (50 - Math.abs(r) / span * 50) + "%";
+    fl.classList.add(r >= 0 ? "pos" : "neg"); tr.appendChild(fl);
+    row.append(lab, tr, el("div", "pct", sgn(b.rel) + " dB")); bandsBox.appendChild(row);
   }
-  bandsBox.appendChild(el("div", "muted", "Andel av energien i hvert område (ikke vektet etter hørsel)")).style.fontSize = "11px";
+  bandsBox.appendChild(el("div", "muted", "Nivå per oktav sammenlignet med rosa støy. 0 dB = balansert, + = mer enn snittet, − = mindre.")).style.fontSize = "11px";
   const fT = [[20, "20"], [50, "50"], [100, "100"], [200, "200"], [500, "500"], [1000, "1k"], [2000, "2k"], [5000, "5k"], [10000, "10k"], [20000, "20k"]].filter(t => t[0] <= R.fs / 2);
   anaRedraw.push(lineChart(cv2, R.spectrum, { xLog: true, x0: 20, x1: Math.min(20000, R.fs / 2), y0: -72, y1: 0, yTicks: [0, -12, -24, -36, -48, -60, -72], xTicks: fT, fmt: p => (p[0] >= 1000 ? f1(p[0] / 1000, 1) + " kHz" : Math.round(p[0]) + " Hz") + " · " + f1(p[1]) + " dB" }));
+  c2.appendChild(el("div", "muted", "Gjennomsnittlig spektrum, vist med rosa-støy-kompensasjon (+3 dB/oktav): jo flatere, jo mer balansert.")).style.cssText = "font-size:11px;padding:2px 6px 0";
 
   if (R.nch === 2) {
     sec("Stereo og fase");
@@ -1079,14 +1135,14 @@ function renderAna(R) {
 
   sec("Slik justeres låta på strømmetjenestene");
   const tbl = el("table", "stream"), th = el("tr");
-  ["Tjeneste", "Mål (ca.)", "Justering", "True peak etter"].forEach(h => th.appendChild(el("th", null, h)));
+  ["Tjeneste", "Mål (ca.)", "Justering", "Resultat"].forEach(h => th.appendChild(el("th", null, h)));
   tbl.appendChild(th);
   for (const [name, target, up] of STREAMING) {
-    let g = target - R.integrated; if (!up && g > 0) g = 0;
+    const g = streamGain(R, target, up), want = target - R.integrated;
     const tr = el("tr");
     tr.append(el("td", null, name), el("td", "n", f1(target, 0) + " LUFS"),
-      el("td", "n", Math.abs(g) < 0.05 ? "Ingen" : sgn(g) + " dB " + (g < 0 ? "(skrus ned)" : "(skrus opp)")),
-      el("td", "n", f1(R.truePeak + g) + " dBTP" + (g > 0 && R.truePeak + g > -1 ? " – kan bli begrenset" : "")));
+      el("td", "n", Math.abs(g) < 0.05 ? (want > 0.05 ? (up ? "Ingen (ikke headroom)" : "Ingen – skrur bare ned") : "Ingen") : sgn(g) + " dB " + (g < 0 ? "(skrus ned)" : "(skrus opp" + (g < want - 0.05 ? ", begrenset av peak)" : ")"))),
+      el("td", "n", f1(R.integrated + g) + " LUFS"));
     tbl.appendChild(tr);
   }
   const tw = el("div", "chart"); tw.style.padding = "4px 8px"; tw.appendChild(tbl); body.appendChild(tw);
@@ -1120,8 +1176,8 @@ $("anaCopy").onclick = async () => {
     "True peak: " + f1(R.truePeak) + " dBTP", "Sample peak: " + f1(db(R.samplePeak)) + " dBFS", "PLR: " + f1(R.plr) + " dB", "Crest factor: " + f1(R.crest) + " dB", "RMS: " + f1(R.rmsDb) + " dBFS",
   ];
   if (R.nch === 2) lines.push("Fasekorrelasjon: " + f1(R.correlation, 2), "Bredde (S/M): " + f1(R.width) + " dB", "Nivåendring i mono: " + f1(R.monoLoss) + " dB");
-  lines.push("", "Frekvensbalanse:", ...R.bands.map(b => "  " + b.name + ": " + f1(b.pct, 0) + " %"));
-  lines.push("", "Strømmetjenester:", ...STREAMING.map(([n, t, up]) => { let g = t - R.integrated; if (!up && g > 0) g = 0; return "  " + n + " (" + t + " LUFS): " + (Math.abs(g) < 0.05 ? "ingen justering" : sgn(g) + " dB"); }));
+  lines.push("", "Frekvensbalanse (mot rosa støy):", ...R.bands.map(b => "  " + b.name + ": " + sgn(b.rel) + " dB"));
+  lines.push("", "Strømmetjenester:", ...STREAMING.map(([n, t, up]) => { const g = streamGain(R, t, up); return "  " + n + " (" + t + " LUFS): " + (Math.abs(g) < 0.05 ? "ingen justering" : sgn(g) + " dB"); }));
   lines.push("", "Vurdering:", ...R.notes.map(([l, t]) => "  " + ({ ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" })[l] + " " + t));
   try { await navigator.clipboard.writeText(lines.join("\n")); toast("Analysen er kopiert"); } catch { toast("Kunne ikke kopiere", true); }
 };
