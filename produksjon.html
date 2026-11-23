@@ -171,6 +171,8 @@ body.foldermode .folders{display:grid}
 .fcard .fnow .m{color:var(--muted)}
 .fcard .ffoot{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 .fcard .ffoot b{color:var(--ink);font-weight:600}
+.fcard .ffoot .rvlink{margin-left:auto;color:var(--ink);font-weight:600;border:1px solid var(--line);border-radius:999px;padding:1px 9px}
+.fcard .ffoot .rvlink:hover{border-color:var(--fc,#8B7FB8)}
 .fcard.add{border-style:dashed;align-items:center;justify-content:center;color:var(--muted);min-height:150px;font-weight:600}
 .fcard.add::before{display:none}
 .fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -452,6 +454,7 @@ function renderFolders(){
     if(done) foot.push(`<span><b>${done}</b> ferdig</span>`);
     if(nextEnd) foot.push(`<span>Neste frist <b>${esc(fmt(isoOf(nextEnd.b)))}</b></span>`);
     if(openRv) foot.push(`<span><b>${openRv}</b> åpne review-kommentarer</span>`);
+    if(g.id) foot.push(`<span class="rvlink" role="link" tabindex="0" data-rv-artist="${esc(g.id)}">Review ↗</span>`);
     const target = g.id ? "artist-"+g.id : "alle";
     html += `<a class="fcard" href="#${esc(target)}" style="--fc:${esc(g.color)};text-decoration:none">
       <div class="ft"><div class="fi">${esc((g.name||"?").trim().charAt(0).toUpperCase())}</div><div><h3>${esc(g.name)}</h3><div class="fs">${running.length ? running.length+" steg pågår" : sl.length ? "Ingen aktive steg" : "Tom mappe"}</div></div></div>
@@ -474,6 +477,7 @@ function renderTabs(){
     </div>
     ${cur && safeUrl(cur.dropbox)?`<a class="btn dbx" href="${esc(safeUrl(cur.dropbox))}" target="_blank" rel="noopener noreferrer">${DBX}Åpne Dropbox</a>`:""}
     ${cur && !safeUrl(cur.dropbox)?`<button class="btn ghost" type="button" data-edit-artist="${esc(cur.id)}" style="color:var(--muted)">${DBX}Legg til Dropbox-lenke</button>`:""}
+    ${cur?`<a class="btn" href="review.html?a=${encodeURIComponent(cur.id)}" title="Åpne artistens mappe i Review">Review-mappe ↗</a>`:""}
     ${cur?`<button class="btn" type="button" data-edit-artist="${esc(cur.id)}">Rediger artist</button>`:""}
     <button class="btn" type="button" id="addArtist">+ Ny artist</button>`;
 }
@@ -693,6 +697,11 @@ function reviewChip(s){
   const sg = r.latest_stage ? stageOf(r.latest_stage) : null;
   return `<a class="rvchip" href="review.html?p=${encodeURIComponent(r.project_id)}" title="Åpne i Phat Lab Review">Review ${r.latest ? "v"+Number(r.latest) : ""}${sg ? ` <span class="rvs">${esc(sg.n.toUpperCase())}</span>` : ""}${Number(r.open_comments) ? ` <span class="rvc">${Number(r.open_comments)} åpne</span>` : ""}</a>`;
 }
+document.addEventListener("click", e=>{
+  const r = e.target.closest("[data-rv-artist]"); if(!r) return;
+  e.preventDefault(); e.stopPropagation();
+  location.href = "review.html?a=" + encodeURIComponent(r.dataset.rvArtist);
+}, true);
 document.addEventListener("click", async e=>{
   const b = e.target.closest("[data-review-new]"); if(!b) return;
   e.preventDefault(); e.stopPropagation();
