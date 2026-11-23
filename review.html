@@ -129,6 +129,52 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .c .tools button{background:none;border:0;color:var(--muted);font-size:12px;padding:0}
 .c .tools button:hover{color:var(--text)}
 .filters{display:flex;gap:6px;margin-left:auto}
+/* Master-analyse */
+.ana-back{position:fixed;inset:0;background:rgba(5,4,10,.72);backdrop-filter:blur(4px);z-index:40;overflow:auto;padding:30px 16px}
+.ana{max-width:980px;margin:0 auto;padding:22px}
+.ana-head{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:18px}
+.ana-head h2{font-size:22px}
+.ana h3{font-size:15px;margin:22px 0 10px;color:var(--muted);font-family:Inter;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.tile{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .v{font:700 24px/1.1 "Space Grotesk",Inter,sans-serif;font-variant-numeric:tabular-nums}
+.tile .v small{font:500 13px Inter;color:var(--muted);margin-left:3px}
+.tile .l{font-size:13px;color:var(--muted);margin-top:4px}
+.tile .s{font-size:12px;margin-top:6px;display:flex;gap:5px;align-items:center}
+.st-ok{color:#3DDC97}.st-warn{color:#FFB547}.st-bad{color:#FF6B6B}.st-info{color:#A5B4FC}
+.chart{position:relative;background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px}
+.chart canvas{width:100%;height:200px;display:block}
+.chart .tt{position:absolute;pointer-events:none;background:#0A0A0F;border:1px solid var(--line);border-radius:8px;padding:4px 8px;font-size:12px;white-space:nowrap;transform:translate(-50%,-110%)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:760px){.two{grid-template-columns:1fr}}
+.bands{display:flex;flex-direction:column;gap:8px;padding:6px 4px}
+.band{display:grid;grid-template-columns:120px 1fr 46px;gap:10px;align-items:center;font-size:13px}
+.band .track{height:10px;background:#2A2440;border-radius:5px;overflow:hidden}
+.band .fill{height:100%;background:#D946EF;border-radius:0 4px 4px 0}
+.band .pct{text-align:right;font-variant-numeric:tabular-nums}
+table.stream{width:100%;border-collapse:collapse;font-size:14px}
+table.stream th,table.stream td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.stream th{color:var(--muted);font-weight:500;font-size:12px}
+table.stream td.n{font-variant-numeric:tabular-nums}
+.notes{display:flex;flex-direction:column;gap:8px}
+.note{display:flex;gap:10px;padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid var(--line);font-size:14px}
+.note .ic{flex:none;font-weight:700;width:18px;text-align:center}
+.ana-loading{padding:50px 10px;text-align:center;color:var(--muted)}
+.foot{font-size:12px;color:var(--muted);margin-top:18px}
+@media print{
+  @page{margin:14mm}
+  body>*:not(#anaModal){display:none!important}
+  html,body{background:#fff!important}
+  .ana-back{position:static;background:none;padding:0;backdrop-filter:none;overflow:visible}
+  .ana{border:0;padding:0;max-width:none;background:#fff;color:#111}
+  .noprint{display:none!important}
+  .ana *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .tile,.chart,.note{background:#F6F4FB!important;border-color:#DDD6EE!important;break-inside:avoid}
+  .muted,.tile .l,.tile .v small,.ana h3,table.stream th,.foot{color:#5B5470!important}
+  .ana h2,.tile .v,.note,table.stream td,.band{color:#111!important}
+  table.stream th,table.stream td{border-color:#DDD6EE}
+  .band .track{background:#E7E1F3}
+}
 .kbd{font-size:12px;color:var(--muted);margin-top:10px}
 .kbd kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-family:inherit}
 </style>
@@ -198,6 +244,7 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
             <div class="name" id="fileName"></div>
             <span class="muted" id="fileMeta" style="font-size:13px"></span>
             <div class="spacer"></div>
+            <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">📊 Master-analyse</button>
             <button class="btn sm" id="downloadBtn">⬇ Last ned</button>
             <button class="btn sm danger hidden" id="deleteVerBtn">Slett versjon</button>
             <button class="btn sm ok hidden" id="approveBtn">✓ Godkjenn versjon</button>
@@ -247,6 +294,22 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
     </aside>
   </div>
 </section>
+
+<div id="anaModal" class="ana-back hidden" role="dialog" aria-modal="true" aria-labelledby="anaTitle">
+  <div class="ana card">
+    <div class="ana-head">
+      <div>
+        <h2 id="anaTitle">Master-analyse</h2>
+        <div class="muted" id="anaFile" style="font-size:13px"></div>
+      </div>
+      <div class="spacer"></div>
+      <button class="btn sm noprint" id="anaCopy" disabled>Kopier som tekst</button>
+      <button class="btn sm primary noprint" id="anaPrint" disabled>⬇ Last ned PDF</button>
+      <button class="btn sm ghost noprint" id="anaClose" aria-label="Lukk">✕</button>
+    </div>
+    <div id="anaBody"></div>
+  </div>
+</div>
 
 <section id="vError" class="center hidden">
   <div class="card login"><h2>Hmm…</h2><p class="muted" id="errText"></p></div>
@@ -682,8 +745,390 @@ async function upload(file) {
   uploading = false; st.classList.add("hidden");
 }
 
+/* ---------- Master-analyse (EBU R128 / ITU-R BS.1770-4) ---------- */
+const yieldUI = () => new Promise(r => setTimeout(r, 0));
+const db = (x) => x > 0 ? 20 * Math.log10(x) : -Infinity;
+const lufs = (meanSq) => meanSq > 0 ? -0.691 + 10 * Math.log10(meanSq) : -Infinity;
+const f1 = (x, d = 1) => isFinite(x) ? x.toFixed(d).replace("-", "−") : "−∞";
+const sgn = (x, d = 1) => isFinite(x) ? (x > 0 ? "+" : "") + f1(x, d) : "–";
+
+function kWeighting(fs) {
+  // Koeffisienter for vilkårlig samplerate (som libebur128)
+  let f0 = 1681.974450955533, G = 3.999843853973347, Q = 0.7071752369554196;
+  let K = Math.tan(Math.PI * f0 / fs), Vh = Math.pow(10, G / 20), Vb = Math.pow(Vh, 0.4996667741545416);
+  let a0 = 1 + K / Q + K * K;
+  const s1 = { b0: (Vh + Vb * K / Q + K * K) / a0, b1: 2 * (K * K - Vh) / a0, b2: (Vh - Vb * K / Q + K * K) / a0, a1: 2 * (K * K - 1) / a0, a2: (1 - K / Q + K * K) / a0 };
+  f0 = 38.13547087602444; Q = 0.5003270373238773; K = Math.tan(Math.PI * f0 / fs);
+  a0 = 1 + K / Q + K * K;
+  const s2 = { b0: 1, b1: -2, b2: 1, a1: 2 * (K * K - 1) / a0, a2: (1 - K / Q + K * K) / a0 };
+  return [s1, s2];
+}
+function parseWav(buf) {
+  try {
+    const dv = new DataView(buf); const tag = (o) => String.fromCharCode(dv.getUint8(o), dv.getUint8(o+1), dv.getUint8(o+2), dv.getUint8(o+3));
+    if (tag(0) === "RIFF" && tag(8) === "WAVE") {
+      let o = 12;
+      while (o + 8 <= dv.byteLength) { const id = tag(o), sz = dv.getUint32(o + 4, true);
+        if (id === "fmt ") { let fmt = dv.getUint16(o + 8, true); if (fmt === 0xFFFE && sz >= 40) fmt = dv.getUint16(o + 32, true);
+          return { container: "WAV", ch: dv.getUint16(o + 10, true), sr: dv.getUint32(o + 12, true), bits: dv.getUint16(o + 22, true), float: fmt === 3, lossless: true }; }
+        o += 8 + sz + (sz & 1); }
+    }
+    if (tag(0) === "FORM" && (tag(8) === "AIFF" || tag(8) === "AIFC")) {
+      let o = 12;
+      while (o + 8 <= dv.byteLength) { const id = tag(o), sz = dv.getUint32(o + 4);
+        if (id === "COMM") { const ch = dv.getUint16(o + 8), bits = dv.getUint16(o + 14);
+          const exp = (dv.getUint16(o + 16) & 0x7FFF) - 16383, mant = dv.getUint32(o + 18); const sr = Math.round(mant * Math.pow(2, exp - 31));
+          return { container: "AIFF", ch, sr, bits, lossless: true }; }
+        o += 8 + sz + (sz & 1); }
+    }
+    if (tag(0) === "fLaC") return { container: "FLAC", lossless: true };
+  } catch {}
+  return null;
+}
+function fft(re, im) {
+  const n = re.length;
+  for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+  for (let len = 2; len <= n; len <<= 1) {
+    const ang = -2 * Math.PI / len, wr = Math.cos(ang), wi = Math.sin(ang);
+    for (let i = 0; i < n; i += len) { let cr = 1, ci = 0;
+      for (let k = 0; k < len / 2; k++) { const a = i + k, b = a + len / 2;
+        const xr = re[b] * cr - im[b] * ci, xi = re[b] * ci + im[b] * cr;
+        re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+        const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } }
+  }
+}
+
+async function analyzeMaster(buf, progress) {
+  const info = parseWav(buf) || {};
+  progress("Dekoder lyd…"); await yieldUI();
+  const ctx = new OfflineAudioContext(1, 1, info.sr && info.sr >= 8000 && info.sr <= 384000 ? info.sr : 48000);
+  const ab = await ctx.decodeAudioData(buf.slice(0));
+  const fs = ab.sampleRate, n = ab.length, nch = Math.min(2, ab.numberOfChannels);
+  const chans = []; for (let c = 0; c < nch; c++) chans.push(ab.getChannelData(c));
+  const R = { fs, n, duration: n / fs, nch, info, srcChannels: ab.numberOfChannels };
+
+  // 1) Sample peak, RMS, DC, klipping
+  progress("Måler nivåer…"); await yieldUI();
+  R.ch = chans.map(x => {
+    let pk = 0, sq = 0, sum = 0, clipRuns = 0, run = 0, overs = 0;
+    for (let i = 0; i < n; i++) { const v = x[i], a = v < 0 ? -v : v;
+      if (a > pk) pk = a; sq += v * v; sum += v;
+      if (a > 1.0001) overs++;
+      if (a >= 0.9999) { run++; if (run === 3) clipRuns++; } else run = 0; }
+    return { peak: pk, rms: Math.sqrt(sq / n), dc: sum / n, clipRuns, overs, sq };
+  });
+  R.samplePeak = Math.max(...R.ch.map(c => c.peak));
+  R.rmsDb = db(Math.sqrt(R.ch.reduce((s, c) => s + c.sq, 0) / (n * nch)));
+
+  // 2) K-vektet energi i 100 ms-blokker
+  progress("Regner ut loudness (LUFS)…"); await yieldUI();
+  const hop = Math.round(fs * 0.1), nb = Math.floor(n / hop);
+  const E = new Float64Array(nb);
+  const [s1, s2] = kWeighting(fs);
+  // To biquad-trinn (høyhylle + høypass) i direkte form I
+  for (const x of chans) {
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0, u1 = 0, u2 = 0, w1 = 0, w2 = 0, acc = 0, b = 0, k = 0;
+    for (let i = 0; i < nb * hop; i++) {
+      const v = x[i];
+      const y = s1.b0 * v + s1.b1 * x1 + s1.b2 * x2 - s1.a1 * y1 - s1.a2 * y2; x2 = x1; x1 = v; y2 = y1; y1 = y;
+      const w = y - 2 * u1 + u2 - s2.a1 * w1 - s2.a2 * w2; u2 = u1; u1 = y; w2 = w1; w1 = w;
+      acc += w * w;
+      if (++k === hop) { E[b++] += acc; acc = 0; k = 0; }
+    }
+  }
+  const win = (start, len) => { let s = 0; for (let j = start; j < start + len; j++) s += E[j]; return s / (len * hop); };
+  // Momentary (400 ms) og integrert med absolutt/relativ gating
+  const mom = []; for (let j = 0; j + 4 <= nb; j++) mom.push(win(j, 4));
+  const absG = Math.pow(10, (-70 + 0.691) / 10);
+  const g1 = mom.filter(z => z > absG);
+  const rel = g1.length ? lufs(g1.reduce((a, b) => a + b, 0) / g1.length) - 10 : -Infinity;
+  const relG = Math.pow(10, (rel + 0.691) / 10);
+  const g2 = g1.filter(z => z > relG);
+  R.integrated = g2.length ? lufs(g2.reduce((a, b) => a + b, 0) / g2.length) : -Infinity;
+  R.momentaryMax = mom.length ? lufs(Math.max(...mom)) : -Infinity;
+  // Short-term (3 s) og LRA (EBU Tech 3342)
+  const st = []; for (let j = 0; j + 30 <= nb; j++) st.push(win(j, 30));
+  R.shortTermMax = st.length ? lufs(Math.max(...st)) : R.momentaryMax;
+  const stA = st.filter(z => z > absG);
+  if (stA.length > 2) {
+    const relS = lufs(stA.reduce((a, b) => a + b, 0) / stA.length) - 20, relSG = Math.pow(10, (relS + 0.691) / 10);
+    const vals = stA.filter(z => z > relSG).map(lufs).sort((a, b) => a - b);
+    const pct = (p) => vals[Math.min(vals.length - 1, Math.max(0, Math.round(p * (vals.length - 1))))];
+    R.lra = vals.length > 1 ? pct(0.95) - pct(0.10) : 0;
+  } else R.lra = 0;
+  R.timeline = []; for (let j = 0; j + 30 <= nb; j += 5) R.timeline.push([(j + 15) * 0.1, lufs(win(j, 30))]);
+  if (!R.timeline.length) for (let j = 0; j + 4 <= nb; j += 2) R.timeline.push([(j + 2) * 0.1, lufs(win(j, 4))]);
+
+  // 3) True peak, 4x oversampling (vinduet sinc)
+  progress("Måler true peak…"); await yieldUI();
+  const P = 4, HW = 8, coef = [];
+  for (let p = 1; p < P; p++) { const row = [];
+    for (let m = -HW + 1; m <= HW; m++) { const t = m - p / P; const s = t === 0 ? 1 : Math.sin(Math.PI * t) / (Math.PI * t);
+      const wv = 0.42 + 0.5 * Math.cos(Math.PI * t / HW) + 0.08 * Math.cos(2 * Math.PI * t / HW); row.push(s * wv); }
+    coef.push(row); }
+  let tp = R.samplePeak;
+  chans.forEach((x, ci) => { const thr = R.ch[ci].peak * 0.5;
+    for (let i = HW; i < n - HW; i++) {
+      const a = x[i] < 0 ? -x[i] : x[i], b2 = x[i + 1] < 0 ? -x[i + 1] : x[i + 1];
+      if (a < thr && b2 < thr) continue;
+      for (let p = 0; p < P - 1; p++) { const row = coef[p]; let y = 0;
+        for (let m = -HW + 1, q = 0; m <= HW; m++, q++) y += x[i + m] * row[q];
+        if (y < 0) y = -y; if (y > tp) tp = y; }
+    } });
+  R.truePeak = db(tp);
+  R.plr = R.truePeak - R.integrated;
+  R.psr = R.truePeak - R.shortTermMax;
+  R.crest = db(R.samplePeak) - R.rmsDb;
+
+  // 4) Stereo
+  if (nch === 2) {
+    progress("Analyserer stereobildet…"); await yieldUI();
+    const [L, Rr] = chans; let lr = 0, ll = 0, rr = 0, mm = 0, ss = 0, negBlocks = 0, blocks = 0, bl = 0, bll = 0, brr = 0, k = 0;
+    for (let i = 0; i < n; i++) { const l = L[i], r = Rr[i]; lr += l * r; ll += l * l; rr += r * r; const m = (l + r) / 2, s = (l - r) / 2; mm += m * m; ss += s * s;
+      bl += l * r; bll += l * l; brr += r * r;
+      if (++k === hop) { if (bll > 1e-7 && brr > 1e-7) { blocks++; if (bl / Math.sqrt(bll * brr) < 0) negBlocks++; } bl = bll = brr = 0; k = 0; } }
+    R.correlation = ll && rr ? lr / Math.sqrt(ll * rr) : 1;
+    R.width = mm ? 10 * Math.log10(ss / mm) : -Infinity;
+    R.monoLoss = (ll + rr) ? 10 * Math.log10(mm / ((ll + rr) / 2)) : 0;
+    R.negPct = blocks ? negBlocks / blocks * 100 : 0;
+  }
+
+  // 5) Frekvensbalanse (gjennomsnittlig spektrum, 8192-FFT)
+  progress("Analyserer frekvensbalanse…"); await yieldUI();
+  const N = 8192, frames = Math.max(1, Math.min(240, Math.floor(n / N)));
+  const pow = new Float64Array(N / 2), re = new Float64Array(N), im = new Float64Array(N), hann = new Float64Array(N);
+  for (let i = 0; i < N; i++) hann[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  for (let f = 0; f < frames; f++) {
+    const start = frames === 1 ? 0 : Math.floor(f * (n - N) / (frames - 1));
+    for (let i = 0; i < N; i++) { let v = 0; const idx = start + i; if (idx < n) { for (const x of chans) v += x[idx]; v /= nch; } re[i] = v * hann[i]; im[i] = 0; }
+    fft(re, im);
+    for (let i = 0; i < N / 2; i++) pow[i] += re[i] * re[i] + im[i] * im[i];
+    if (f % 40 === 39) await yieldUI();
+  }
+  const binHz = fs / N, fmax = Math.min(20000, fs / 2);
+  const bandDefs = [["Sub", 20, 60], ["Bass", 60, 250], ["Lav-mellom", 250, 500], ["Mellom", 500, 2000], ["Høy-mellom", 2000, 6000], ["Diskant/luft", 6000, fmax]];
+  let tot = 0; const bandE = bandDefs.map(() => 0);
+  for (let i = 1; i < N / 2; i++) { const fq = i * binHz; if (fq < 20 || fq > fmax) continue; tot += pow[i];
+    bandDefs.forEach((bd, bi) => { if (fq >= bd[1] && fq < bd[2]) bandE[bi] += pow[i]; }); }
+  R.bands = bandDefs.map((bd, bi) => ({ name: bd[0], lo: bd[1], hi: bd[2], pct: tot ? bandE[bi] / tot * 100 : 0 }));
+  // Glattet spektrum, 1/12 oktav
+  const spec = []; let lo = 20;
+  while (lo < fmax) { const hi = lo * Math.pow(2, 1 / 12); let s = 0, c = 0;
+    for (let i = Math.max(1, Math.floor(lo / binHz)); i <= Math.ceil(hi / binHz) && i < N / 2; i++) { s += pow[i]; c++; }
+    if (c) spec.push([Math.sqrt(lo * hi), 10 * Math.log10(s / c + 1e-20)]); lo = hi; }
+  const smax = Math.max(...spec.map(p => p[1]));
+  R.spectrum = spec.map(([fq, v]) => [fq, v - smax]);
+  // Høyeste innhold (der energien faller 40 dB under topp i diskanten)
+  const hiCut = [...R.spectrum].reverse().find(p => p[1] > -60 && p[0] > 1000);
+  R.bandwidth = hiCut ? hiCut[0] : null;
+  return R;
+}
+
+const STREAMING = [["Spotify", -14, true], ["Apple Music", -16, true], ["YouTube", -14, false], ["Tidal", -14, true], ["Amazon Music", -14, true], ["Deezer", -15, true]];
+function anaNotes(R, v) {
+  const N = [];
+  const add = (lvl, txt) => N.push([lvl, txt]);
+  if (R.truePeak > 0) add("bad", `True peak er ${f1(R.truePeak)} dBTP – over 0. Det vil gi forvrengning når låta konverteres til MP3/AAC på strømmetjenestene. Senk limiter-taket til −1 dBTP.`);
+  else if (R.truePeak > -1) add("warn", `True peak er ${f1(R.truePeak)} dBTP. Spotify og Apple anbefaler maks −1 dBTP (−2 dBTP for svært høye mikser) for å unngå forvrengning ved konvertering.`);
+  else add("ok", `True peak ${f1(R.truePeak)} dBTP – god margin for konvertering til strømmeformater.`);
+  if (R.integrated > -8) add("warn", `Veldig høyt nivå (${f1(R.integrated)} LUFS). Spotify skrur låta ned ca. ${f1(-14 - R.integrated)} dB, så den blir ikke høyere enn andre – bare mer komprimert.`);
+  else if (R.integrated > -12) add("ok", `Konkurransedyktig nivå for pop og elektronisk musikk (${f1(R.integrated)} LUFS).`);
+  else if (R.integrated > -16) add("ok", `Moderat nivå (${f1(R.integrated)} LUFS) – passer godt for strømming og beholder dynamikken.`);
+  else add("warn", `Lavt nivå (${f1(R.integrated)} LUFS). Kan oppleves svakere enn andre låter der avspilleren ikke normaliserer, og noen tjenester skrur den bare delvis opp.`);
+  if (R.plr < 7) add("warn", `Hardt limitert: PLR ${f1(R.plr)} dB. Transientene er sterkt temmet – vurder litt mindre limiting hvis låta skal puste mer.`);
+  else if (R.plr > 14) add("info", `Mye dynamikk igjen (PLR ${f1(R.plr)} dB). Bra for akustisk/organisk materiale; for pop kan det være rom for litt mer tetthet.`);
+  if (R.lra < 3) add("info", `Liten variasjon i loudness gjennom låta (LRA ${f1(R.lra)} LU).`);
+  else if (R.lra > 12) add("info", `Stor variasjon i loudness (LRA ${f1(R.lra)} LU) – sjekk at stille partier ikke forsvinner på mobil og i bil.`);
+  if (R.nch === 2) {
+    if (R.correlation < 0) add("bad", `Negativ fasekorrelasjon (${f1(R.correlation, 2)}). Deler av miksen kan forsvinne i mono (mobilhøyttalere, klubb-anlegg). Sjekk stereoverktøy og fasevendte spor.`);
+    else if (R.correlation < 0.2) add("warn", `Svært bredt stereobilde (korrelasjon ${f1(R.correlation, 2)}). Sjekk miksen i mono.`);
+    if (R.monoLoss < -3) add("warn", `Miksen mister ${f1(-R.monoLoss)} dB når den spilles i mono.`);
+    if (R.negPct > 5) add("warn", `${f1(R.negPct, 0)} % av tiden har negativ korrelasjon – typisk fra brede synther, chorus eller stereo-reverb.`);
+  } else add("info", "Filen er mono.");
+  const clips = R.ch.reduce((s, c) => s + c.clipRuns, 0), overs = R.ch.reduce((s, c) => s + c.overs, 0);
+  if (overs > 0) add("bad", `${overs.toLocaleString("nb-NO")} samples over 0 dBFS i den dekodede filen – dette vil klippe.`);
+  else if (clips > 0) add("warn", `${clips.toLocaleString("nb-NO")} steder med mulig digital klipping (3+ samples på full skala på rad).`);
+  const dc = Math.max(...R.ch.map(c => Math.abs(c.dc)));
+  if (dc > 0.001) add("warn", `DC-offset på ${f1(dc * 100, 2)} %. Kan fjernes med et høypassfilter / DC-filter.`);
+  const sub = R.bands[0].pct, air = R.bands[5].pct;
+  if (sub > 25) add("info", `Mye sub-energi under 60 Hz (${f1(sub, 0)} %). Sjekk at det er kontrollert på små høyttalere og ikke spiser headroom.`);
+  if (air < 1 && R.bandwidth && R.bandwidth < 15000) add("info", `Lite innhold over ${Math.round(R.bandwidth / 100) / 10} kHz. Kan tyde på en komprimert kildefil eller en mørk miks.`);
+  if (!R.info.lossless) add("info", "Analysen er gjort på en komprimert fil (MP3/AAC). True peak og diskant kan avvike litt fra originalen – last opp WAV for mest presise tall.");
+  else if (R.info.bits) add("ok", `${R.info.container} ${R.info.bits}-bit${R.info.float ? " float" : ""} / ${(R.info.sr / 1000).toLocaleString("nb-NO")} kHz – passer for distribusjon.`);
+  return N;
+}
+
+function lineChart(canvas, pts, opt) {
+  const box = canvas.parentElement, tt = el("div", "tt hidden"); box.appendChild(tt);
+  function draw(hx) {
+    const dpr = window.devicePixelRatio || 1, W = canvas.clientWidth, H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    const c = canvas.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, W, H);
+    const pl = 42, pr = 10, pt = 10, pb = 24, iw = W - pl - pr, ih = H - pt - pb;
+    const X = (x) => pl + (opt.xLog ? Math.log(x / opt.x0) / Math.log(opt.x1 / opt.x0) : (x - opt.x0) / (opt.x1 - opt.x0)) * iw;
+    const Y = (y) => pt + (1 - (Math.max(opt.y0, Math.min(opt.y1, y)) - opt.y0) / (opt.y1 - opt.y0)) * ih;
+    c.font = "11px Inter, sans-serif"; c.fillStyle = "#8B7FB8"; c.strokeStyle = "rgba(139,127,184,.18)"; c.lineWidth = 1;
+    for (const t of opt.yTicks) { const y = Y(t); c.beginPath(); c.moveTo(pl, y); c.lineTo(W - pr, y); c.stroke(); c.textAlign = "right"; c.fillText(String(t).replace("-", "−"), pl - 6, y + 4); }
+    c.textAlign = "center";
+    for (const t of opt.xTicks) { const x = X(t[0]); c.fillText(t[1], x, H - 6); }
+    if (opt.ref != null) { const y = Y(opt.ref); c.setLineDash([4, 4]); c.strokeStyle = "rgba(245,243,255,.45)"; c.beginPath(); c.moveTo(pl, y); c.lineTo(W - pr, y); c.stroke(); c.setLineDash([]);
+      c.textAlign = "left"; c.fillStyle = "#8B7FB8"; c.fillText(opt.refLabel, pl + 6, y - 5); }
+    c.strokeStyle = "#D946EF"; c.lineWidth = 2; c.lineJoin = "round"; c.beginPath();
+    pts.forEach((p, i) => { if (!isFinite(p[1])) return; const x = X(p[0]), y = Y(p[1]); i ? c.lineTo(x, y) : c.moveTo(x, y); }); c.stroke();
+    if (hx != null) {
+      let best = null, bd = Infinity; for (const p of pts) { const d = Math.abs(X(p[0]) - hx); if (d < bd) { bd = d; best = p; } }
+      if (best) { const x = X(best[0]), y = Y(best[1]);
+        c.strokeStyle = "rgba(245,243,255,.35)"; c.lineWidth = 1; c.beginPath(); c.moveTo(x, pt); c.lineTo(x, pt + ih); c.stroke();
+        c.fillStyle = "#D946EF"; c.strokeStyle = "#15121F"; c.lineWidth = 2; c.beginPath(); c.arc(x, y, 4.5, 0, 7); c.fill(); c.stroke();
+        tt.textContent = opt.fmt(best); tt.style.left = (x + 10) + "px"; tt.style.top = (y + 10) + "px"; tt.classList.remove("hidden"); }
+    } else tt.classList.add("hidden");
+  }
+  canvas.addEventListener("mousemove", (e) => draw(e.clientX - canvas.getBoundingClientRect().left));
+  canvas.addEventListener("mouseleave", () => draw(null));
+  draw(null);
+  return draw;
+}
+
+let anaReport = null, anaRedraw = [];
+function closeAna() { $("anaModal").classList.add("hidden"); document.body.style.overflow = ""; }
+$("anaClose").onclick = closeAna;
+$("anaModal").addEventListener("click", (e) => { if (e.target === $("anaModal")) closeAna(); });
+window.addEventListener("resize", () => { if (!$("anaModal").classList.contains("hidden")) anaRedraw.forEach(f => f(null)); });
+window.addEventListener("beforeprint", () => anaRedraw.forEach(f => f(null)));
+
+$("anaBtn").onclick = async () => {
+  const v = curVersion(); if (!v) return;
+  pause();
+  $("anaFile").textContent = v.file_name + " · v" + v.version;
+  $("anaModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
+  $("anaPrint").disabled = $("anaCopy").disabled = true; anaRedraw = [];
+  const body = $("anaBody"); body.replaceChildren();
+  const ld = el("div", "ana-loading", "Henter fil…"); body.appendChild(ld);
+  try {
+    const { url } = await fn("play_url", { version_id: v.id, project_id: project.id });
+    const r = await fetch(url); if (!r.ok) throw new Error("Kunne ikke hente filen (" + r.status + ")");
+    const buf = await r.arrayBuffer();
+    const R = await analyzeMaster(buf, (t) => { ld.textContent = t; });
+    R.notes = anaNotes(R, v); R.file = v.file_name; R.version = v.version; R.size = v.size_bytes;
+    anaReport = R; renderAna(R);
+    $("anaPrint").disabled = $("anaCopy").disabled = false;
+  } catch (e) { ld.textContent = "Analysen feilet: " + e.message + (/decode/i.test(e.message) ? " – nettleseren klarer ikke å lese dette formatet. Prøv WAV eller MP3." : ""); }
+};
+
+function tile(value, unit, label, status) {
+  const t = el("div", "tile"); const vv = el("div", "v", value); if (unit) vv.appendChild(el("small", null, unit)); t.append(vv, el("div", "l", label));
+  if (status) { const icons = { ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" }; const s = el("div", "s st-" + status[0]); s.append(el("span", null, icons[status[0]]), el("span", null, status[1])); t.appendChild(s); }
+  return t;
+}
+function renderAna(R) {
+  const body = $("anaBody"); body.replaceChildren();
+  const sec = (title) => { body.appendChild(el("h3", null, title)); };
+  const grid = (...ts) => { const g = el("div", "tiles"); g.append(...ts); body.appendChild(g); };
+  const tpS = R.truePeak > 0 ? ["bad", "Over 0 dBTP"] : R.truePeak > -1 ? ["warn", "Over −1 dBTP"] : ["ok", "Trygg margin"];
+  const intS = R.integrated > -8 ? ["warn", "Svært høyt"] : R.integrated < -16 ? ["warn", "Lavt"] : ["ok", "Normalt område"];
+  const plrS = R.plr < 7 ? ["warn", "Hardt limitert"] : R.plr > 14 ? ["info", "Dynamisk"] : ["ok", "Balansert"];
+
+  sec("Loudness");
+  grid(tile(f1(R.integrated), "LUFS", "Integrert loudness", intS),
+       tile(f1(R.shortTermMax), "LUFS", "Short-term maks (3 s)"),
+       tile(f1(R.momentaryMax), "LUFS", "Momentary maks (400 ms)"),
+       tile(f1(R.lra), "LU", "Loudness range (LRA)"));
+  sec("Topper og dynamikk");
+  const clips = R.ch.reduce((s, c) => s + c.clipRuns, 0) + R.ch.reduce((s, c) => s + c.overs, 0);
+  grid(tile(f1(R.truePeak), "dBTP", "True peak (4× oversampling)", tpS),
+       tile(f1(db(R.samplePeak)), "dBFS", "Sample peak"),
+       tile(f1(R.plr), "dB", "PLR (peak til loudness)", plrS),
+       tile(f1(R.psr), "dB", "PSR (peak til short-term)"),
+       tile(f1(R.crest), "dB", "Crest factor"),
+       tile(f1(R.rmsDb), "dBFS", "RMS"),
+       tile(String(clips), "", "Klippe-steder", clips ? ["warn", "Sjekk"] : ["ok", "Ingen funnet"]));
+
+  sec("Loudness over tid");
+  const c1 = el("div", "chart"), cv1 = el("canvas"); c1.appendChild(cv1); body.appendChild(c1);
+  const ys = R.timeline.map(p => p[1]).filter(isFinite);
+  const ymin = Math.floor((Math.min(-24, ...ys) - 2) / 6) * 6, ymax = Math.min(0, Math.ceil((Math.max(...ys) + 2) / 3) * 3);
+  const yT = []; for (let y = ymax; y >= ymin; y -= (ymax - ymin > 24 ? 6 : 3)) yT.push(y);
+  const step = R.duration > 300 ? 60 : R.duration > 120 ? 30 : R.duration > 40 ? 10 : 5;
+  const xT = []; for (let t = 0; t <= R.duration; t += step) xT.push([t, fmt(t)]);
+  anaRedraw.push(lineChart(cv1, R.timeline, { x0: 0, x1: Math.max(1, R.duration), y0: ymin, y1: ymax, yTicks: yT, xTicks: xT, ref: -14, refLabel: "−14 LUFS (Spotify)", fmt: p => fmt(p[0]) + " · " + f1(p[1]) + " LUFS short-term" }));
+
+  sec("Frekvensbalanse");
+  const two = el("div", "two"); body.appendChild(two);
+  const c2 = el("div", "chart"), cv2 = el("canvas"); c2.appendChild(cv2); two.appendChild(c2);
+  const bandsBox = el("div", "chart bands"); two.appendChild(bandsBox);
+  const maxPct = Math.max(...R.bands.map(b => b.pct), 1);
+  for (const b of R.bands) {
+    const row = el("div", "band");
+    const lab = el("div"); lab.appendChild(el("div", null, b.name)); lab.appendChild(el("div", "muted", (b.lo >= 1000 ? b.lo / 1000 + "k" : b.lo) + "–" + (b.hi >= 1000 ? Math.round(b.hi / 100) / 10 + "k" : b.hi) + " Hz"));
+    lab.lastChild.style.fontSize = "11px";
+    const tr = el("div", "track"), fl = el("div", "fill"); fl.style.width = (b.pct / maxPct * 100) + "%"; tr.appendChild(fl);
+    row.append(lab, tr, el("div", "pct", f1(b.pct, 0) + " %")); bandsBox.appendChild(row);
+  }
+  bandsBox.appendChild(el("div", "muted", "Andel av energien i hvert område (ikke vektet etter hørsel)")).style.fontSize = "11px";
+  const fT = [[20, "20"], [50, "50"], [100, "100"], [200, "200"], [500, "500"], [1000, "1k"], [2000, "2k"], [5000, "5k"], [10000, "10k"], [20000, "20k"]].filter(t => t[0] <= R.fs / 2);
+  anaRedraw.push(lineChart(cv2, R.spectrum, { xLog: true, x0: 20, x1: Math.min(20000, R.fs / 2), y0: -72, y1: 0, yTicks: [0, -12, -24, -36, -48, -60, -72], xTicks: fT, fmt: p => (p[0] >= 1000 ? f1(p[0] / 1000, 1) + " kHz" : Math.round(p[0]) + " Hz") + " · " + f1(p[1]) + " dB" }));
+
+  if (R.nch === 2) {
+    sec("Stereo og fase");
+    const corS = R.correlation < 0 ? ["bad", "Faseproblem"] : R.correlation < 0.2 ? ["warn", "Svært bredt"] : ["ok", "Monokompatibel"];
+    grid(tile(f1(R.correlation, 2), "", "Fasekorrelasjon (−1 til +1)", corS),
+         tile(f1(R.width), "dB", "Bredde (side vs. mid)"),
+         tile(f1(R.monoLoss), "dB", "Nivåendring i mono", R.monoLoss < -3 ? ["warn", "Taper nivå"] : ["ok", "OK"]),
+         tile(f1(R.negPct, 0), "%", "Tid med negativ korrelasjon"));
+  }
+
+  sec("Slik justeres låta på strømmetjenestene");
+  const tbl = el("table", "stream"), th = el("tr");
+  ["Tjeneste", "Mål (ca.)", "Justering", "True peak etter"].forEach(h => th.appendChild(el("th", null, h)));
+  tbl.appendChild(th);
+  for (const [name, target, up] of STREAMING) {
+    let g = target - R.integrated; if (!up && g > 0) g = 0;
+    const tr = el("tr");
+    tr.append(el("td", null, name), el("td", "n", f1(target, 0) + " LUFS"),
+      el("td", "n", Math.abs(g) < 0.05 ? "Ingen" : sgn(g) + " dB " + (g < 0 ? "(skrus ned)" : "(skrus opp)")),
+      el("td", "n", f1(R.truePeak + g) + " dBTP" + (g > 0 && R.truePeak + g > -1 ? " – kan bli begrenset" : "")));
+    tbl.appendChild(tr);
+  }
+  const tw = el("div", "chart"); tw.style.padding = "4px 8px"; tw.appendChild(tbl); body.appendChild(tw);
+
+  sec("Vurdering");
+  const nb = el("div", "notes");
+  const icons = { ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" };
+  for (const [lvl, txt] of R.notes) { const d = el("div", "note"); d.append(el("span", "ic st-" + lvl, icons[lvl]), el("span", null, txt)); nb.appendChild(d); }
+  body.appendChild(nb);
+
+  sec("Fil");
+  const fi = R.info;
+  grid(tile(fmt(R.duration), "", "Lengde"),
+       tile(fi.container || ((curVersion()?.mime || "").split("/")[1] || "–").toUpperCase(), "", "Format"),
+       tile(fi.sr ? (fi.sr / 1000).toLocaleString("nb-NO") : (R.fs / 1000).toLocaleString("nb-NO") + "*", "kHz", "Samplerate"),
+       tile(fi.bits ? String(fi.bits) : "–", fi.bits ? "bit" : "", "Bitdybde"),
+       tile(String(R.srcChannels), "", "Kanaler"),
+       tile(fmtSize(R.size) || "–", "", "Filstørrelse"));
+  body.appendChild(el("div", "foot", "Målt etter ITU-R BS.1770-4 / EBU R128 (K-vekting, gating, LRA etter EBU Tech 3342). True peak med 4× oversampling. Mål for strømmetjenester er omtrentlige og kan endres." + (fi.sr ? "" : " *Komprimerte filer måles ved dekodet samplerate.") + " · Phat Lab Review, " + new Date().toLocaleDateString("nb-NO")));
+}
+
+$("anaPrint").onclick = () => {
+  const t = document.title; document.title = "Master-analyse – " + (anaReport?.file || "");
+  anaRedraw.forEach(f => f(null)); window.print(); setTimeout(() => { document.title = t; }, 500);
+};
+$("anaCopy").onclick = async () => {
+  const R = anaReport; if (!R) return;
+  const lines = [
+    "MASTER-ANALYSE – " + R.file + " (v" + R.version + ")", "",
+    "Integrert loudness: " + f1(R.integrated) + " LUFS", "Short-term maks: " + f1(R.shortTermMax) + " LUFS", "Momentary maks: " + f1(R.momentaryMax) + " LUFS", "LRA: " + f1(R.lra) + " LU",
+    "True peak: " + f1(R.truePeak) + " dBTP", "Sample peak: " + f1(db(R.samplePeak)) + " dBFS", "PLR: " + f1(R.plr) + " dB", "Crest factor: " + f1(R.crest) + " dB", "RMS: " + f1(R.rmsDb) + " dBFS",
+  ];
+  if (R.nch === 2) lines.push("Fasekorrelasjon: " + f1(R.correlation, 2), "Bredde (S/M): " + f1(R.width) + " dB", "Nivåendring i mono: " + f1(R.monoLoss) + " dB");
+  lines.push("", "Frekvensbalanse:", ...R.bands.map(b => "  " + b.name + ": " + f1(b.pct, 0) + " %"));
+  lines.push("", "Strømmetjenester:", ...STREAMING.map(([n, t, up]) => { let g = t - R.integrated; if (!up && g > 0) g = 0; return "  " + n + " (" + t + " LUFS): " + (Math.abs(g) < 0.05 ? "ingen justering" : sgn(g) + " dB"); }));
+  lines.push("", "Vurdering:", ...R.notes.map(([l, t]) => "  " + ({ ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" })[l] + " " + t));
+  try { await navigator.clipboard.writeText(lines.join("\n")); toast("Analysen er kopiert"); } catch { toast("Kunne ikke kopiere", true); }
+};
+
 /* ---------- Tastatur ---------- */
 document.addEventListener("keydown", (e) => {
+  if (!$("anaModal").classList.contains("hidden")) { if (e.key === "Escape") closeAna(); return; }
   if ($("vProject").classList.contains("hidden")) return;
   const tag = (e.target.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
