@@ -78,7 +78,7 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .folder .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
 .folder.none{--fc:#8B7FB8}
 .folder.add{border-style:dashed;align-items:center;justify-content:center;color:var(--muted);min-height:110px}
-.crumbs{margin:-6px 0 14px;font-size:14px}
+.crumbs{margin:-6px 0 16px}
 .crumbs a{color:var(--muted);text-decoration:none}.crumbs a:hover{color:var(--text)}
 .pcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:4px}
 .adot{width:10px;height:10px;border-radius:50%;background:#8B7FB8;flex:none}
@@ -269,7 +269,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     <button class="btn primary">Opprett</button>
     <button type="button" class="btn ghost" id="newCancel">Avbryt</button>
   </form>
-  <div class="crumbs hidden" id="crumbs"><a href="#" id="crumbAll">← Alle artister</a></div>
+  <div class="crumbs hidden" id="crumbs"><button type="button" class="btn" id="crumbAll">← Alle artister</button></div>
   <div class="projects" id="folders"></div>
   <div class="projects" id="projects"></div>
   <label class="stamp" style="margin-top:16px"><input type="checkbox" id="showArchived"> Vis arkiverte</label>
@@ -423,7 +423,9 @@ async function fn(action, payload) {
 if (isClient) { const hl = document.getElementById("homeLink"); hl.removeAttribute("href"); hl.style.cursor = "default"; }
 function show(view) {
   for (const v of ["vLogin", "vList", "vProject", "vError"]) $(v).classList.toggle("hidden", v !== view);
-  $("backBtn").classList.toggle("hidden", isClient || view !== "vProject");
+  const inArtist = view === "vList" && curArtist != null && !$("search").value.trim();
+  $("backBtn").classList.toggle("hidden", isClient || !(view === "vProject" || inArtist));
+  if (view === "vList") $("backBtn").textContent = "← Alle artister";
   $("logoutBtn").classList.toggle("hidden", isClient || view === "vLogin");
 }
 
@@ -443,7 +445,10 @@ function logout() {
   token = null; store.set(TOKEN_KEY, null); sb = makeClient(); stopPoll(); history.replaceState(null, "", location.pathname); show("vLogin");
 }
 $("logoutBtn").onclick = logout;
-$("backBtn").onclick = () => { const a = project ? (project.artist_id || "") : null; history.pushState(null, "", a == null ? location.pathname : "?a=" + encodeURIComponent(a)); route(); };
+$("backBtn").onclick = () => {
+  if (!$("vList").classList.contains("hidden")) { goArtist(null); return; }
+  const a = project ? (project.artist_id || "") : null; history.pushState(null, "", a == null ? location.pathname : "?a=" + encodeURIComponent(a)); route();
+};
 window.addEventListener("popstate", route);
 
 /* ---------- Studio: prosjektliste ---------- */
@@ -469,6 +474,7 @@ function renderList() {
   const visible = allProjects.filter(p => showArch || !p.archived);
   const inFolders = curArtist == null && !q;
   $("crumbs").classList.toggle("hidden", curArtist == null || !!q);
+  $("backBtn").classList.toggle("hidden", curArtist == null || !!q); $("backBtn").textContent = "← Alle artister";
   const ca = curArtist ? artistById(curArtist) : null;
   $("listTitle").textContent = q ? "Søk" : curArtist == null ? "Artister" : curArtist === "" ? "Uten artist" : (ca ? ca.name : "Artist");
   if (inFolders) {
@@ -513,7 +519,7 @@ function renderList() {
   }
 }
 $("search").oninput = renderList; $("showArchived").onchange = renderList;
-$("crumbAll").onclick = (e) => { e.preventDefault(); goArtist(null); };
+$("crumbAll").onclick = () => goArtist(null);
 $("newBtn").onclick = () => { fillArtistSelect($("newArtist"), curArtist || "", true); $("newArtistName").classList.add("hidden"); $("newForm").classList.remove("hidden"); $("newTitle").focus(); };
 $("newArtist").onchange = () => { const isNew = $("newArtist").value === "__new"; $("newArtistName").classList.toggle("hidden", !isNew); if (isNew) $("newArtistName").focus(); };
 $("newCancel").onclick = () => $("newForm").classList.add("hidden");
@@ -564,6 +570,7 @@ function renderProject() {
   $("pClient").textContent = project.client || "";
   $("pArtistWrap").classList.toggle("hidden", isClient && !project.artist_name);
   $("pArtistName").textContent = project.artist_name || "Uten artist";
+  if (!isClient) $("backBtn").textContent = "← " + (project.artist_name || "Uten artist");
   $("pArtistDot").style.background = project.artist_color || "#8B7FB8";
   if (!isClient) {
     const sel = $("pArtistSel"); sel.classList.remove("hidden");
