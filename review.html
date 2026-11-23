@@ -93,6 +93,7 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .player{padding:18px}
 .fileline{display:flex;align-items:center;gap:12px;margin-bottom:14px;flex-wrap:wrap}
 .fileline .name{font-weight:600;word-break:break-word}
+input.rename{background:var(--panel2);border:1px solid var(--accent);border-radius:8px;padding:4px 8px;font:inherit;font-weight:600;color:var(--text);width:100%;min-width:200px;outline:none}
 .vtabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
 .vtab{padding:6px 12px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);font-size:13px}
 .vtab.on{border-color:var(--accent);background:rgba(217,70,239,.12)}
@@ -301,6 +302,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
         <div id="playerUI" class="hidden">
           <div class="fileline">
             <div class="name" id="fileName"></div>
+            <button class="btn sm ghost hidden" id="renameFileBtn" title="Gi filen nytt navn">✏️</button>
             <span class="muted" id="fileMeta" style="font-size:13px"></span>
             <div class="spacer"></div>
             <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">📊 Master-analyse</button>
@@ -591,8 +593,9 @@ function renderProject() {
   $("cText").classList.toggle("hidden", !v);
   $("compose").querySelector(".row").classList.toggle("hidden", !v);
   if (v) {
-    $("fileName").textContent = v.file_name;
-    $("fileMeta").textContent = ["v" + v.version, fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
+    $("fileName").textContent = v.label || v.file_name;
+    $("renameFileBtn").classList.toggle("hidden", isClient);
+    $("fileMeta").textContent = ["v" + v.version, v.label ? "original: " + v.file_name : "", fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
     preloadAll();
     if (loadedVid !== v.id) { loadMedia(v, pendingCarry); }
     pendingCarry = null;
@@ -625,6 +628,27 @@ function switchVersion(vid) {
   pendingCarry = { t: media.currentTime || 0, play: !media.paused }; // fortsett på samme sted
   curVid = vid; renderProject();
 }
+// Gi en versjon nytt navn (vises i liste, spiller og ved nedlasting). Tomt navn = tilbake til originalt filnavn.
+let renaming = false;
+function startRename(v, target) {
+  if (renaming) return; renaming = true;
+  const inp = el("input", "rename"); inp.value = v.label || v.file_name.replace(/\.[A-Za-z0-9]{2,5}$/, ""); inp.maxLength = 120;
+  inp.onclick = (e) => e.stopPropagation();
+  target.replaceChildren(inp); inp.focus(); inp.select();
+  let done = false;
+  const finish = async (save) => {
+    if (done) return; done = true; renaming = false;
+    const val = inp.value.trim();
+    if (save && val !== (v.label || "")) {
+      const isOrig = !val || val === v.file_name || val === v.file_name.replace(/\.[A-Za-z0-9]{2,5}$/, "");
+      try { await rpc("rv_set_version_label", { vid: v.id, new_label: isOrig ? "" : val }); v.label = isOrig ? null : val; toast(isOrig ? "Tilbake til originalt filnavn" : "Nytt navn lagret"); }
+      catch (err) { toast(err.message, true); }
+    }
+    renderProject();
+  };
+  inp.onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter") { e.preventDefault(); finish(true); } else if (e.key === "Escape") finish(false); };
+  inp.onblur = () => finish(true);
+}
 function renderVersionList() {
   const box = $("vlist"); box.replaceChildren();
   const vs = project.versions;
@@ -636,7 +660,7 @@ function renderVersionList() {
     const vb = el("div", "vb");
     if (on && !media.paused) { const eq = el("span", "eq"); eq.append(el("i"), el("i"), el("i")); vb.appendChild(eq); }
     vb.appendChild(document.createTextNode("v" + v.version));
-    const vn = el("div", "vn"); vn.appendChild(el("div", "f", v.label || v.file_name));
+    const vn = el("div", "vn"); const fEl = el("div", "f", v.label || v.file_name); if (v.label) fEl.title = "Original: " + v.file_name; vn.appendChild(fEl);
     const m = el("div", "m");
     m.appendChild(el("span", null, (v.uploaded_by || "") + " · " + new Date(v.created_at).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })));
     if (v.duration) m.appendChild(el("span", null, fmt(+v.duration)));
@@ -653,6 +677,9 @@ function renderVersionList() {
     bD.onclick = async (e) => { e.stopPropagation(); try { const { url } = await fn("play_url", { version_id: v.id, project_id: project.id, download: true }); location.href = url; } catch (err) { toast(err.message, true); } };
     acts.append(bA, bD);
     if (!isClient) {
+      const bR = el("button", null, "✏️"); bR.title = "Gi nytt navn";
+      bR.onclick = (e) => { e.stopPropagation(); startRename(v, fEl); };
+      acts.appendChild(bR);
       const bX = el("button", null, "🗑"); bX.title = "Slett versjon";
       bX.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(bX)) return;
         try { await fn("delete_version", { version_id: v.id, project_id: project.id }); audios.get(v.id)?.pause(); audios.delete(v.id); if (v.id === curVid) loadedVid = null; await loadProject(project.id, true); toast("v" + v.version + " er slettet"); } catch (err) { toast(err.message, true); } };
@@ -839,6 +866,7 @@ $("compose").addEventListener("submit", async (e) => {
 
 
 /* ---------- Studio-handlinger ---------- */
+$("renameFileBtn").onclick = () => { const v = curVersion(); if (v) startRename(v, $("fileName")); };
 $("pArtistSel").onchange = async () => {
   const aid = $("pArtistSel").value;
   try { await rpc("rv_set_project_artist", { pid: project.id, aid }); const a = artistById(aid);
@@ -1222,7 +1250,7 @@ window.addEventListener("beforeprint", () => anaRedraw.forEach(f => f(null)));
 $("anaBtn").onclick = async () => {
   const v = curVersion(); if (!v) return;
   pause();
-  $("anaFile").textContent = v.file_name + " · v" + v.version;
+  $("anaFile").textContent = (v.label || v.file_name) + " · v" + v.version;
   $("anaModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
   $("anaPrint").disabled = $("anaCopy").disabled = true; anaRedraw = [];
   const body = $("anaBody"); body.replaceChildren();
@@ -1232,7 +1260,7 @@ $("anaBtn").onclick = async () => {
     const r = await fetch(url); if (!r.ok) throw new Error("Kunne ikke hente filen (" + r.status + ")");
     const buf = await r.arrayBuffer();
     const R = await analyzeMaster(buf, (t) => { ld.textContent = t; });
-    R.notes = anaNotes(R, v); R.file = v.file_name; R.version = v.version; R.size = v.size_bytes;
+    R.notes = anaNotes(R, v); R.file = v.label || v.file_name; R.version = v.version; R.size = v.size_bytes;
     anaReport = R; renderAna(R);
     if (isFinite(R.integrated) && (v.lufs == null || Math.abs(v.lufs - R.integrated) > 0.15 || v.true_peak == null || Math.abs(v.true_peak - R.truePeak) > 0.15)) {
       fn("set_levels", { version_id: v.id, project_id: project.id, lufs: R.integrated, true_peak: R.truePeak })
@@ -1370,7 +1398,7 @@ document.addEventListener("keydown", (e) => {
 
 /* ---------- Automatisk oppdatering ---------- */
 function startPoll() { stopPoll(); pollT = setInterval(async () => {
-  if (document.hidden || !project || uploading || document.activeElement === $("cText")) return;
+  if (document.hidden || !project || uploading || renaming || document.activeElement === $("cText")) return;
   try {
     const p = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id });
     if (p && JSON.stringify(p) !== JSON.stringify(project)) { project = p; if (!project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null; renderProject(); }
