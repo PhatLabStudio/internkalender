@@ -153,6 +153,28 @@ label.inl{font-size:13px;color:var(--muted);display:flex;gap:6px;align-items:cen
 
 /* Statusliste */
 h2.sec{font:700 18px var(--f-display);margin:6px 0 0}
+/* Artistmapper */
+body.foldermode .toolbar,body.foldermode #stats,body.foldermode #legend,body.foldermode #tl,body.foldermode h2.sec,body.foldermode #table{display:none}
+.folders{display:none;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+body.foldermode .folders{display:grid}
+.fcard{position:relative;display:flex;flex-direction:column;gap:12px;padding:18px;border-radius:16px;background:var(--card);border:1px solid var(--line);cursor:pointer;text-align:left;color:inherit;overflow:hidden;transition:transform .15s ease,border-color .15s ease}
+.fcard::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--fc,#8B7FB8)}
+.fcard:hover{transform:translateY(-2px);border-color:var(--fc,#8B7FB8)}
+.fcard .ft{display:flex;align-items:center;gap:12px}
+.fcard .fi{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;font:700 18px var(--f-display);background:color-mix(in srgb,var(--fc,#8B7FB8) 18%,transparent);color:var(--fc,#8B7FB8);flex:none}
+.fcard h3{font:700 19px/1.15 var(--f-display);margin:0}
+.fcard .fs{font-size:13px;color:var(--muted)}
+.fcard .fnow{display:flex;flex-direction:column;gap:5px;font-size:13px}
+.fcard .fnow div{display:flex;align-items:center;gap:7px;min-width:0}
+.fcard .fnow i{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.fcard .fnow span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard .fnow .m{color:var(--muted)}
+.fcard .ffoot{display:flex;gap:8px;flex-wrap:wrap;margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.fcard .ffoot b{color:var(--ink);font-weight:600}
+.fcard.add{border-style:dashed;align-items:center;justify-content:center;color:var(--muted);min-height:150px;font-weight:600}
+.fcard.add::before{display:none}
+.fhead{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.fhead h2{font:700 22px var(--f-display);margin:0}
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:14px}
 th{font:500 11px var(--f-mono);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap}
@@ -269,6 +291,7 @@ textarea.inp{resize:vertical;min-height:54px}
   </header>
   <div id="banner"></div>
   <div class="tabs" id="tabs"></div>
+  <section class="folders" id="folders"></section>
   <div class="toolbar">
     <div class="tgroup">
       <button class="btn" id="prev" type="button" aria-label="Tilbake i tid">‹</button>
@@ -350,7 +373,7 @@ const loaded = {a:false, s:false};
 const view = { artist:"alle", zoom:1, start: mondayOf(todayN - 14), person:"" };
 let modal = null; // {kind:'song'|'artist', draft, isNew, focusStep, armed}
 
-function readHash(){ const h=location.hash.replace(/^#/,""); view.artist = h.startsWith("artist-") ? h.slice(7) : "alle"; }
+function readHash(){ const h=location.hash.replace(/^#/,""); view.artist = h.startsWith("artist-") ? h.slice(7) : "alle"; view.folders = !h || h==="mapper"; }
 readHash();
 window.addEventListener("hashchange", ()=>{ readHash(); render(); });
 
@@ -392,8 +415,51 @@ function sortedArtists(){ return artists.slice().sort((a,b)=>(a.createdAt||0)-(b
 
 /* ---------- Render ---------- */
 function render(){
-  if(view.artist!=="alle" && loaded.a && !artistById(view.artist)) view.artist="alle";
+  if(view.artist!=="alle" && loaded.a && !artistById(view.artist)){ view.artist="alle"; view.folders=true; }
+  document.body.classList.toggle("foldermode", !!view.folders);
+  if(view.folders){ renderFolderHead(); renderFolders(); return; }
   renderTabs(); renderToolbar(); renderStats(); renderLegend(); renderTimeline(); renderTable();
+}
+function renderFolderHead(){
+  $("tabs").innerHTML = `<div class="fhead"><h2>Artister</h2></div>
+    <span style="flex:1"></span>
+    <a class="btn ghost" href="#alle">Vis alle på tidslinjen</a>
+    <button class="btn" type="button" data-act="addArtist">+ Ny artist</button>`;
+}
+function renderFolders(){
+  const el = $("folders");
+  if(!loaded.a){ el.innerHTML = `<div class="loading">Henter artister …</div>`; return; }
+  const groups = sortedArtists().map(a=>({id:a.id, name:a.name, color:a.color||"#8B7FB8"}));
+  if(songs.some(s=>!s.artistId || !artistById(s.artistId))) groups.push({id:"", name:"Uten artist", color:"#64748B"});
+  let html = "";
+  for(const g of groups){
+    const sl = songs.filter(s=> g.id ? s.artistId===g.id : (!s.artistId || !artistById(s.artistId)));
+    const running = [], upcoming = [];
+    let nextEnd = null;
+    for(const s of sl) for(const st of (s.steps||[])){
+      if(st.status==="pagar") running.push({s, st});
+      if(st.status!=="ferdig" && st.end){ const b = dn(st.end); if(b!=null && b>=todayN && (nextEnd===null || b<nextEnd.b)) nextEnd = {b, s, st}; }
+      if(st.status==="planlagt" && st.start){ const a = dn(st.start); if(a!=null && a>=todayN) upcoming.push({a, s, st}); }
+    }
+    upcoming.sort((x,y)=>x.a-y.a);
+    const done = sl.filter(s=>(s.steps||[]).length && (s.steps||[]).every(x=>x.status==="ferdig")).length;
+    const openRv = sl.reduce((n,s)=>n + (reviewLinks[s.id] ? Number(reviewLinks[s.id].open_comments)||0 : 0), 0);
+    const lines = running.slice(0,3).map(({s,st})=>{ const sg=stageOf(st.type); return `<div><i style="--c:${sg.c}"></i><span><b>${esc(s.title||"Uten tittel")}</b> · ${esc(st.label||sg.n)} pågår</span></div>`; }).join("")
+      + (running.length>3 ? `<div class="m">+ ${running.length-3} til pågår</div>` : "")
+      + (!running.length && upcoming[0] ? (()=>{ const {s,st}=upcoming[0], sg=stageOf(st.type); return `<div class="m"><i style="--c:${sg.c}"></i><span>Neste: ${esc(s.title||"Uten tittel")} · ${esc(st.label||sg.n)} ${esc(fmt(st.start))}</span></div>`; })() : "")
+      + (!sl.length ? `<div class="m">Ingen låter ennå</div>` : (!running.length && !upcoming.length ? `<div class="m">Ingenting pågår akkurat nå</div>` : ""));
+    const foot = [`<span><b>${sl.length}</b> ${sl.length===1?"låt":"låter"}</span>`];
+    if(done) foot.push(`<span><b>${done}</b> ferdig</span>`);
+    if(nextEnd) foot.push(`<span>Neste frist <b>${esc(fmt(isoOf(nextEnd.b)))}</b></span>`);
+    if(openRv) foot.push(`<span><b>${openRv}</b> åpne review-kommentarer</span>`);
+    const target = g.id ? "artist-"+g.id : "alle";
+    html += `<a class="fcard" href="#${esc(target)}" style="--fc:${esc(g.color)};text-decoration:none">
+      <div class="ft"><div class="fi">${esc((g.name||"?").trim().charAt(0).toUpperCase())}</div><div><h3>${esc(g.name)}</h3><div class="fs">${running.length ? running.length+" steg pågår" : sl.length ? "Ingen aktive steg" : "Tom mappe"}</div></div></div>
+      <div class="fnow">${lines}</div>
+      <div class="ffoot">${foot.join("")}</div></a>`;
+  }
+  html += `<button type="button" class="fcard add" data-act="addArtist">+ Ny artist</button>`;
+  el.innerHTML = html;
 }
 
 function renderTabs(){
@@ -401,7 +467,7 @@ function renderTabs(){
   const cur = artistById(view.artist);
   const opts = `<option value="alle" ${view.artist==="alle"?"selected":""}>Alle artister (${songs.length})</option>` +
     sortedArtists().map(a=>`<option value="${esc(a.id)}" ${view.artist===a.id?"selected":""}>${esc(a.name)} (${cnt(a.id)})</option>`).join("");
-  $("tabs").innerHTML = `<div class="artistpick">
+  $("tabs").innerHTML = `<a class="btn" href="#mapper">← Alle artister</a><div class="artistpick">
       <span class="adot" style="--dc:${cur?esc(cur.color||"#888"):"var(--muted)"}"></span>
       <label class="sr" for="artistSel">Velg artist</label>
       <select id="artistSel" class="asel">${opts}</select>
@@ -874,7 +940,7 @@ document.addEventListener("click", async e=>{
       if(!modal.armed){ modal.armed=true; renderModal(); return; }
       const id=d.id; closeModal();
       for(const s of songs.filter(s=>s.artistId===id)) await deleteSong(s.id);
-      await deleteArtist(id); location.hash="alle"; return;
+      await deleteArtist(id); location.hash="mapper"; return;
     }
     if(act==="saveArtist"){
       d.name=(d.name||"").trim(); if(!d.name){ toast("Skriv inn et navn."); return; }
