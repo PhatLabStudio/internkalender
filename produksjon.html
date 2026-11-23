@@ -44,6 +44,8 @@ h1{font:700 clamp(24px,3vw,32px)/1.1 var(--f-display);margin:0;text-wrap:balance
 .btn.primary{background:var(--grad);color:#fff;border-color:transparent}
 .btn.primary:hover{filter:brightness(1.08)}
 .btn.ghost{background:transparent;border-color:transparent}
+.btn.sub{background:transparent;color:var(--muted);font-weight:500;font-size:13px;padding:6px 10px}
+.btn.sub:hover{color:var(--ink);border-color:var(--muted)}
 .btn.danger{color:var(--rec)}
 .btn.danger.armed{background:var(--rec);color:#fff;border-color:var(--rec)}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -288,7 +290,8 @@ textarea.inp{resize:vertical;min-height:54px}
     <div class="tgroup">
       <a class="btn" href="booking.html" title="Åpne bookingkalenderen">Bookingkalender &#8594;</a>
       <a class="btn" href="review.html" title="Åpne Phat Lab Review">Review &#8594;</a>
-      <button class="btn primary" id="newSong" type="button">+ Ny låt</button>
+      <button class="btn sub" id="addArtist" type="button">+ Ny artist</button>
+      <button class="btn sub" id="newSong" type="button">+ Ny låt</button>
       <button class="btn ghost" id="logoutBtn" type="button" title="Logg ut av produksjonskalenderen">Logg ut</button>
     </div>
   </header>
@@ -426,8 +429,7 @@ function render(){
 function renderFolderHead(){
   $("tabs").innerHTML = `<div class="fhead"><h2>Artister</h2></div>
     <span style="flex:1"></span>
-    <a class="btn ghost" href="#alle">Vis alle på tidslinjen</a>
-    <button class="btn" type="button" data-act="addArtist">+ Ny artist</button>`;
+    <a class="btn ghost" href="#alle">Vis alle på tidslinjen</a>`;
 }
 function renderFolders(){
   const el = $("folders");
@@ -462,7 +464,6 @@ function renderFolders(){
       <div class="fnow">${lines}</div>
       <div class="ffoot">${foot.join("")}</div></a>`;
   }
-  html += `<button type="button" class="fcard add" data-act="addArtist">+ Ny artist</button>`;
   el.innerHTML = html;
 }
 
@@ -479,8 +480,7 @@ function renderTabs(){
     ${cur && safeUrl(cur.dropbox)?`<a class="btn dbx" href="${esc(safeUrl(cur.dropbox))}" target="_blank" rel="noopener noreferrer">${DBX}Åpne Dropbox</a>`:""}
     ${cur && !safeUrl(cur.dropbox)?`<button class="btn ghost" type="button" data-edit-artist="${esc(cur.id)}" style="color:var(--muted)">${DBX}Legg til Dropbox-lenke</button>`:""}
     ${cur?`<a class="btn" href="review.html?a=${encodeURIComponent(cur.id)}" title="Åpne artistens mappe i Review">Review-mappe ↗</a>`:""}
-    ${cur?`<button class="btn" type="button" data-edit-artist="${esc(cur.id)}">Rediger artist</button>`:""}
-    <button class="btn" type="button" id="addArtist">+ Ny artist</button>`;
+    ${cur?`<button class="btn" type="button" data-edit-artist="${esc(cur.id)}">Rediger artist</button>`:""}`;
 }
 
 function renderToolbar(){
