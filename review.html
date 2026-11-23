@@ -101,6 +101,29 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .drop.over{border-color:var(--accent);background:rgba(217,70,239,.06);color:var(--text)}
 .progress{height:6px;background:var(--panel2);border-radius:9px;overflow:hidden;margin-top:10px}
 .progress i{display:block;height:100%;background:var(--accent);width:0;transition:width .2s}
+.vhead{display:flex;align-items:baseline;gap:10px;margin:22px 0 8px}
+.vhead h3{font-size:15px}
+.vlist{display:flex;flex-direction:column;gap:6px}
+.vrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:12px;align-items:center;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;transition:.12s}
+.vrow:hover{border-color:#4A3F66}
+.vrow.on{border-color:var(--accent);background:rgba(217,70,239,.08)}
+.vrow .vb{font:700 12px Inter;padding:3px 8px;border-radius:7px;background:#2A2440;color:var(--accent2);display:flex;align-items:center;gap:6px;min-width:44px;justify-content:center}
+.vrow.on .vb{background:var(--accent);color:#fff}
+.vrow .eq{display:inline-flex;gap:2px;align-items:flex-end;height:10px}
+.vrow .eq i{width:2px;background:currentColor;border-radius:1px;animation:eq .9s ease-in-out infinite}
+.vrow .eq i:nth-child(2){animation-delay:.2s}.vrow .eq i:nth-child(3){animation-delay:.4s}
+@keyframes eq{0%,100%{height:3px}50%{height:10px}}
+.vrow .vn{min-width:0}
+.vrow .vn .f{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vrow .vn .m{font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap;margin-top:2px}
+.vrow .vn .m .okk{color:#3DDC97}
+.vrow .lvl{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vrow .lvl b{color:var(--text);font-weight:600;font-size:13px}
+.vrow .acts{display:flex;gap:4px}
+.vrow .acts button{background:none;border:1px solid transparent;border-radius:8px;padding:5px 7px;color:var(--muted);font-size:13px}
+.vrow .acts button:hover{border-color:var(--line);color:var(--text);background:#2A2440}
+@media (max-width:600px){.vrow{grid-template-columns:auto 1fr auto}.vrow .lvl{display:none}}
+@media (prefers-reduced-motion:reduce){.vrow .eq i{animation:none;height:8px}}
 .approved{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.35);color:var(--ok);margin-bottom:14px;font-size:14px}
 
 /* Kommentarer */
@@ -251,7 +274,6 @@ table.stream td.n{font-variant-numeric:tabular-nums}
             <div class="spacer"></div>
             <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">📊 Master-analyse</button>
             <button class="btn sm" id="downloadBtn">⬇ Last ned</button>
-            <button class="btn sm danger hidden" id="deleteVerBtn">Slett versjon</button>
             <button class="btn sm ok hidden" id="approveBtn">✓ Godkjenn versjon</button>
           </div>
           <video id="video" class="hidden" playsinline></video>
@@ -265,6 +287,8 @@ table.stream td.n{font-variant-numeric:tabular-nums}
           </div>
           <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
         </div>
+        <div class="vhead hidden" id="vhead"><h3>Versjoner</h3><span class="muted" id="vcount"></span></div>
+        <div class="vlist" id="vlist"></div>
         <div class="drop" id="drop">
           <div><b>Last opp ny versjon</b> – dra en fil hit eller <a href="#" id="pickFile">velg fil</a></div>
           <div style="font-size:13px;margin-top:4px">MP3, WAV, AIFF, M4A eller video · maks 50 MB</div>
@@ -451,27 +475,12 @@ function renderProject() {
   $("pTitle").textContent = project.title;
   $("pClient").textContent = project.client || "";
   $("studioActions").classList.toggle("hidden", isClient);
-  $("deleteVerBtn").classList.toggle("hidden", isClient);
   $("nameRow").classList.toggle("hidden", !isClient);
   if (isClient) $("authorName").value = $("authorName").value || store.get(NAME_KEY) || "";
   $("archiveBtn").textContent = project.archived ? "Gjenopprett" : "Arkiver";
 
-  // Versjonsfaner
-  const tabs = $("vtabs"); tabs.replaceChildren();
-  for (const v of project.versions) {
-    const b = el("button", "vtab" + (v.id === curVid ? " on" : ""));
-    b.appendChild(document.createTextNode("v" + v.version + (v.label ? " · " + v.label : "")));
-    if (v.approved_at) { b.appendChild(document.createTextNode(" ")); b.appendChild(el("span", "ok", "✓")); }
-    const open = v.comments.filter(c => !c.resolved && c.t !== null).length;
-    if (open) b.appendChild(el("span", "muted", "  💬" + open));
-    b.onclick = () => {
-      if (v.id === curVid) return;
-      pendingCarry = { t: media.currentTime || 0, play: !media.paused }; // fortsett på samme sted
-      curVid = v.id; renderProject();
-    };
-    tabs.appendChild(b);
-  }
-  tabs.classList.toggle("hidden", project.versions.length < 2);
+  $("vtabs").classList.add("hidden");
+  renderVersionList();
 
   const v = curVersion();
   $("noFile").classList.toggle("hidden", !!v);
@@ -516,6 +525,50 @@ function audioFor(v) {
   return a;
 }
 function preloadAll() { for (const v of project.versions) if (!isVideoV(v)) audioFor(v); }
+function switchVersion(vid) {
+  if (vid === curVid) return;
+  pendingCarry = { t: media.currentTime || 0, play: !media.paused }; // fortsett på samme sted
+  curVid = vid; renderProject();
+}
+function renderVersionList() {
+  const box = $("vlist"); box.replaceChildren();
+  const vs = project.versions;
+  $("vhead").classList.toggle("hidden", !vs.length);
+  $("vcount").textContent = vs.length ? vs.length + (vs.length === 1 ? " versjon" : " versjoner") : "";
+  for (const v of vs) {
+    const on = v.id === curVid;
+    const row = el("div", "vrow" + (on ? " on" : "")); row.title = on ? "Spilles nå" : "Bytt til v" + v.version + " (fortsetter på samme sted)";
+    const vb = el("div", "vb");
+    if (on && !media.paused) { const eq = el("span", "eq"); eq.append(el("i"), el("i"), el("i")); vb.appendChild(eq); }
+    vb.appendChild(document.createTextNode("v" + v.version));
+    const vn = el("div", "vn"); vn.appendChild(el("div", "f", v.label || v.file_name));
+    const m = el("div", "m");
+    m.appendChild(el("span", null, (v.uploaded_by || "") + " · " + new Date(v.created_at).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })));
+    if (v.duration) m.appendChild(el("span", null, fmt(+v.duration)));
+    const open = v.comments.filter(c => !c.resolved && !/^(✅|Trakk)/.test(c.body)).length;
+    if (open) m.appendChild(el("span", null, "💬 " + open));
+    if (v.approved_at) m.appendChild(el("span", "okk", "✓ Godkjent av " + (v.approved_by || "kunde")));
+    vn.appendChild(m);
+    const lvl = el("div", "lvl");
+    if (v.lufs != null) { lvl.appendChild(el("b", null, f1(+v.lufs) + " LUFS")); if (v.true_peak != null) { lvl.appendChild(el("br")); lvl.appendChild(document.createTextNode(f1(+v.true_peak) + " dBTP")); } }
+    else lvl.textContent = "nivå –";
+    const acts = el("div", "acts");
+    const bA = el("button", null, "📊"); bA.title = "Master-analyse";
+    bA.onclick = (e) => { e.stopPropagation(); if (v.id !== curVid) switchVersion(v.id); $("anaBtn").click(); };
+    const bD = el("button", null, "⬇"); bD.title = "Last ned";
+    bD.onclick = async (e) => { e.stopPropagation(); try { const { url } = await fn("play_url", { version_id: v.id, project_id: project.id, download: true }); location.href = url; } catch (err) { toast(err.message, true); } };
+    acts.append(bA, bD);
+    if (!isClient) {
+      const bX = el("button", null, "🗑"); bX.title = "Slett versjon";
+      bX.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(bX)) return;
+        try { await fn("delete_version", { version_id: v.id, project_id: project.id }); audios.get(v.id)?.pause(); audios.delete(v.id); if (v.id === curVid) loadedVid = null; await loadProject(project.id, true); toast("v" + v.version + " er slettet"); } catch (err) { toast(err.message, true); } };
+      acts.appendChild(bX);
+    }
+    row.append(vb, vn, lvl, acts);
+    row.onclick = () => switchVersion(v.id);
+    box.appendChild(row);
+  }
+}
 async function loadMedia(v, carry) {
   pause(); loadedVid = v.id;
   const vid = isVideoV(v);
@@ -548,7 +601,8 @@ const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4
 function updateTime() {
   $("tCur").textContent = fmt(media.currentTime); $("tDur").textContent = fmt(duration());
   $("stampT").textContent = fmt(media.currentTime);
-  $("playBtn").innerHTML = media.paused ? ICON_PLAY : ICON_PAUSE;
+  const icon = media.paused ? ICON_PLAY : ICON_PAUSE;
+  if ($("playBtn").innerHTML !== icon) { $("playBtn").innerHTML = icon; if (project) renderVersionList(); }
   drawWave();
 }
 let raf = null;
@@ -712,10 +766,6 @@ $("deleteProjBtn").onclick = async () => {
   if (!confirmInline($("deleteProjBtn"))) return;
   try { await fn("delete_project", { project_id: project.id }); toast("Prosjektet er slettet"); history.pushState(null, "", location.pathname); route(); } catch (e) { toast(e.message, true); }
 };
-$("deleteVerBtn").onclick = async () => {
-  if (!confirmInline($("deleteVerBtn"))) return;
-  try { await fn("delete_version", { version_id: curVid, project_id: project.id }); loadedVid = null; await loadProject(project.id, false); toast("Versjonen er slettet"); } catch (e) { toast(e.message, true); }
-};
 
 /* ---------- Opplasting ---------- */
 const drop = $("drop");
@@ -729,6 +779,22 @@ function guessMime(f) {
   if (f.type) return f.type === "audio/x-m4a" ? "audio/mp4" : f.type;
   const ext = f.name.split(".").pop().toLowerCase();
   return ({ wav: "audio/wav", mp3: "audio/mpeg", aif: "audio/aiff", aiff: "audio/aiff", m4a: "audio/mp4", flac: "audio/flac", ogg: "audio/ogg", mp4: "video/mp4", mov: "video/quicktime" })[ext] || "";
+}
+// Rask integrert loudness (BS.1770, gating) + sample peak til versjonslisten
+function quickLevels(ab) {
+  const fs = ab.sampleRate, n = ab.length, nch = Math.min(2, ab.numberOfChannels), hop = Math.round(fs * 0.1), nb = Math.floor(n / hop);
+  const E = new Float64Array(nb), [s1, s2] = kWeighting(fs); let pk = 0;
+  for (let c = 0; c < nch; c++) { const x = ab.getChannelData(c);
+    let x1 = 0, x2 = 0, y1 = 0, y2 = 0, u1 = 0, u2 = 0, w1 = 0, w2 = 0, acc = 0, b = 0, k = 0;
+    for (let i = 0; i < nb * hop; i++) { const v = x[i]; const a = v < 0 ? -v : v; if (a > pk) pk = a;
+      const y = s1.b0 * v + s1.b1 * x1 + s1.b2 * x2 - s1.a1 * y1 - s1.a2 * y2; x2 = x1; x1 = v; y2 = y1; y1 = y;
+      const w = y - 2 * u1 + u2 - s2.a1 * w1 - s2.a2 * w2; u2 = u1; u1 = y; w2 = w1; w1 = w;
+      acc += w * w; if (++k === hop) { E[b++] += acc; acc = 0; k = 0; } } }
+  const mom = []; for (let j = 0; j + 4 <= nb; j++) mom.push((E[j] + E[j+1] + E[j+2] + E[j+3]) / (4 * hop));
+  const absG = Math.pow(10, (-70 + 0.691) / 10), g1 = mom.filter(z => z > absG);
+  if (!g1.length) return { lufs: null, tp: pk ? db(pk) : null };
+  const relG = g1.reduce((a, b) => a + b, 0) / g1.length / 10, g2 = g1.filter(z => z > relG);
+  return { lufs: lufs(g2.reduce((a, b) => a + b, 0) / g2.length), tp: db(pk) };
 }
 async function analyze(file) {
   // Lager bølgeform (1000 punkter) og finner lengde lokalt i nettleseren
@@ -747,7 +813,8 @@ async function analyze(file) {
       peaks[i] = m;
     }
     const max = Math.max(...peaks) || 1;
-    return { duration: ab.duration, peaks: peaks.map(p => p / max) };
+    let lv = {}; try { lv = quickLevels(ab); } catch {}
+    return { duration: ab.duration, peaks: peaks.map(p => p / max), lufs: lv.lufs, true_peak: lv.tp };
   } catch { return { duration: null, peaks: null }; }
 }
 let uploading = false;
@@ -776,7 +843,7 @@ async function upload(file) {
     });
     txt.textContent = "Lagrer…";
     const label = file.name.replace(/\.[^.]+$/, "").slice(0, 60);
-    const { id } = await fn("register", { project_id: project.id, path: up.path, file_name: file.name, mime, size: file.size, duration: info.duration, peaks: info.peaks, label: null, uploaded_by: uploader });
+    const { id } = await fn("register", { project_id: project.id, path: up.path, file_name: file.name, mime, size: file.size, duration: info.duration, peaks: info.peaks, lufs: info.lufs, true_peak: info.true_peak, label: null, uploaded_by: uploader });
     curVid = id; loadedVid = null;
     await loadProject(project.id, true);
     toast("Ny versjon lastet opp 🎧");
@@ -1064,6 +1131,10 @@ $("anaBtn").onclick = async () => {
     const R = await analyzeMaster(buf, (t) => { ld.textContent = t; });
     R.notes = anaNotes(R, v); R.file = v.file_name; R.version = v.version; R.size = v.size_bytes;
     anaReport = R; renderAna(R);
+    if (isFinite(R.integrated) && (v.lufs == null || Math.abs(v.lufs - R.integrated) > 0.15 || v.true_peak == null || Math.abs(v.true_peak - R.truePeak) > 0.15)) {
+      fn("set_levels", { version_id: v.id, project_id: project.id, lufs: R.integrated, true_peak: R.truePeak })
+        .then(() => { v.lufs = Math.round(R.integrated * 10) / 10; v.true_peak = Math.round(R.truePeak * 10) / 10; renderVersionList(); }).catch(() => {});
+    }
     $("anaPrint").disabled = $("anaCopy").disabled = false;
   } catch (e) { ld.textContent = "Analysen feilet: " + e.message + (/decode/i.test(e.message) ? " – nettleseren klarer ikke å lese dette formatet. Prøv WAV eller MP3." : ""); }
 };
