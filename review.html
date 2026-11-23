@@ -163,15 +163,6 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .replybox{grid-column:1/-1;margin:6px 0 0 18px;display:flex;flex-direction:column;gap:6px}
 .replybox textarea{min-height:52px;resize:vertical;font-size:14px}
 .replybox .row{display:flex;gap:6px;justify-content:flex-end}
-/* Områder */
-.ts.range{white-space:nowrap}
-.rmark{position:absolute;top:-14px;height:6px;border-radius:3px;background:#F97316;opacity:.85;cursor:pointer;z-index:1}
-.rmark.studio{background:#7C3AED}.rmark.res{opacity:.3}
-.selreg{position:absolute;top:0;bottom:0;background:rgba(217,70,239,.18);border-left:1px solid #D946EF;border-right:1px solid #D946EF;pointer-events:none;z-index:1}
-.selreg.active{background:rgba(249,115,22,.14);border-color:#F97316}
-.rangelbl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
-.rangelbl b{color:#F0ABFC;font-variant-numeric:tabular-nums}
-.rangelbl button{background:none;border:0;color:var(--muted);padding:0 2px;font-size:13px}
 /* Deling */
 .share-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
 .share-modal{max-width:520px}
@@ -361,7 +352,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
             <span class="muted" style="font-size:13px">Volum</span>
             <input type="range" class="vol" id="vol" min="0" max="1" step="0.01" value="1">
           </div>
-          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe · <b>dra</b> i bølgeformen for å kommentere et område</div>
+          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
         </div>
         <div class="vhead hidden" id="vhead"><h3>Versjoner</h3><span class="muted" id="vcount"></span></div>
         <div class="vlist" id="vlist"></div>
@@ -396,14 +387,12 @@ table.stream td.n{font-variant-numeric:tabular-nums}
         </div>
       </div>
       <form class="compose" id="compose">
-        <!-- områdekommentar: dra i bølgeformen -->
         <div id="nameRow" class="hidden" style="margin-bottom:8px">
           <input type="text" id="authorName" placeholder="Navnet ditt" maxlength="80">
         </div>
         <textarea id="cText" placeholder="Skriv en kommentar…" maxlength="4000"></textarea>
         <div class="row">
           <label class="stamp" id="stampLbl"><input type="checkbox" id="useStamp" checked> ved <b id="stampT">0:00</b></label>
-          <span class="rangelbl hidden" id="rangeLbl">fra <b id="rangeA"></b> til <b id="rangeB"></b> <button type="button" id="rangeClear" title="Fjern området">✕</button></span>
           <div class="spacer"></div>
           <button class="btn primary sm" id="cSend">Send</button>
         </div>
@@ -877,7 +866,7 @@ function drawWave() {
   if (d) { ctx.fillStyle = "#fff"; ctx.fillRect(Math.round(prog * W), 0, 1.5, H); }
 }
 function xToTime(clientX) { const r = wbox.getBoundingClientRect(); return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * duration(); }
-wbox.addEventListener("click", (e) => { if (suppressClick || e.target.classList.contains("marker") || e.target.classList.contains("rmark")) return; seek(xToTime(e.clientX)); });
+wbox.addEventListener("click", (e) => { if (e.target.classList.contains("marker")) return; seek(xToTime(e.clientX)); });
 let hoverLabel = null;
 wbox.addEventListener("mousemove", (e) => {
   const r = wbox.getBoundingClientRect(); hoverX = e.clientX - r.left;
@@ -889,18 +878,15 @@ wbox.addEventListener("mouseleave", () => { hoverX = null; hoverLabel?.remove();
 window.addEventListener("resize", () => { drawWave(); renderMarkers(); });
 
 function renderMarkers() {
-  wbox.querySelectorAll(".marker,.tip,.rmark").forEach(m => m.remove());
-  const v = curVersion(), d = duration(); drawSel(); if (!v || !d) return;
+  wbox.querySelectorAll(".marker,.tip").forEach(m => m.remove());
+  const v = curVersion(), d = duration(); if (!v || !d) return;
   for (const c of v.comments) {
     if (c.t == null || c.parent_id) continue;
     if (!hideResolvedFn(c)) continue;
-    if (c.t_end != null) { const r = el("div", "rmark" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""));
-      r.style.left = (c.t / d * 100) + "%"; r.style.width = (Math.max(0.3, (c.t_end - c.t) / d * 100)) + "%"; r.title = c.author + " · " + fmt(c.t) + "–" + fmt(c.t_end);
-      r.onclick = (e) => { e.stopPropagation(); jumpTo(c); }; wbox.appendChild(r); }
     const m = el("div", "marker" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""), (c.author || "?").trim().charAt(0).toUpperCase());
     m.style.left = (Math.min(1, c.t / d) * 100) + "%";
     m.onclick = (e) => { e.stopPropagation(); jumpTo(c); };
-    m.onmouseenter = () => { const t = el("div", "tip"); t.appendChild(el("b", null, c.author + " · " + fmt(c.t) + (c.t_end != null ? "–" + fmt(c.t_end) : ""))); t.appendChild(el("div", null, c.body.length > 140 ? c.body.slice(0, 140) + "…" : c.body)); t.style.left = m.style.left; wbox.appendChild(t); m._tip = t; };
+    m.onmouseenter = () => { const t = el("div", "tip"); t.appendChild(el("b", null, c.author + " · " + fmt(c.t))); t.appendChild(el("div", null, c.body.length > 140 ? c.body.slice(0, 140) + "…" : c.body)); t.style.left = m.style.left; wbox.appendChild(t); m._tip = t; };
     m.onmouseleave = () => m._tip?.remove();
     wbox.appendChild(m);
   }
@@ -908,7 +894,7 @@ function renderMarkers() {
 
 /* ---------- Kommentarer ---------- */
 function jumpTo(c) {
-  activeCid = c.id; if (c.t != null) seek(+c.t); drawSel();
+  activeCid = c.id; if (c.t != null) seek(+c.t);
   renderComments();
   document.querySelector('.c[data-id="' + c.id + '"]')?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
@@ -926,7 +912,7 @@ function renderComments() {
   for (const c of cs) {
     const row = el("div", "c" + (c.resolved ? " res" : "") + (c.id === activeCid ? " active" : ""));
     row.dataset.id = c.id;
-    row.appendChild(el("span", "ts" + (c.t == null ? " gen" : "") + (c.t_end != null ? " range" : ""), c.t == null ? "Generelt" : fmt(+c.t) + (c.t_end != null ? "–" + fmt(+c.t_end) : "")));
+    row.appendChild(el("span", "ts" + (c.t == null ? " gen" : ""), c.t == null ? "Generelt" : fmt(+c.t)));
     const who = el("div", "who", c.author);
     if (c.from_studio) who.appendChild(el("span", "badge", "Phat Lab"));
     if (c.resolved) who.appendChild(el("span", "solved", "✓ Løst"));
@@ -997,13 +983,11 @@ $("compose").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = $("cText").value.trim(); if (!body) return;
   const v = curVersion(); if (!v) return;
-  const useT = $("useStamp").checked;
-  const t = !useT ? null : pendingRange ? pendingRange[0] : Math.round(media.currentTime * 100) / 100;
-  const t_end = useT && pendingRange ? pendingRange[1] : null;
+  const t = $("useStamp").checked ? Math.round(media.currentTime * 100) / 100 : null, t_end = null;
   $("cSend").disabled = true;
   try {
     await sendComment({ body, t, t_end, parent: null });
-    $("cText").value = ""; setRange(null);
+    $("cText").value = "";
     await loadProject(project.id, true);
   } catch (err) { if (err.message !== "navn") toast(err.message, true); }
   $("cSend").disabled = false;
@@ -1091,44 +1075,6 @@ $("shareForm").addEventListener("submit", async (e) => {
     closeShare(); await loadProject(project.id, true);
     toast("Delingsinnstillinger lagret" + (pw ? ". Husk å gi kunden passordet." : ""));
   } catch (err) { toast(err.message, true); }
-});
-
-/* ---------- Områdekommentarer: dra i bølgeformen ---------- */
-let pendingRange = null, drag = null, suppressClick = false;
-function setRange(r) {
-  pendingRange = r;
-  $("rangeLbl").classList.toggle("hidden", !r); $("stampLbl").classList.toggle("hidden", !!r);
-  if (r) { $("rangeA").textContent = fmt(r[0]); $("rangeB").textContent = fmt(r[1]); }
-  drawSel();
-}
-$("rangeClear").onclick = () => setRange(null);
-function selEl(cls) { let s = wbox.querySelector(".selreg." + cls); if (!s) { s = el("div", "selreg " + cls); wbox.appendChild(s); } return s; }
-function drawSel() {
-  const d = duration();
-  const put = (cls, r) => { const s = selEl(cls); if (!r || !d) { s.style.display = "none"; return; } s.style.display = ""; s.style.left = (r[0] / d * 100) + "%"; s.style.width = (Math.max(0.2, (r[1] - r[0]) / d * 100)) + "%"; };
-  put("pending", drag && drag.moved ? [Math.min(drag.t0, drag.t1), Math.max(drag.t0, drag.t1)] : pendingRange);
-  const v = curVersion(), ac = v && v.comments.find(c => c.id === activeCid && c.t_end != null);
-  put("active", ac ? [+ac.t, +ac.t_end] : null);
-}
-wbox.addEventListener("pointerdown", (e) => {
-  if (e.button !== 0 || e.target.classList.contains("marker") || e.target.classList.contains("rmark")) return;
-  drag = { x0: e.clientX, t0: xToTime(e.clientX), t1: xToTime(e.clientX), moved: false };
-});
-window.addEventListener("pointermove", (e) => {
-  if (!drag) return;
-  if (Math.abs(e.clientX - drag.x0) > 5) drag.moved = true;
-  drag.t1 = xToTime(e.clientX);
-  if (drag.moved) drawSel();
-});
-window.addEventListener("pointerup", () => {
-  if (!drag) return;
-  const dr = drag; drag = null;
-  if (dr.moved) {
-    suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
-    const a = Math.min(dr.t0, dr.t1), b = Math.max(dr.t0, dr.t1);
-    if (b - a >= 0.5) { setRange([Math.round(a * 100) / 100, Math.round(b * 100) / 100]); seek(a); ptab = "c"; renderTabs(); $("useStamp").checked = true; $("cText").focus(); }
-    else drawSel();
-  }
 });
 
 /* ---------- Svar på kommentarer ---------- */
@@ -1679,7 +1625,7 @@ document.addEventListener("keydown", (e) => {
 
 /* ---------- Automatisk oppdatering ---------- */
 function startPoll() { stopPoll(); pollT = setInterval(async () => {
-  if (document.hidden || !project || uploading || renaming || drag || replyTo || notesTimer || notesSaving
+  if (document.hidden || !project || uploading || renaming || replyTo || notesTimer || notesSaving
       || document.activeElement === $("cText") || document.activeElement === $("notesText")) return;
   try {
     const p = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id });
