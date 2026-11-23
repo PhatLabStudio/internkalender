@@ -625,7 +625,7 @@ function reviewChip(s){
   const r = reviewLinks[s.id];
   if(!r) return `<button type="button" class="rvchip new" data-review-new="${esc(s.id)}" title="Lag et review-prosjekt for denne låten">＋ Review</button>`;
   const sg = r.latest_stage ? stageOf(r.latest_stage) : null;
-  return `<a class="rvchip" href="review.html?p=${encodeURIComponent(r.project_id)}" title="Åpne i Phat Lab Review">🎧 ${r.latest ? "v"+Number(r.latest) : "Review"}${sg ? ` <span class="rvs">${esc(sg.n.toUpperCase())}</span>` : ""}${Number(r.open_comments) ? ` <span class="rvc">💬 ${Number(r.open_comments)}</span>` : ""}</a>`;
+  return `<a class="rvchip" href="review.html?p=${encodeURIComponent(r.project_id)}" title="Åpne i Phat Lab Review">Review ${r.latest ? "v"+Number(r.latest) : ""}${sg ? ` <span class="rvs">${esc(sg.n.toUpperCase())}</span>` : ""}${Number(r.open_comments) ? ` <span class="rvc">${Number(r.open_comments)} åpne</span>` : ""}</a>`;
 }
 document.addEventListener("click", async e=>{
   const b = e.target.closest("[data-review-new]"); if(!b) return;

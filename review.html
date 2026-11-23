@@ -136,8 +136,8 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .vrow .vn .m .okk{color:#3DDC97}
 .vrow .lvl{font-size:12px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .vrow .lvl b{color:var(--text);font-weight:600;font-size:13px}
-.vrow .acts{display:flex;gap:4px}
-.vrow .acts button{background:none;border:1px solid transparent;border-radius:8px;padding:5px 7px;color:var(--muted);font-size:13px}
+.vrow .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+.vrow .acts button{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;color:var(--muted);font-size:12px}
 .vrow .acts button:hover{border-color:var(--line);color:var(--text);background:#2A2440}
 @media (max-width:600px){.vrow{grid-template-columns:auto 1fr auto}.vrow .lvl{display:none}}
 @media (prefers-reduced-motion:reduce){.vrow .eq i{animation:none;height:8px}}
@@ -347,8 +347,8 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     </div>
     <div class="spacer"></div>
     <div class="actions" id="studioActions">
-      <button class="btn primary" id="copyLink">🔗 Kopier kundelenke</button>
-      <button class="btn" id="shareBtn">🔒 Deling</button>
+      <button class="btn primary" id="copyLink">Kopier kundelenke</button>
+      <button class="btn" id="shareBtn">Deling</button>
       <button class="btn" id="renameBtn">Endre navn</button>
       <button class="btn" id="archiveBtn">Arkiver</button>
       <button class="btn danger" id="newLinkBtn" title="Gjør gammel lenke ugyldig">Ny lenke</button>
@@ -366,11 +366,11 @@ table.stream td.n{font-variant-numeric:tabular-nums}
         <div id="playerUI" class="hidden">
           <div class="fileline">
             <div class="name" id="fileName"></div>
-            <button class="btn sm ghost hidden" id="renameFileBtn" title="Gi filen nytt navn">✏️</button>
+            <button class="btn sm ghost hidden" id="renameFileBtn" title="Gi filen nytt navn">Endre navn</button>
             <span class="muted" id="fileMeta" style="font-size:13px"></span>
             <div class="spacer"></div>
-            <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">📊 Master-analyse</button>
-            <button class="btn sm" id="downloadBtn">⬇ Last ned</button>
+            <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">Master-analyse</button>
+            <button class="btn sm" id="downloadBtn">Last ned</button>
           </div>
           <video id="video" class="hidden" playsinline></video>
           <div class="wavebox" id="wavebox"><canvas id="wave"></canvas></div>
@@ -400,7 +400,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     <aside class="card comments">
       <div class="ptabs" id="ptabs">
         <button type="button" data-t="c" class="on">Kommentarer <span class="pill" id="cCount">0</span></button>
-        <button type="button" data-t="n">📝 Notater <span class="pill hidden" id="nDot">•</span></button>
+        <button type="button" data-t="n">Notater <span class="pill hidden" id="nDot">•</span></button>
       </div>
       <div id="notesPane" class="notes-pane hidden">
         <textarea id="notesText" placeholder="Tekst, akkorder, huskeliste, referanser… Både studio og kunden kan skrive her, og alt lagres automatisk." maxlength="50000"></textarea>
@@ -440,7 +440,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
       </div>
       <div class="spacer"></div>
       <button class="btn sm noprint" id="anaCopy" disabled>Kopier som tekst</button>
-      <button class="btn sm primary noprint" id="anaPrint" disabled>⬇ Last ned PDF</button>
+      <button class="btn sm primary noprint" id="anaPrint" disabled>Last ned PDF</button>
       <button class="btn sm ghost noprint" id="anaClose" aria-label="Lukk">✕</button>
     </div>
     <div id="anaBody"></div>
@@ -449,7 +449,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
 
 <section id="vPw" class="center hidden">
   <form class="card login" id="pwForm">
-    <h2>🔒 Passordbeskyttet</h2>
+    <h2>Passordbeskyttet</h2>
     <div class="muted">Skriv passordet du fikk fra Phat Lab for å åpne prosjektet.</div>
     <input type="password" id="pwInput" autocomplete="current-password" placeholder="Passord" style="letter-spacing:normal;font-size:16px" required>
     <button class="btn primary" style="width:100%;justify-content:center">Åpne</button>
@@ -459,7 +459,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
 
 <div id="shareModal" class="ana-back hidden" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
   <form class="ana card share-modal" id="shareForm">
-    <div class="ana-head"><h2 id="shareTitle">🔒 Deling og sikkerhet</h2><div class="spacer"></div><button type="button" class="btn sm ghost" id="shareClose">✕</button></div>
+    <div class="ana-head"><h2 id="shareTitle">Deling og sikkerhet</h2><div class="spacer"></div><button type="button" class="btn sm ghost" id="shareClose">✕</button></div>
     <div class="field">
       <label class="l" for="sharePw">Passord på kundelenken</label>
       <input type="text" id="sharePw" autocomplete="off" placeholder="Ingen passord">
@@ -583,7 +583,7 @@ async function renderStorage() {
     const bar = el("div", "bar"), fill = el("i"); fill.style.width = pct.toFixed(1) + "%"; bar.appendChild(fill);
     const txt = el("span"); txt.append("Lagring: ", el("b", null, fmtSize(u.bytes) || "0 MB"), " av 1 GB brukt (" + pct.toFixed(0) + " %) · " + u.files + (u.files === 1 ? " fil" : " filer"));
     box.append(bar, txt);
-    if (pct >= 80) box.appendChild(el("span", null, pct >= 95 ? "⛔ Nesten fullt – slett gamle versjoner eller oppgrader Supabase" : "⚠ Begynner å bli fullt"));
+    if (pct >= 80) box.appendChild(el("span", null, pct >= 95 ? "Nesten fullt – slett gamle versjoner eller oppgrader Supabase" : "Begynner å bli fullt"));
   } catch {}
 }
 function artistById(id) { return artists.find(a => a.id === id) || null; }
@@ -800,22 +800,22 @@ function renderVersionList() {
     m.appendChild(el("span", null, (v.uploaded_by || "") + " · " + new Date(v.created_at).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })));
     if (v.duration) m.appendChild(el("span", null, fmt(+v.duration)));
     const open = v.comments.filter(c => !c.resolved && !isApprovalNote(c)).length;
-    if (open) m.appendChild(el("span", null, "💬 " + open));
+    if (open) m.appendChild(el("span", null, open + (open === 1 ? " åpen kommentar" : " åpne kommentarer")));
     vn.appendChild(m);
     const lvl = el("div", "lvl");
     if (v.lufs != null) { lvl.appendChild(el("b", null, f1(+v.lufs) + " LUFS")); if (v.true_peak != null) { lvl.appendChild(el("br")); lvl.appendChild(document.createTextNode(f1(+v.true_peak) + " dBTP")); } }
     else lvl.textContent = "nivå –";
     const acts = el("div", "acts");
-    const bA = el("button", null, "📊"); bA.title = "Master-analyse";
+    const bA = el("button", null, "Analyse"); bA.title = "Master-analyse";
     bA.onclick = (e) => { e.stopPropagation(); if (v.id !== curVid) switchVersion(v.id); $("anaBtn").click(); };
-    const bD = el("button", null, "⬇"); bD.title = "Last ned";
+    const bD = el("button", null, "Last ned"); bD.title = "Last ned";
     bD.onclick = async (e) => { e.stopPropagation(); try { const { url } = await fn("play_url", { version_id: v.id, project_id: project.id, download: true }); location.href = url; } catch (err) { toast(err.message, true); } };
     acts.appendChild(bA); if (!isClient || project.allow_download !== false) acts.appendChild(bD);
     if (!isClient) {
-      const bR = el("button", null, "✏️"); bR.title = "Gi nytt navn";
+      const bR = el("button", null, "Endre navn"); bR.title = "Gi nytt navn";
       bR.onclick = (e) => { e.stopPropagation(); startRename(v, fEl); };
       acts.appendChild(bR);
-      const bX = el("button", null, "🗑"); bX.title = "Slett versjon";
+      const bX = el("button", null, "Slett"); bX.title = "Slett versjon";
       bX.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(bX)) return;
         try { await fn("delete_version", { version_id: v.id, project_id: project.id }); audios.get(v.id)?.pause(); audios.delete(v.id); if (v.id === curVid) loadedVid = null; await loadProject(project.id, true); toast("v" + v.version + " er slettet"); } catch (err) { toast(err.message, true); } };
       acts.appendChild(bX);
@@ -938,7 +938,7 @@ function renderComments() {
   const counts = { all: all.length, open: nOpen, res: all.length - nOpen };
   $("cFilter").querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.f === cFilter); b.querySelector("span").textContent = counts[b.dataset.f] || ""; });
   if (!v) { list.appendChild(el("div", "empty", "Last opp en fil for å kommentere.")); renderMarkers(); return; }
-  if (!cs.length) list.appendChild(el("div", "empty", all.length ? (cFilter === "open" ? "Ingen åpne kommentarer – alt er løst 🎉" : "Ingen løste kommentarer ennå.") : "Ingen kommentarer ennå. Spill av, pause der du vil si noe, og skriv."));
+  if (!cs.length) list.appendChild(el("div", "empty", all.length ? (cFilter === "open" ? "Ingen åpne kommentarer – alt er løst" : "Ingen løste kommentarer ennå.") : "Ingen kommentarer ennå. Spill av, pause der du vil si noe, og skriv."));
   const myIds = isClient ? mine() : null;
   for (const c of cs) {
     const row = el("div", "c" + (c.resolved ? " res" : "") + (c.id === activeCid ? " active" : ""));
@@ -952,16 +952,16 @@ function renderComments() {
     row.appendChild(el("div", "body", c.body));
     const tools = el("div", "tools");
     const kids = v.comments.filter(x => x.parent_id === c.id).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
-    const rp = el("button", null, "↩ Svar" + (kids.length ? " (" + kids.length + ")" : ""));
+    const rp = el("button", null, "Svar" + (kids.length ? " (" + kids.length + ")" : ""));
     rp.onclick = (e) => { e.stopPropagation(); replyTo = replyTo === c.id ? null : c.id; renderComments(); if (replyTo) setTimeout(() => document.querySelector(".replybox textarea")?.focus(), 0); };
     tools.appendChild(rp);
-    const rb = el("button", c.resolved ? "unsolve" : "solve", c.resolved ? "↺ Merk som uløst" : "✓ Merk som løst");
+    const rb = el("button", c.resolved ? "unsolve" : "solve", c.resolved ? "Merk som uløst" : "Merk som løst");
     rb.onclick = async (e) => { e.stopPropagation(); rb.disabled = true;
       try { if (isClient) await rpc("rv_share_set_resolved", { token: SHARE, cid: c.id, val: !c.resolved }); else await rpc("rv_set_resolved", { cid: c.id, val: !c.resolved });
         c.resolved = !c.resolved; renderComments(); } catch (err) { toast(err.message, true); rb.disabled = false; } };
     tools.appendChild(rb);
     if (!isClient || myIds.has(c.id)) {
-      const db = el("button", "del", "🗑 Slett");
+      const db = el("button", "del", "Slett");
       db.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(db)) return;
         try { await fn("delete_comment", { comment_id: c.id, project_id: project.id, key: isClient ? ownerKey() : undefined }); v.comments = v.comments.filter(x => x.id !== c.id); renderComments(); toast("Kommentaren er slettet"); }
         catch (err) { toast(err.message, true); } };
@@ -974,7 +974,7 @@ function renderComments() {
         const r = el("div", "r"); const w = el("div", "who", k.author);
         if (k.from_studio) w.appendChild(el("span", "badge", "Phat Lab"));
         w.appendChild(el("span", null, ago(k.created_at))); r.append(w, el("div", "body", k.body));
-        if (!isClient || myIds.has(k.id)) { const tt = el("div", "tools"), kd = el("button", null, "🗑 Slett");
+        if (!isClient || myIds.has(k.id)) { const tt = el("div", "tools"), kd = el("button", null, "Slett");
           kd.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(kd)) return;
             try { await fn("delete_comment", { comment_id: k.id, project_id: project.id, key: isClient ? ownerKey() : undefined }); v.comments = v.comments.filter(x => x.id !== k.id); renderComments(); } catch (err) { toast(err.message, true); } };
           tt.appendChild(kd); r.appendChild(tt); }
@@ -1044,7 +1044,7 @@ async function renderPipe() {
   if (!s) {
     if (isClient) { box.classList.add("hidden"); return; }
     box.classList.add("unlinked");
-    box.append(el("span", null, "🎛"), el("b", null, "Koble til produksjonskalenderen"));
+    box.append(el("b", null, "Koble til produksjonskalenderen"));
     const sel = el("select", "sel sm"); const o0 = el("option", null, "Velg låt…"); o0.value = ""; sel.appendChild(o0);
     box.appendChild(sel);
     const mk = el("button", "btn sm", "+ Lag låt i produksjonskalenderen"); mk.type = "button";
@@ -1058,12 +1058,12 @@ async function renderPipe() {
       if (!prodSongs.length) { o0.textContent = "Ingen låter i produksjonskalenderen ennå"; sel.disabled = true; }
     } catch {}
     sel.onchange = async () => { if (!sel.value) return;
-      try { await rpc("rv_link_song", { pid: project.id, sid: sel.value }); prodSongs = null; toast("Koblet til produksjonskalenderen 🎛"); await loadProject(project.id, true); }
+      try { await rpc("rv_link_song", { pid: project.id, sid: sel.value }); prodSongs = null; toast("Koblet til produksjonskalenderen"); await loadProject(project.id, true); }
       catch (e) { toast(e.message, true); } };
     return;
   }
   const steps = s.steps || [], cur = curStep(s), done = steps.filter(x => x.status === "ferdig").length;
-  const ph = el("div", "ph"); ph.appendChild(el("h3", null, "🎛 Produksjon"));
+  const ph = el("div", "ph"); ph.appendChild(el("h3", null, "Produksjon"));
   const now = el("div", "now");
   if (!steps.length) now.textContent = "Ingen steg planlagt ennå";
   else if (done === steps.length) now.append("✓ ", el("b", null, "Alle steg er ferdige"));
@@ -1150,10 +1150,10 @@ async function saveNotes() {
 function renderShareChips() {
   const box = $("shareChips"); box.replaceChildren();
   if (isClient) return;
-  if (project.has_password) box.appendChild(el("span", "pill", "🔒 Passord"));
+  if (project.has_password) box.appendChild(el("span", "pill", "Passord"));
   if (project.share_expires_at) { const exp = new Date(project.share_expires_at), past = exp < new Date();
-    box.appendChild(el("span", "pill" + (past ? " new" : ""), (past ? "⛔ Utløpt " : "⏳ Utløper ") + exp.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }))); }
-  if (project.allow_download === false) box.appendChild(el("span", "pill", "⬇ Nedlasting av"));
+    box.appendChild(el("span", "pill" + (past ? " new" : ""), (past ? "Utløpt " : "Utløper ") + exp.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }))); }
+  if (project.allow_download === false) box.appendChild(el("span", "pill", "Nedlasting av"));
 }
 const ymdLocal = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 function openShare() {
@@ -1310,7 +1310,7 @@ async function upload(file) {
     if (!isClient && project.song) { const cs = curStep(project.song); if (cs) { try { await rpc("rv_set_version_stage", { vid: id, new_stage: stageKey(cs.type) }); } catch {} } }
     curVid = id; loadedVid = null;
     await loadProject(project.id, true);
-    toast("Ny versjon lastet opp 🎧");
+    toast("Ny versjon lastet opp");
   } catch (e) { toast(e.message, true); }
   uploading = false; st.classList.add("hidden");
 }
@@ -1605,7 +1605,7 @@ $("anaBtn").onclick = async () => {
 
 function tile(value, unit, label, status) {
   const t = el("div", "tile"); const vv = el("div", "v", value); if (unit) vv.appendChild(el("small", null, unit)); t.append(vv, el("div", "l", label));
-  if (status) { const icons = { ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" }; const s = el("div", "s st-" + status[0]); s.append(el("span", null, icons[status[0]]), el("span", null, status[1])); t.appendChild(s); }
+  if (status) { const icons = { ok: "✓", warn: "!", bad: "✕", info: "i" }; const s = el("div", "s st-" + status[0]); s.append(el("span", null, icons[status[0]]), el("span", null, status[1])); t.appendChild(s); }
   return t;
 }
 function renderAna(R) {
@@ -1684,7 +1684,7 @@ function renderAna(R) {
 
   sec("Vurdering");
   const nb = el("div", "notes");
-  const icons = { ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" };
+  const icons = { ok: "✓", warn: "!", bad: "✕", info: "i" };
   for (const [lvl, txt] of R.notes) { const d = el("div", "note"); d.append(el("span", "ic st-" + lvl, icons[lvl]), el("span", null, txt)); nb.appendChild(d); }
   body.appendChild(nb);
 
@@ -1713,7 +1713,7 @@ $("anaCopy").onclick = async () => {
   if (R.nch === 2) lines.push("Fasekorrelasjon: " + f1(R.correlation, 2), "Bredde (S/M): " + f1(R.width) + " dB", "Nivåendring i mono: " + f1(R.monoLoss) + " dB");
   lines.push("", "Frekvensbalanse (mot rosa støy):", ...R.bands.map(b => "  " + b.name + ": " + sgn(b.rel) + " dB"));
   lines.push("", "Strømmetjenester:", ...STREAMING.map(([n, t, up]) => { const g = streamGain(R, t, up); return "  " + n + " (" + t + " LUFS): " + (Math.abs(g) < 0.05 ? "ingen justering" : sgn(g) + " dB"); }));
-  lines.push("", "Vurdering:", ...R.notes.map(([l, t]) => "  " + ({ ok: "✓", warn: "⚠", bad: "✕", info: "ℹ" })[l] + " " + t));
+  lines.push("", "Vurdering:", ...R.notes.map(([l, t]) => "  " + ({ ok: "✓", warn: "!", bad: "✕", info: "i" })[l] + " " + t));
   try { await navigator.clipboard.writeText(lines.join("\n")); toast("Analysen er kopiert"); } catch { toast("Kunne ikke kopiere", true); }
 };
 
