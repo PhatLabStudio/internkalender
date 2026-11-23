@@ -303,6 +303,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
   <div class="brand"><a id="homeLink" href="./"><div class="dot">PL</div>Phat Lab</a> <small>Review</small></div>
   <div class="spacer"></div>
   <button class="btn ghost sm hidden" id="backBtn">← Tilbake</button>
+  <a class="btn ghost sm hidden" id="navProd" href="produksjon.html" style="text-decoration:none;color:var(--text)">Produksjonskalender &#8594;</a>
   <button class="btn ghost sm hidden" id="logoutBtn">Logg ut</button>
 </header>
 
@@ -548,6 +549,7 @@ function show(view) {
   $("backBtn").classList.toggle("hidden", isClient || !(view === "vProject" || inArtist));
   if (view === "vList") $("backBtn").textContent = "← Alle artister";
   $("logoutBtn").classList.toggle("hidden", isClient || view === "vLogin");
+  $("navProd").classList.toggle("hidden", isClient || view === "vLogin");
 }
 
 /* ---------- Studio: innlogging ---------- */
