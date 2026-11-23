@@ -144,6 +144,47 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 
 /* Kommentarer */
 .comments{display:flex;flex-direction:column;max-height:calc(100vh - 120px);position:sticky;top:76px}
+.ptabs{display:flex;border-bottom:1px solid var(--line)}
+.ptabs button{flex:1;background:none;border:0;border-bottom:2px solid transparent;padding:12px 10px;color:var(--muted);font-weight:600;font-size:14px}
+.ptabs button.on{color:var(--text);border-bottom-color:var(--accent)}
+.ptabs button .pill{margin-left:6px;font-size:11px}
+.notes-pane{display:flex;flex-direction:column;gap:8px;padding:14px 16px;flex:1;min-height:0}
+.notes-pane textarea{flex:1;min-height:320px;resize:vertical;font:14px/1.6 Inter,sans-serif}
+.notes-pane .nst{font-size:12px;color:var(--muted);display:flex;gap:8px}
+/* Svar */
+.c .replies{grid-column:1/-1;margin:6px 0 0 18px;padding-left:12px;border-left:2px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.r{font-size:14px}
+.r .who{font-size:12px;font-weight:600}
+.r .who span{font-weight:400;color:var(--muted);margin-left:6px}
+.r .body{white-space:pre-wrap;word-break:break-word}
+.r .tools{display:flex;gap:6px;margin-top:3px}
+.r .tools button{background:none;border:0;color:var(--muted);font-size:11px;padding:0}
+.r .tools button:hover{color:#FF8A8A}
+.replybox{grid-column:1/-1;margin:6px 0 0 18px;display:flex;flex-direction:column;gap:6px}
+.replybox textarea{min-height:52px;resize:vertical;font-size:14px}
+.replybox .row{display:flex;gap:6px;justify-content:flex-end}
+/* Områder */
+.ts.range{white-space:nowrap}
+.rmark{position:absolute;top:-14px;height:6px;border-radius:3px;background:#F97316;opacity:.85;cursor:pointer;z-index:1}
+.rmark.studio{background:#7C3AED}.rmark.res{opacity:.3}
+.selreg{position:absolute;top:0;bottom:0;background:rgba(217,70,239,.18);border-left:1px solid #D946EF;border-right:1px solid #D946EF;pointer-events:none;z-index:1}
+.selreg.active{background:rgba(249,115,22,.14);border-color:#F97316}
+.rangelbl{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
+.rangelbl b{color:#F0ABFC;font-variant-numeric:tabular-nums}
+.rangelbl button{background:none;border:0;color:var(--muted);padding:0 2px;font-size:13px}
+/* Deling */
+.share-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.share-modal{max-width:520px}
+.share-modal .field{display:flex;flex-direction:column;gap:6px;margin:14px 0}
+.share-modal label.l{font-size:13px;font-weight:600}
+.share-modal .hint{font-size:12px;color:var(--muted)}
+.share-modal input[type=date]{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;color:var(--text);color-scheme:dark}
+/* Lagring */
+.storage{display:flex;align-items:center;gap:12px;font-size:13px;color:var(--muted);margin:-6px 0 16px;flex-wrap:wrap}
+.storage .bar{flex:0 1 240px;height:8px;background:#2A2440;border-radius:5px;overflow:hidden}
+.storage .bar i{display:block;height:100%;background:#D946EF;border-radius:0 4px 4px 0}
+.storage.warn .bar i{background:#FFB547}.storage.full .bar i{background:#FF6B6B}
+.storage b{color:var(--text);font-weight:600}
 @media (max-width:920px){.comments{position:static;max-height:none}}
 .chead{padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
 .chead h3{font-size:16px}
@@ -269,6 +310,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     <button class="btn primary">Opprett</button>
     <button type="button" class="btn ghost" id="newCancel">Avbryt</button>
   </form>
+  <div class="storage hidden" id="storage"></div>
   <div class="crumbs hidden" id="crumbs"><button type="button" class="btn" id="crumbAll">← Alle artister</button></div>
   <div class="projects" id="folders"></div>
   <div class="projects" id="projects"></div>
@@ -283,10 +325,12 @@ table.stream td.n{font-variant-numeric:tabular-nums}
         <select id="pArtistSel" class="sel sm hidden" title="Flytt til annen artist"></select></div>
       <h1 id="pTitle"></h1>
       <div class="muted" id="pClient"></div>
+      <div class="share-chips" id="shareChips"></div>
     </div>
     <div class="spacer"></div>
     <div class="actions" id="studioActions">
       <button class="btn primary" id="copyLink">🔗 Kopier kundelenke</button>
+      <button class="btn" id="shareBtn">🔒 Deling</button>
       <button class="btn" id="renameBtn">Endre navn</button>
       <button class="btn" id="archiveBtn">Arkiver</button>
       <button class="btn danger" id="newLinkBtn" title="Gjør gammel lenke ugyldig">Ny lenke</button>
@@ -317,7 +361,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
             <span class="muted" style="font-size:13px">Volum</span>
             <input type="range" class="vol" id="vol" min="0" max="1" step="0.01" value="1">
           </div>
-          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
+          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe · <b>dra</b> i bølgeformen for å kommentere et område</div>
         </div>
         <div class="vhead hidden" id="vhead"><h3>Versjoner</h3><span class="muted" id="vcount"></span></div>
         <div class="vlist" id="vlist"></div>
@@ -334,9 +378,16 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     </div>
 
     <aside class="card comments">
-      <div class="chead">
-        <h3>Kommentarer</h3><span class="pill" id="cCount">0</span>
-        <div class="filters">
+      <div class="ptabs" id="ptabs">
+        <button type="button" data-t="c" class="on">Kommentarer <span class="pill" id="cCount">0</span></button>
+        <button type="button" data-t="n">📝 Notater <span class="pill hidden" id="nDot">•</span></button>
+      </div>
+      <div id="notesPane" class="notes-pane hidden">
+        <textarea id="notesText" placeholder="Tekst, akkorder, huskeliste, referanser… Både studio og kunden kan skrive her, og alt lagres automatisk." maxlength="50000"></textarea>
+        <div class="nst"><span id="notesStatus"></span></div>
+      </div>
+      <div class="chead" id="cHead">
+        <div class="filters" style="margin-left:0">
           <div class="seg" id="cFilter">
             <button type="button" data-f="all">Alle <span></span></button>
             <button type="button" data-f="open">Åpne <span></span></button>
@@ -345,12 +396,14 @@ table.stream td.n{font-variant-numeric:tabular-nums}
         </div>
       </div>
       <form class="compose" id="compose">
+        <!-- områdekommentar: dra i bølgeformen -->
         <div id="nameRow" class="hidden" style="margin-bottom:8px">
           <input type="text" id="authorName" placeholder="Navnet ditt" maxlength="80">
         </div>
         <textarea id="cText" placeholder="Skriv en kommentar…" maxlength="4000"></textarea>
         <div class="row">
-          <label class="stamp"><input type="checkbox" id="useStamp" checked> ved <b id="stampT">0:00</b></label>
+          <label class="stamp" id="stampLbl"><input type="checkbox" id="useStamp" checked> ved <b id="stampT">0:00</b></label>
+          <span class="rangelbl hidden" id="rangeLbl">fra <b id="rangeA"></b> til <b id="rangeB"></b> <button type="button" id="rangeClear" title="Fjern området">✕</button></span>
           <div class="spacer"></div>
           <button class="btn primary sm" id="cSend">Send</button>
         </div>
@@ -374,6 +427,46 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     </div>
     <div id="anaBody"></div>
   </div>
+</div>
+
+<section id="vPw" class="center hidden">
+  <form class="card login" id="pwForm">
+    <h2>🔒 Passordbeskyttet</h2>
+    <div class="muted">Skriv passordet du fikk fra Phat Lab for å åpne prosjektet.</div>
+    <input type="password" id="pwInput" autocomplete="current-password" placeholder="Passord" style="letter-spacing:normal;font-size:16px" required>
+    <button class="btn primary" style="width:100%;justify-content:center">Åpne</button>
+    <div id="pwErr" class="muted" style="margin-top:10px;color:#ff9b9b"></div>
+  </form>
+</section>
+
+<div id="shareModal" class="ana-back hidden" role="dialog" aria-modal="true" aria-labelledby="shareTitle">
+  <form class="ana card share-modal" id="shareForm">
+    <div class="ana-head"><h2 id="shareTitle">🔒 Deling og sikkerhet</h2><div class="spacer"></div><button type="button" class="btn sm ghost" id="shareClose">✕</button></div>
+    <div class="field">
+      <label class="l" for="sharePw">Passord på kundelenken</label>
+      <input type="text" id="sharePw" autocomplete="off" placeholder="Ingen passord">
+      <label class="stamp hidden" id="sharePwClearRow"><input type="checkbox" id="sharePwClear"> Fjern passordet</label>
+      <div class="hint" id="sharePwHint">La feltet stå tomt for ingen passord. Send passordet til kunden på SMS, ikke sammen med lenken.</div>
+    </div>
+    <div class="field">
+      <label class="l" for="shareExp">Lenken utløper</label>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <input type="date" id="shareExp">
+        <button type="button" class="btn sm" data-days="7">7 dager</button>
+        <button type="button" class="btn sm" data-days="30">30 dager</button>
+        <button type="button" class="btn sm ghost" id="shareExpClear">Aldri</button>
+      </div>
+      <div class="hint">Etter denne datoen virker ikke lenken lenger. Du kan alltid forlenge den her.</div>
+    </div>
+    <div class="field">
+      <label class="stamp" style="font-size:14px;color:var(--text)"><input type="checkbox" id="shareDl"> Kunden kan laste ned filene</label>
+      <div class="hint">Slå av for musikk som ikke er sluppet. Kunden kan fortsatt lytte i nettleseren.</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:6px">
+      <button type="button" class="btn ghost" id="shareCancel">Avbryt</button>
+      <button class="btn primary">Lagre</button>
+    </div>
+  </form>
 </div>
 
 <section id="vError" class="center hidden">
@@ -400,9 +493,13 @@ const params = new URLSearchParams(location.search);
 const SHARE = params.get("s");
 const isClient = !!SHARE;
 let token = isClient ? null : store.get(TOKEN_KEY);
+const PW_KEY = "plr_pw_" + (SHARE || "");
+let sharePw = (() => { try { return sessionStorage.getItem(PW_KEY); } catch { return null; } })();
+async function sha256hex(s) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join(""); }
 let sb = makeClient();
 function makeClient() {
-  return supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-prod-token": token } : {} } });
+  const hd = {}; if (token) hd["x-prod-token"] = token; if (isClient && sharePw) hd["x-share-pw"] = sharePw;
+  return supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: hd } });
 }
 async function rpc(name, args) {
   const { data, error } = await sb.rpc(name, args || {});
@@ -412,6 +509,7 @@ async function rpc(name, args) {
 async function fn(action, payload) {
   const headers = { "content-type": "application/json", apikey: SB_KEY };
   if (token) headers["x-prod-token"] = token;
+  if (isClient && sharePw) headers["x-share-pw"] = sharePw;
   const body = Object.assign({ action }, payload, SHARE ? { share: SHARE } : {});
   const r = await fetch(FN_URL, { method: "POST", headers, body: JSON.stringify(body) });
   const j = await r.json().catch(() => ({}));
@@ -421,7 +519,7 @@ async function fn(action, payload) {
 
 if (isClient) { const hl = document.getElementById("homeLink"); hl.removeAttribute("href"); hl.style.cursor = "default"; }
 function show(view) {
-  for (const v of ["vLogin", "vList", "vProject", "vError"]) $(v).classList.toggle("hidden", v !== view);
+  for (const v of ["vLogin", "vList", "vProject", "vError", "vPw"]) $(v).classList.toggle("hidden", v !== view);
   const inArtist = view === "vList" && curArtist != null && !$("search").value.trim();
   $("backBtn").classList.toggle("hidden", isClient || !(view === "vProject" || inArtist));
   if (view === "vList") $("backBtn").textContent = "← Alle artister";
@@ -455,8 +553,20 @@ let allProjects = [], artists = [], curArtist = null; // curArtist: null = mappe
 async function loadList() {
   show("vList"); stopPoll(); pause();
   curArtist = new URLSearchParams(location.search).get("a");
-  try { [allProjects, artists] = await Promise.all([rpc("rv_list_projects"), rpc("rv_list_artists")]); renderList(); }
+  try { [allProjects, artists] = await Promise.all([rpc("rv_list_projects"), rpc("rv_list_artists")]); renderList(); renderStorage(); }
   catch (e) { if (token) toast(e.message, true); }
+}
+const STORAGE_LIMIT = 1024 * 1024 * 1024; // Supabase gratisplan: 1 GB fillagring
+async function renderStorage() {
+  try {
+    const u = await rpc("rv_storage_usage"); const pct = Math.min(100, u.bytes / STORAGE_LIMIT * 100);
+    const box = $("storage"); box.replaceChildren(); box.classList.remove("hidden", "warn", "full");
+    if (pct >= 95) box.classList.add("full"); else if (pct >= 80) box.classList.add("warn");
+    const bar = el("div", "bar"), fill = el("i"); fill.style.width = pct.toFixed(1) + "%"; bar.appendChild(fill);
+    const txt = el("span"); txt.append("Lagring: ", el("b", null, fmtSize(u.bytes) || "0 MB"), " av 1 GB brukt (" + pct.toFixed(0) + " %) · " + u.files + (u.files === 1 ? " fil" : " filer"));
+    box.append(bar, txt);
+    if (pct >= 80) box.appendChild(el("span", null, pct >= 95 ? "⛔ Nesten fullt – slett gamle versjoner eller oppgrader Supabase" : "⚠ Begynner å bli fullt"));
+  } catch {}
 }
 function artistById(id) { return artists.find(a => a.id === id) || null; }
 function fillArtistSelect(sel, selected, withNew) {
@@ -507,7 +617,7 @@ function renderList() {
     if (q && p.artist_name) { const a = el("div", "muted"); const d = el("span", "adot"); if (p.artist_color) d.style.background = p.artist_color; a.append(d, document.createTextNode(p.artist_name)); c.appendChild(a); }
     if (p.client) c.appendChild(el("div", "muted", p.client));
     const m = el("div", "meta");
-    m.appendChild(el("span", "pill", p.versions + (p.versions === 1 ? " versjon" : " versjoner")));
+    m.appendChild(el("span", "pill", p.versions + (p.versions === 1 ? " versjon" : " versjoner") + (+p.bytes ? " · " + fmtSize(+p.bytes) : "")));
     if (p.open_comments) m.appendChild(el("span", "pill new", p.open_comments + " åpne kommentarer"));
     if (p.archived) m.appendChild(el("span", "pill", "Arkivert"));
     m.appendChild(el("span", null, ago(p.updated_at)));
@@ -553,7 +663,9 @@ async function loadProject(pid, keepVersion) {
     project = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid });
     if (!project) throw new Error("Fant ikke prosjektet");
   } catch (e) {
-    if (isClient) { $("errText").textContent = e.message; show("vError"); } else if (token) { toast(e.message, true); loadList(); }
+    if (isClient && /PASSORD_KREVES/.test(e.message)) {
+      show("vPw"); $("pwErr").textContent = sharePw ? "Feil passord, prøv igjen." : ""; setTimeout(() => $("pwInput").focus(), 50);
+    } else if (isClient) { $("errText").textContent = e.message; show("vError"); } else if (token) { toast(e.message, true); loadList(); }
     return;
   }
   show("vProject");
@@ -581,6 +693,9 @@ function renderProject() {
   $("nameRow").classList.toggle("hidden", !isClient);
   if (isClient) $("authorName").value = $("authorName").value || store.get(NAME_KEY) || "";
   $("archiveBtn").textContent = project.archived ? "Gjenopprett" : "Arkiver";
+  renderShareChips(); renderNotes();
+  const canDl = !isClient || project.allow_download !== false;
+  $("downloadBtn").classList.toggle("hidden", !canDl);
 
   $("vtabs").classList.add("hidden");
   renderVersionList();
@@ -600,7 +715,7 @@ function renderProject() {
     if (loadedVid !== v.id) { loadMedia(v, pendingCarry); }
     pendingCarry = null;
   } else { pause(); loadedVid = null; }
-  renderComments(); drawWave();
+  renderComments(); drawWave(); renderTabs();
 }
 
 function wire(m) {
@@ -675,7 +790,7 @@ function renderVersionList() {
     bA.onclick = (e) => { e.stopPropagation(); if (v.id !== curVid) switchVersion(v.id); $("anaBtn").click(); };
     const bD = el("button", null, "⬇"); bD.title = "Last ned";
     bD.onclick = async (e) => { e.stopPropagation(); try { const { url } = await fn("play_url", { version_id: v.id, project_id: project.id, download: true }); location.href = url; } catch (err) { toast(err.message, true); } };
-    acts.append(bA, bD);
+    acts.appendChild(bA); if (!isClient || project.allow_download !== false) acts.appendChild(bD);
     if (!isClient) {
       const bR = el("button", null, "✏️"); bR.title = "Gi nytt navn";
       bR.onclick = (e) => { e.stopPropagation(); startRename(v, fEl); };
@@ -762,7 +877,7 @@ function drawWave() {
   if (d) { ctx.fillStyle = "#fff"; ctx.fillRect(Math.round(prog * W), 0, 1.5, H); }
 }
 function xToTime(clientX) { const r = wbox.getBoundingClientRect(); return Math.max(0, Math.min(1, (clientX - r.left) / r.width)) * duration(); }
-wbox.addEventListener("click", (e) => { if (e.target.classList.contains("marker")) return; seek(xToTime(e.clientX)); });
+wbox.addEventListener("click", (e) => { if (suppressClick || e.target.classList.contains("marker") || e.target.classList.contains("rmark")) return; seek(xToTime(e.clientX)); });
 let hoverLabel = null;
 wbox.addEventListener("mousemove", (e) => {
   const r = wbox.getBoundingClientRect(); hoverX = e.clientX - r.left;
@@ -774,15 +889,18 @@ wbox.addEventListener("mouseleave", () => { hoverX = null; hoverLabel?.remove();
 window.addEventListener("resize", () => { drawWave(); renderMarkers(); });
 
 function renderMarkers() {
-  wbox.querySelectorAll(".marker,.tip").forEach(m => m.remove());
-  const v = curVersion(), d = duration(); if (!v || !d) return;
+  wbox.querySelectorAll(".marker,.tip,.rmark").forEach(m => m.remove());
+  const v = curVersion(), d = duration(); drawSel(); if (!v || !d) return;
   for (const c of v.comments) {
-    if (c.t == null) continue;
+    if (c.t == null || c.parent_id) continue;
     if (!hideResolvedFn(c)) continue;
+    if (c.t_end != null) { const r = el("div", "rmark" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""));
+      r.style.left = (c.t / d * 100) + "%"; r.style.width = (Math.max(0.3, (c.t_end - c.t) / d * 100)) + "%"; r.title = c.author + " · " + fmt(c.t) + "–" + fmt(c.t_end);
+      r.onclick = (e) => { e.stopPropagation(); jumpTo(c); }; wbox.appendChild(r); }
     const m = el("div", "marker" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""), (c.author || "?").trim().charAt(0).toUpperCase());
     m.style.left = (Math.min(1, c.t / d) * 100) + "%";
     m.onclick = (e) => { e.stopPropagation(); jumpTo(c); };
-    m.onmouseenter = () => { const t = el("div", "tip"); t.appendChild(el("b", null, c.author + " · " + fmt(c.t))); t.appendChild(el("div", null, c.body.length > 140 ? c.body.slice(0, 140) + "…" : c.body)); t.style.left = m.style.left; wbox.appendChild(t); m._tip = t; };
+    m.onmouseenter = () => { const t = el("div", "tip"); t.appendChild(el("b", null, c.author + " · " + fmt(c.t) + (c.t_end != null ? "–" + fmt(c.t_end) : ""))); t.appendChild(el("div", null, c.body.length > 140 ? c.body.slice(0, 140) + "…" : c.body)); t.style.left = m.style.left; wbox.appendChild(t); m._tip = t; };
     m.onmouseleave = () => m._tip?.remove();
     wbox.appendChild(m);
   }
@@ -790,14 +908,15 @@ function renderMarkers() {
 
 /* ---------- Kommentarer ---------- */
 function jumpTo(c) {
-  activeCid = c.id; if (c.t != null) seek(+c.t);
+  activeCid = c.id; if (c.t != null) seek(+c.t); drawSel();
   renderComments();
   document.querySelector('.c[data-id="' + c.id + '"]')?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 function renderComments() {
   const v = curVersion(), list = $("clist"); list.replaceChildren();
-  const cs = v ? v.comments.filter(hideResolvedFn) : [];
-  const all = v ? v.comments.filter(c => !isApprovalNote(c)) : [], nOpen = all.filter(c => !c.resolved).length;
+  const top = v ? v.comments.filter(c => !c.parent_id) : [];
+  const cs = top.filter(hideResolvedFn);
+  const all = top.filter(c => !isApprovalNote(c)), nOpen = all.filter(c => !c.resolved).length;
   $("cCount").textContent = nOpen;
   const counts = { all: all.length, open: nOpen, res: all.length - nOpen };
   $("cFilter").querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.f === cFilter); b.querySelector("span").textContent = counts[b.dataset.f] || ""; });
@@ -807,7 +926,7 @@ function renderComments() {
   for (const c of cs) {
     const row = el("div", "c" + (c.resolved ? " res" : "") + (c.id === activeCid ? " active" : ""));
     row.dataset.id = c.id;
-    row.appendChild(el("span", "ts" + (c.t == null ? " gen" : ""), c.t == null ? "Generelt" : fmt(+c.t)));
+    row.appendChild(el("span", "ts" + (c.t == null ? " gen" : "") + (c.t_end != null ? " range" : ""), c.t == null ? "Generelt" : fmt(+c.t) + (c.t_end != null ? "–" + fmt(+c.t_end) : "")));
     const who = el("div", "who", c.author);
     if (c.from_studio) who.appendChild(el("span", "badge", "Phat Lab"));
     if (c.resolved) who.appendChild(el("span", "solved", "✓ Løst"));
@@ -815,6 +934,10 @@ function renderComments() {
     row.appendChild(who);
     row.appendChild(el("div", "body", c.body));
     const tools = el("div", "tools");
+    const kids = v.comments.filter(x => x.parent_id === c.id).sort((a, b) => a.created_at < b.created_at ? -1 : 1);
+    const rp = el("button", null, "↩ Svar" + (kids.length ? " (" + kids.length + ")" : ""));
+    rp.onclick = (e) => { e.stopPropagation(); replyTo = replyTo === c.id ? null : c.id; renderComments(); if (replyTo) setTimeout(() => document.querySelector(".replybox textarea")?.focus(), 0); };
+    tools.appendChild(rp);
     const rb = el("button", c.resolved ? "unsolve" : "solve", c.resolved ? "↺ Merk som uløst" : "✓ Merk som løst");
     rb.onclick = async (e) => { e.stopPropagation(); rb.disabled = true;
       try { if (isClient) await rpc("rv_share_set_resolved", { token: SHARE, cid: c.id, val: !c.resolved }); else await rpc("rv_set_resolved", { cid: c.id, val: !c.resolved });
@@ -828,6 +951,33 @@ function renderComments() {
       tools.appendChild(db);
     }
     row.appendChild(tools);
+    if (kids.length) {
+      const rw = el("div", "replies");
+      for (const k of kids) {
+        const r = el("div", "r"); const w = el("div", "who", k.author);
+        if (k.from_studio) w.appendChild(el("span", "badge", "Phat Lab"));
+        w.appendChild(el("span", null, ago(k.created_at))); r.append(w, el("div", "body", k.body));
+        if (!isClient || myIds.has(k.id)) { const tt = el("div", "tools"), kd = el("button", null, "🗑 Slett");
+          kd.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(kd)) return;
+            try { await fn("delete_comment", { comment_id: k.id, project_id: project.id, key: isClient ? ownerKey() : undefined }); v.comments = v.comments.filter(x => x.id !== k.id); renderComments(); } catch (err) { toast(err.message, true); } };
+          tt.appendChild(kd); r.appendChild(tt); }
+        r.onclick = (e) => e.stopPropagation();
+        rw.appendChild(r);
+      }
+      row.appendChild(rw);
+    }
+    if (replyTo === c.id) {
+      const box = el("form", "replybox"); const ta = el("textarea"); ta.placeholder = "Skriv et svar…"; ta.maxLength = 4000;
+      const rr = el("div", "row"); const cancel = el("button", "btn sm ghost", "Avbryt"); cancel.type = "button"; const send = el("button", "btn sm primary", "Svar");
+      rr.append(cancel, send); box.append(ta, rr);
+      box.onclick = (e) => e.stopPropagation();
+      cancel.onclick = () => { replyTo = null; renderComments(); };
+      ta.onkeydown = (e) => { e.stopPropagation(); if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) box.requestSubmit(); if (e.key === "Escape") { replyTo = null; renderComments(); } };
+      box.onsubmit = async (e) => { e.preventDefault(); const body = ta.value.trim(); if (!body) return; send.disabled = true;
+        try { await sendComment({ body, t: null, t_end: null, parent: c.id }); replyTo = null; await loadProject(project.id, true); }
+        catch (err) { if (err.message !== "navn") toast(err.message, true); send.disabled = false; } };
+      row.appendChild(box);
+    }
     row.onclick = () => jumpTo(c);
     list.appendChild(row);
   }
@@ -847,23 +997,153 @@ $("compose").addEventListener("submit", async (e) => {
   e.preventDefault();
   const body = $("cText").value.trim(); if (!body) return;
   const v = curVersion(); if (!v) return;
-  const t = $("useStamp").checked ? Math.round(media.currentTime * 100) / 100 : null;
-  let author = "Phat Lab";
-  if (isClient) {
-    author = $("authorName").value.trim();
-    if (!author) { $("authorName").focus(); toast("Skriv navnet ditt først", true); return; }
-    store.set(NAME_KEY, author);
-  }
+  const useT = $("useStamp").checked;
+  const t = !useT ? null : pendingRange ? pendingRange[0] : Math.round(media.currentTime * 100) / 100;
+  const t_end = useT && pendingRange ? pendingRange[1] : null;
   $("cSend").disabled = true;
   try {
-    if (isClient) { const cid = await rpc("rv_share_comment", { token: SHARE, vid: v.id, t, body, author, key: ownerKey() }); if (cid) addMine(cid); }
-    else await rpc("rv_studio_comment", { vid: v.id, t, body, author });
-    $("cText").value = "";
+    await sendComment({ body, t, t_end, parent: null });
+    $("cText").value = ""; setRange(null);
     await loadProject(project.id, true);
-  } catch (err) { toast(err.message, true); }
+  } catch (err) { if (err.message !== "navn") toast(err.message, true); }
   $("cSend").disabled = false;
 });
 
+
+/* ---------- Passord (kunde) ---------- */
+$("pwForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  sharePw = await sha256hex($("pwInput").value);
+  try { sessionStorage.setItem(PW_KEY, sharePw); } catch {}
+  sb = makeClient(); $("pwInput").value = "";
+  loadProject(null);
+});
+
+/* ---------- Faner: kommentarer / notater ---------- */
+let ptab = "c";
+$("ptabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ptab = b.dataset.t; renderTabs(); });
+function renderTabs() {
+  $("ptabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === ptab));
+  const n = ptab === "n";
+  $("notesPane").classList.toggle("hidden", !n);
+  for (const id of ["cHead", "compose", "clist"]) $(id).classList.toggle("hidden", n || (id === "compose" && !curVersion() && !isClient));
+  if (!n && !curVersion()) { $("cText").classList.add("hidden"); }
+  if (n) $("nDot").classList.add("hidden");
+}
+let notesTimer = null, notesSaving = false, notesSeen = null;
+function renderNotes() {
+  const ta = $("notesText");
+  if (document.activeElement !== ta && !notesTimer) ta.value = project.notes || "";
+  $("notesStatus").textContent = project.notes_updated_at ? "Sist lagret " + ago(project.notes_updated_at) : (project.notes ? "" : "Ingen notater ennå");
+  if (notesSeen !== null && project.notes_updated_at !== notesSeen && ptab !== "n") $("nDot").classList.remove("hidden");
+  notesSeen = project.notes_updated_at;
+}
+$("notesText").addEventListener("input", () => {
+  $("notesStatus").textContent = "Skriver…";
+  clearTimeout(notesTimer);
+  notesTimer = setTimeout(saveNotes, 900);
+});
+$("notesText").addEventListener("blur", () => { if (notesTimer) { clearTimeout(notesTimer); saveNotes(); } });
+async function saveNotes() {
+  notesTimer = null; if (notesSaving) { notesTimer = setTimeout(saveNotes, 400); return; }
+  notesSaving = true; $("notesStatus").textContent = "Lagrer…";
+  const txt = $("notesText").value;
+  try {
+    const ts = isClient ? await rpc("rv_share_set_notes", { token: SHARE, new_notes: txt }) : await rpc("rv_set_notes", { pid: project.id, new_notes: txt });
+    project.notes = txt; project.notes_updated_at = ts; notesSeen = ts;
+    $("notesStatus").textContent = "Lagret ✓";
+  } catch (e) { $("notesStatus").textContent = "Kunne ikke lagre: " + e.message; }
+  notesSaving = false;
+}
+
+/* ---------- Deling og sikkerhet (studio) ---------- */
+function renderShareChips() {
+  const box = $("shareChips"); box.replaceChildren();
+  if (isClient) return;
+  if (project.has_password) box.appendChild(el("span", "pill", "🔒 Passord"));
+  if (project.share_expires_at) { const exp = new Date(project.share_expires_at), past = exp < new Date();
+    box.appendChild(el("span", "pill" + (past ? " new" : ""), (past ? "⛔ Utløpt " : "⏳ Utløper ") + exp.toLocaleDateString("nb-NO", { day: "numeric", month: "short" }))); }
+  if (project.allow_download === false) box.appendChild(el("span", "pill", "⬇ Nedlasting av"));
+}
+const ymdLocal = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+function openShare() {
+  $("sharePw").value = "";
+  $("sharePw").placeholder = project.has_password ? "Passord er satt – skriv nytt for å endre" : "Ingen passord";
+  $("sharePwClearRow").classList.toggle("hidden", !project.has_password); $("sharePwClear").checked = false;
+  $("shareExp").value = project.share_expires_at ? ymdLocal(new Date(project.share_expires_at)) : "";
+  $("shareExp").min = ymdLocal(new Date());
+  $("shareDl").checked = project.allow_download !== false;
+  $("shareModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
+}
+function closeShare() { $("shareModal").classList.add("hidden"); document.body.style.overflow = ""; }
+$("shareBtn").onclick = openShare;
+$("shareClose").onclick = closeShare; $("shareCancel").onclick = closeShare;
+$("shareModal").addEventListener("click", (e) => { if (e.target === $("shareModal")) closeShare(); });
+$("shareModal").querySelectorAll("[data-days]").forEach(b => b.onclick = () => { const d = new Date(); d.setDate(d.getDate() + +b.dataset.days); $("shareExp").value = ymdLocal(d); });
+$("shareExpClear").onclick = () => { $("shareExp").value = ""; };
+$("shareForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const expVal = $("shareExp").value;
+  const expires = expVal ? new Date(expVal + "T23:59:59").toISOString() : null;
+  const pw = $("sharePw").value;
+  try {
+    await rpc("rv_set_share_settings", { pid: project.id, new_password: pw || null, clear_password: $("sharePwClear").checked, expires, allow_dl: $("shareDl").checked });
+    closeShare(); await loadProject(project.id, true);
+    toast("Delingsinnstillinger lagret" + (pw ? ". Husk å gi kunden passordet." : ""));
+  } catch (err) { toast(err.message, true); }
+});
+
+/* ---------- Områdekommentarer: dra i bølgeformen ---------- */
+let pendingRange = null, drag = null, suppressClick = false;
+function setRange(r) {
+  pendingRange = r;
+  $("rangeLbl").classList.toggle("hidden", !r); $("stampLbl").classList.toggle("hidden", !!r);
+  if (r) { $("rangeA").textContent = fmt(r[0]); $("rangeB").textContent = fmt(r[1]); }
+  drawSel();
+}
+$("rangeClear").onclick = () => setRange(null);
+function selEl(cls) { let s = wbox.querySelector(".selreg." + cls); if (!s) { s = el("div", "selreg " + cls); wbox.appendChild(s); } return s; }
+function drawSel() {
+  const d = duration();
+  const put = (cls, r) => { const s = selEl(cls); if (!r || !d) { s.style.display = "none"; return; } s.style.display = ""; s.style.left = (r[0] / d * 100) + "%"; s.style.width = (Math.max(0.2, (r[1] - r[0]) / d * 100)) + "%"; };
+  put("pending", drag && drag.moved ? [Math.min(drag.t0, drag.t1), Math.max(drag.t0, drag.t1)] : pendingRange);
+  const v = curVersion(), ac = v && v.comments.find(c => c.id === activeCid && c.t_end != null);
+  put("active", ac ? [+ac.t, +ac.t_end] : null);
+}
+wbox.addEventListener("pointerdown", (e) => {
+  if (e.button !== 0 || e.target.classList.contains("marker") || e.target.classList.contains("rmark")) return;
+  drag = { x0: e.clientX, t0: xToTime(e.clientX), t1: xToTime(e.clientX), moved: false };
+});
+window.addEventListener("pointermove", (e) => {
+  if (!drag) return;
+  if (Math.abs(e.clientX - drag.x0) > 5) drag.moved = true;
+  drag.t1 = xToTime(e.clientX);
+  if (drag.moved) drawSel();
+});
+window.addEventListener("pointerup", () => {
+  if (!drag) return;
+  const dr = drag; drag = null;
+  if (dr.moved) {
+    suppressClick = true; setTimeout(() => { suppressClick = false; }, 50);
+    const a = Math.min(dr.t0, dr.t1), b = Math.max(dr.t0, dr.t1);
+    if (b - a >= 0.5) { setRange([Math.round(a * 100) / 100, Math.round(b * 100) / 100]); seek(a); ptab = "c"; renderTabs(); $("useStamp").checked = true; $("cText").focus(); }
+    else drawSel();
+  }
+});
+
+/* ---------- Svar på kommentarer ---------- */
+let replyTo = null;
+async function sendComment({ body, t, t_end, parent }) {
+  const v = curVersion(); if (!v) return;
+  let author = "Phat Lab";
+  if (isClient) {
+    author = $("authorName").value.trim();
+    if (!author) { $("authorName").focus(); toast("Skriv navnet ditt først (øverst i kommentarfeltet)", true); throw new Error("navn"); }
+    store.set(NAME_KEY, author);
+  }
+  if (isClient) { const cid = await rpc("rv_share_comment2", { token: SHARE, vid: v.id, t, t_end, body, author, key: ownerKey(), parent }); if (cid) addMine(cid); }
+  else await rpc("rv_studio_comment2", { vid: v.id, t, t_end, body, author, parent });
+}
 
 /* ---------- Studio-handlinger ---------- */
 $("renameFileBtn").onclick = () => { const v = curVersion(); if (v) startRename(v, $("fileName")); };
@@ -1387,6 +1667,7 @@ $("anaCopy").onclick = async () => {
 /* ---------- Tastatur ---------- */
 document.addEventListener("keydown", (e) => {
   if (!$("anaModal").classList.contains("hidden")) { if (e.key === "Escape") closeAna(); return; }
+  if (!$("shareModal").classList.contains("hidden")) { if (e.key === "Escape") closeShare(); return; }
   if ($("vProject").classList.contains("hidden")) return;
   const tag = (e.target.tagName || "").toLowerCase();
   if (tag === "input" || tag === "textarea" || e.target.isContentEditable) return;
@@ -1398,7 +1679,8 @@ document.addEventListener("keydown", (e) => {
 
 /* ---------- Automatisk oppdatering ---------- */
 function startPoll() { stopPoll(); pollT = setInterval(async () => {
-  if (document.hidden || !project || uploading || renaming || document.activeElement === $("cText")) return;
+  if (document.hidden || !project || uploading || renaming || drag || replyTo || notesTimer || notesSaving
+      || document.activeElement === $("cText") || document.activeElement === $("notesText")) return;
   try {
     const p = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id });
     if (p && JSON.stringify(p) !== JSON.stringify(project)) { project = p; if (!project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null; renderProject(); }
