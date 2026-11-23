@@ -67,6 +67,22 @@ input:focus,textarea:focus{border-color:var(--accent)}
 .empty{padding:40px;text-align:center;color:var(--muted)}
 .newform{padding:16px;display:flex;gap:10px;flex-wrap:wrap;margin-bottom:18px}
 .newform input{flex:1;min-width:180px}
+.sel{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--text);min-width:180px}
+.sel.sm{padding:3px 8px;font-size:12px;min-width:0;border-radius:7px}
+.folder{padding:16px;cursor:pointer;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden;transition:.15s}
+.folder:hover{border-color:#4A3F66;transform:translateY(-1px)}
+.folder::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--fc,#8B7FB8)}
+.folder .ftop{display:flex;align-items:center;gap:10px}
+.folder .ficon{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:color-mix(in srgb,var(--fc,#8B7FB8) 18%,transparent);color:var(--fc,#8B7FB8);font:700 16px "Space Grotesk",Inter}
+.folder h3{font-size:17px}
+.folder .meta{display:flex;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.folder.none{--fc:#8B7FB8}
+.folder.add{border-style:dashed;align-items:center;justify-content:center;color:var(--muted);min-height:110px}
+.crumbs{margin:-6px 0 14px;font-size:14px}
+.crumbs a{color:var(--muted);text-decoration:none}.crumbs a:hover{color:var(--text)}
+.pcrumb{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:4px}
+.adot{width:10px;height:10px;border-radius:50%;background:#8B7FB8;flex:none}
+.proj .adot{display:inline-block;margin-right:6px}
 
 /* Prosjekt */
 .phead{display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;margin:6px 0 16px}
@@ -141,16 +157,27 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .c{padding:10px 10px;border-radius:10px;display:grid;grid-template-columns:auto 1fr;gap:4px 10px;cursor:pointer}
 .c:hover{background:var(--panel2)}
 .c.active{background:rgba(217,70,239,.12)}
-.c.res .body{opacity:.5;text-decoration:line-through}
+.c.res .body{opacity:.55}
+.c.res .ts{opacity:.55}
 .c .ts{font-size:12px;font-weight:600;color:var(--accent2);background:rgba(217,70,239,.14);padding:2px 7px;border-radius:6px;height:fit-content;font-variant-numeric:tabular-nums}
 .c .ts.gen{color:var(--muted);background:var(--panel2)}
 .c .who{font-size:13px;font-weight:600}
 .c .who span{font-weight:400;color:var(--muted);margin-left:6px}
 .c .badge{font-size:11px;color:#b6a5ff;margin-left:6px}
 .c .body{grid-column:2;white-space:pre-wrap;word-break:break-word;font-size:14px}
-.c .tools{grid-column:2;display:flex;gap:6px;margin-top:2px}
-.c .tools button{background:none;border:0;color:var(--muted);font-size:12px;padding:0}
-.c .tools button:hover{color:var(--text)}
+.c .tools{grid-column:2;display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.c .tools button{background:#241F35;border:1px solid var(--line);border-radius:7px;color:var(--muted);font-size:12px;padding:3px 9px;line-height:1.4}
+.c .tools button:hover{color:var(--text);border-color:#4A3F66}
+.c .tools button.solve{color:#3DDC97;border-color:rgba(61,220,151,.35)}
+.c .tools button.solve:hover{background:rgba(61,220,151,.1)}
+.c .tools button.unsolve{color:var(--muted)}
+.c .tools button.del:hover{color:#FF8A8A;border-color:rgba(255,107,107,.45)}
+.c .solved{font-size:11px;font-weight:600;color:#3DDC97;background:rgba(61,220,151,.12);border-radius:6px;padding:1px 7px;margin-left:6px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{background:none;border:0;padding:4px 9px;font-size:12px;color:var(--muted)}
+.seg button span{opacity:.7;margin-left:2px}
+.seg button.on{background:var(--accent);color:#fff}
+.seg button+button{border-left:1px solid var(--line)}
 .filters{display:flex;gap:6px;margin-left:auto}
 /* Master-analyse */
 .ana-back{position:fixed;inset:0;background:rgba(5,4,10,.72);backdrop-filter:blur(4px);z-index:40;overflow:auto;padding:30px 16px}
@@ -211,7 +238,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
 <header class="top">
   <div class="brand"><a id="homeLink" href="./"><div class="dot">PL</div>Phat Lab</a> <small>Review</small></div>
   <div class="spacer"></div>
-  <button class="btn ghost sm hidden" id="backBtn">← Alle prosjekter</button>
+  <button class="btn ghost sm hidden" id="backBtn">← Tilbake</button>
   <button class="btn ghost sm hidden" id="logoutBtn">Logg ut</button>
 </header>
 
@@ -229,17 +256,21 @@ table.stream td.n{font-variant-numeric:tabular-nums}
 <!-- Prosjektliste (studio) -->
 <section id="vList" class="wrap hidden">
   <div class="listhead">
-    <h1>Prosjekter</h1>
+    <h1 id="listTitle">Artister</h1>
     <div class="spacer"></div>
     <input type="text" class="search" id="search" placeholder="Søk…">
     <button class="btn primary" id="newBtn">+ Nytt prosjekt</button>
   </div>
   <form class="card newform hidden" id="newForm">
     <input type="text" id="newTitle" placeholder="Låt / prosjektnavn" required>
-    <input type="text" id="newClient" placeholder="Artist / kunde (valgfritt)">
+    <select id="newArtist" class="sel"></select>
+    <input type="text" id="newArtistName" class="hidden" placeholder="Navn på ny artist">
+    <input type="text" id="newClient" placeholder="Notat (valgfritt)">
     <button class="btn primary">Opprett</button>
     <button type="button" class="btn ghost" id="newCancel">Avbryt</button>
   </form>
+  <div class="crumbs hidden" id="crumbs"><a href="#" id="crumbAll">← Alle artister</a></div>
+  <div class="projects" id="folders"></div>
   <div class="projects" id="projects"></div>
   <label class="stamp" style="margin-top:16px"><input type="checkbox" id="showArchived"> Vis arkiverte</label>
 </section>
@@ -248,6 +279,8 @@ table.stream td.n{font-variant-numeric:tabular-nums}
 <section id="vProject" class="wrap hidden">
   <div class="phead">
     <div>
+      <div class="pcrumb" id="pArtistWrap"><span class="adot" id="pArtistDot"></span><span id="pArtistName"></span>
+        <select id="pArtistSel" class="sel sm hidden" title="Flytt til annen artist"></select></div>
       <h1 id="pTitle"></h1>
       <div class="muted" id="pClient"></div>
     </div>
@@ -305,7 +338,11 @@ table.stream td.n{font-variant-numeric:tabular-nums}
       <div class="chead">
         <h3>Kommentarer</h3><span class="pill" id="cCount">0</span>
         <div class="filters">
-          <button class="btn sm ghost" id="fltOpen" title="Skjul løste">Åpne</button>
+          <div class="seg" id="cFilter">
+            <button type="button" data-f="all">Alle <span></span></button>
+            <button type="button" data-f="open">Åpne <span></span></button>
+            <button type="button" data-f="res">Løste <span></span></button>
+          </div>
         </div>
       </div>
       <form class="compose" id="compose">
@@ -406,24 +443,63 @@ function logout() {
   token = null; store.set(TOKEN_KEY, null); sb = makeClient(); stopPoll(); history.replaceState(null, "", location.pathname); show("vLogin");
 }
 $("logoutBtn").onclick = logout;
-$("backBtn").onclick = () => { history.pushState(null, "", location.pathname); route(); };
+$("backBtn").onclick = () => { const a = project ? (project.artist_id || "") : null; history.pushState(null, "", a == null ? location.pathname : "?a=" + encodeURIComponent(a)); route(); };
 window.addEventListener("popstate", route);
 
 /* ---------- Studio: prosjektliste ---------- */
-let allProjects = [];
+let allProjects = [], artists = [], curArtist = null; // curArtist: null = mappeoversikt, "" = uten artist, ellers artist-id
 async function loadList() {
   show("vList"); stopPoll(); pause();
-  try { allProjects = await rpc("rv_list_projects"); renderList(); }
+  curArtist = new URLSearchParams(location.search).get("a");
+  try { [allProjects, artists] = await Promise.all([rpc("rv_list_projects"), rpc("rv_list_artists")]); renderList(); }
   catch (e) { if (token) toast(e.message, true); }
 }
+function artistById(id) { return artists.find(a => a.id === id) || null; }
+function fillArtistSelect(sel, selected, withNew) {
+  sel.replaceChildren();
+  const o0 = el("option", null, "Uten artist"); o0.value = ""; sel.appendChild(o0);
+  for (const a of artists) { const o = el("option", null, a.name); o.value = a.id; sel.appendChild(o); }
+  if (withNew) { const on = el("option", null, "+ Ny artist…"); on.value = "__new"; sel.appendChild(on); }
+  sel.value = selected || "";
+}
+function goArtist(id) { history.pushState(null, "", id == null ? location.pathname : "?a=" + encodeURIComponent(id)); route(); }
 function renderList() {
   const q = $("search").value.trim().toLowerCase(), showArch = $("showArchived").checked;
-  const box = $("projects"); box.replaceChildren();
-  const list = allProjects.filter(p => (showArch || !p.archived) && (!q || (p.title + " " + (p.client || "")).toLowerCase().includes(q)));
-  if (!list.length) { box.appendChild(el("div", "empty card", allProjects.length ? "Ingen treff." : "Ingen prosjekter ennå. Trykk «+ Nytt prosjekt» for å starte.")); return; }
+  const box = $("projects"), fbox = $("folders"); box.replaceChildren(); fbox.replaceChildren();
+  const visible = allProjects.filter(p => showArch || !p.archived);
+  const inFolders = curArtist == null && !q;
+  $("crumbs").classList.toggle("hidden", curArtist == null || !!q);
+  const ca = curArtist ? artistById(curArtist) : null;
+  $("listTitle").textContent = q ? "Søk" : curArtist == null ? "Artister" : curArtist === "" ? "Uten artist" : (ca ? ca.name : "Artist");
+  if (inFolders) {
+    // Mappeoversikt: én mappe per artist (samme liste som produksjonskalenderen)
+    const groups = [...artists.map(a => ({ id: a.id, name: a.name, color: a.color })), { id: "", name: "Uten artist", color: null }];
+    for (const g of groups) {
+      const ps = visible.filter(p => (p.artist_id || "") === g.id);
+      if (g.id === "" && !ps.length) continue;
+      const f = el("div", "card folder" + (g.id ? "" : " none"));
+      if (g.color) f.style.setProperty("--fc", g.color);
+      const top = el("div", "ftop"); top.append(el("div", "ficon", g.id ? g.name.trim().charAt(0).toUpperCase() : "?"), el("h3", null, g.name)); f.appendChild(top);
+      const m = el("div", "meta");
+      m.appendChild(el("span", "pill", ps.length + (ps.length === 1 ? " prosjekt" : " prosjekter")));
+      const open = ps.reduce((s, p) => s + (+p.open_comments || 0), 0); if (open) m.appendChild(el("span", "pill new", open + " åpne kommentarer"));
+      const last = ps.reduce((a, p) => !a || p.updated_at > a ? p.updated_at : a, null); if (last) m.appendChild(el("span", null, ago(last)));
+      f.appendChild(m);
+      f.onclick = () => goArtist(g.id);
+      fbox.appendChild(f);
+    }
+    const add = el("div", "card folder add", "+ Ny artist");
+    add.onclick = async () => { const name = prompt("Navn på artisten:"); if (!name || !name.trim()) return;
+      try { const a = await rpc("rv_create_artist", { artist_name: name }); toast("Artisten «" + a.name + "» er lagt til"); loadList(); } catch (err) { toast(err.message, true); } };
+    fbox.appendChild(add);
+    return;
+  }
+  const list = visible.filter(p => q ? (p.title + " " + (p.client || "") + " " + (p.artist_name || "")).toLowerCase().includes(q) : (p.artist_id || "") === curArtist);
+  if (!list.length) { box.appendChild(el("div", "empty card", q ? "Ingen treff." : "Ingen prosjekter her ennå. Trykk «+ Nytt prosjekt» for å starte.")); return; }
   for (const p of list) {
     const c = el("div", "card proj");
     c.appendChild(el("h3", null, p.title));
+    if (q && p.artist_name) { const a = el("div", "muted"); const d = el("span", "adot"); if (p.artist_color) d.style.background = p.artist_color; a.append(d, document.createTextNode(p.artist_name)); c.appendChild(a); }
     if (p.client) c.appendChild(el("div", "muted", p.client));
     const m = el("div", "meta");
     m.appendChild(el("span", "pill", p.versions + (p.versions === 1 ? " versjon" : " versjoner")));
@@ -437,19 +513,31 @@ function renderList() {
   }
 }
 $("search").oninput = renderList; $("showArchived").onchange = renderList;
-$("newBtn").onclick = () => { $("newForm").classList.remove("hidden"); $("newTitle").focus(); };
+$("crumbAll").onclick = (e) => { e.preventDefault(); goArtist(null); };
+$("newBtn").onclick = () => { fillArtistSelect($("newArtist"), curArtist || "", true); $("newArtistName").classList.add("hidden"); $("newForm").classList.remove("hidden"); $("newTitle").focus(); };
+$("newArtist").onchange = () => { const isNew = $("newArtist").value === "__new"; $("newArtistName").classList.toggle("hidden", !isNew); if (isNew) $("newArtistName").focus(); };
 $("newCancel").onclick = () => $("newForm").classList.add("hidden");
 $("newForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   try {
+    let aid = $("newArtist").value;
+    if (aid === "__new") { const nm = $("newArtistName").value.trim(); if (!nm) { $("newArtistName").focus(); toast("Skriv navnet på artisten", true); return; }
+      aid = (await rpc("rv_create_artist", { artist_name: nm })).id; }
     const id = await rpc("rv_create_project", { title: $("newTitle").value, client: $("newClient").value });
+    if (aid) await rpc("rv_set_project_artist", { pid: id, aid });
     $("newForm").reset(); $("newForm").classList.add("hidden");
     history.pushState(null, "", "?p=" + id); route();
   } catch (err) { toast(err.message, true); }
 });
 
 /* ---------- Prosjektvisning ---------- */
-let project = null, curVid = null, hideResolved = false, pollT = null, activeCid = null;
+let project = null, curVid = null, cFilter = "all", pollT = null, activeCid = null;
+const hideResolvedFn = (c) => cFilter === "open" ? !c.resolved : cFilter === "res" ? c.resolved : true;
+// Kundens egne kommentarer: en hemmelig nøkkel per nettleser + liste over egne kommentar-id-er
+const KEY_KEY = "phatlab_review_key", MINE_KEY = "phatlab_review_mine";
+function ownerKey() { let k = store.get(KEY_KEY); if (!k) { k = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); store.set(KEY_KEY, k); } return k; }
+function mine() { try { return new Set(JSON.parse(store.get(MINE_KEY) || "[]")); } catch { return new Set(); } }
+function addMine(id) { const s = mine(); s.add(id); store.set(MINE_KEY, JSON.stringify([...s].slice(-500))); }
 const video = $("video");
 // Hver lydversjon får sitt eget forhåndslastede Audio-element, så A/B-bytte mellom versjoner er umiddelbart
 const audios = new Map(), urls = new Map();
@@ -474,6 +562,15 @@ function curVersion() { return project?.versions.find(v => v.id === curVid) || n
 function renderProject() {
   $("pTitle").textContent = project.title;
   $("pClient").textContent = project.client || "";
+  $("pArtistWrap").classList.toggle("hidden", isClient && !project.artist_name);
+  $("pArtistName").textContent = project.artist_name || "Uten artist";
+  $("pArtistDot").style.background = project.artist_color || "#8B7FB8";
+  if (!isClient) {
+    const sel = $("pArtistSel"); sel.classList.remove("hidden");
+    if (!artists.length) rpc("rv_list_artists").then(a => { artists = a; fillArtistSelect(sel, project.artist_id, false); }).catch(() => {});
+    else fillArtistSelect(sel, project.artist_id, false);
+    $("pArtistName").classList.add("hidden"); $("pArtistDot").classList.toggle("hidden", false);
+  }
   $("studioActions").classList.toggle("hidden", isClient);
   $("nameRow").classList.toggle("hidden", !isClient);
   if (isClient) $("authorName").value = $("authorName").value || store.get(NAME_KEY) || "";
@@ -657,7 +754,7 @@ function renderMarkers() {
   const v = curVersion(), d = duration(); if (!v || !d) return;
   for (const c of v.comments) {
     if (c.t == null) continue;
-    if (hideResolved && c.resolved) continue;
+    if (!hideResolvedFn(c)) continue;
     const m = el("div", "marker" + (c.from_studio ? " studio" : "") + (c.resolved ? " res" : ""), (c.author || "?").trim().charAt(0).toUpperCase());
     m.style.left = (Math.min(1, c.t / d) * 100) + "%";
     m.onclick = (e) => { e.stopPropagation(); jumpTo(c); };
@@ -675,28 +772,38 @@ function jumpTo(c) {
 }
 function renderComments() {
   const v = curVersion(), list = $("clist"); list.replaceChildren();
-  const cs = v ? v.comments.filter(c => !(hideResolved && c.resolved)) : [];
-  $("cCount").textContent = v ? v.comments.filter(c => !c.resolved).length : 0;
-  $("fltOpen").classList.toggle("primary", hideResolved);
+  const cs = v ? v.comments.filter(hideResolvedFn) : [];
+  const all = v ? v.comments : [], nOpen = all.filter(c => !c.resolved).length;
+  $("cCount").textContent = nOpen;
+  const counts = { all: all.length, open: nOpen, res: all.length - nOpen };
+  $("cFilter").querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.f === cFilter); b.querySelector("span").textContent = counts[b.dataset.f] || ""; });
   if (!v) { list.appendChild(el("div", "empty", "Last opp en fil for å kommentere.")); renderMarkers(); return; }
-  if (!cs.length) list.appendChild(el("div", "empty", "Ingen kommentarer ennå. Spill av, pause der du vil si noe, og skriv."));
+  if (!cs.length) list.appendChild(el("div", "empty", all.length ? (cFilter === "open" ? "Ingen åpne kommentarer – alt er løst 🎉" : "Ingen løste kommentarer ennå.") : "Ingen kommentarer ennå. Spill av, pause der du vil si noe, og skriv."));
+  const myIds = isClient ? mine() : null;
   for (const c of cs) {
     const row = el("div", "c" + (c.resolved ? " res" : "") + (c.id === activeCid ? " active" : ""));
     row.dataset.id = c.id;
     row.appendChild(el("span", "ts" + (c.t == null ? " gen" : ""), c.t == null ? "Generelt" : fmt(+c.t)));
     const who = el("div", "who", c.author);
     if (c.from_studio) who.appendChild(el("span", "badge", "Phat Lab"));
+    if (c.resolved) who.appendChild(el("span", "solved", "✓ Løst"));
     who.appendChild(el("span", null, ago(c.created_at)));
     row.appendChild(who);
     row.appendChild(el("div", "body", c.body));
-    if (!isClient) {
-      const tools = el("div", "tools");
-      const rb = el("button", null, c.resolved ? "Gjenåpne" : "✓ Løst");
-      rb.onclick = async (e) => { e.stopPropagation(); try { await rpc("rv_set_resolved", { cid: c.id, val: !c.resolved }); c.resolved = !c.resolved; renderComments(); } catch (err) { toast(err.message, true); } };
-      const db = el("button", null, "Slett");
-      db.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(db)) return; try { await fn("delete_comment", { comment_id: c.id }); v.comments = v.comments.filter(x => x.id !== c.id); renderComments(); } catch (err) { toast(err.message, true); } };
-      tools.append(rb, db); row.appendChild(tools);
+    const tools = el("div", "tools");
+    const rb = el("button", c.resolved ? "unsolve" : "solve", c.resolved ? "↺ Merk som uløst" : "✓ Merk som løst");
+    rb.onclick = async (e) => { e.stopPropagation(); rb.disabled = true;
+      try { if (isClient) await rpc("rv_share_set_resolved", { token: SHARE, cid: c.id, val: !c.resolved }); else await rpc("rv_set_resolved", { cid: c.id, val: !c.resolved });
+        c.resolved = !c.resolved; renderComments(); } catch (err) { toast(err.message, true); rb.disabled = false; } };
+    tools.appendChild(rb);
+    if (!isClient || myIds.has(c.id)) {
+      const db = el("button", "del", "🗑 Slett");
+      db.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(db)) return;
+        try { await fn("delete_comment", { comment_id: c.id, project_id: project.id, key: isClient ? ownerKey() : undefined }); v.comments = v.comments.filter(x => x.id !== c.id); renderComments(); toast("Kommentaren er slettet"); }
+        catch (err) { toast(err.message, true); } };
+      tools.appendChild(db);
     }
+    row.appendChild(tools);
     row.onclick = () => jumpTo(c);
     list.appendChild(row);
   }
@@ -709,7 +816,7 @@ function confirmInline(btn) {
   setTimeout(() => { delete btn.dataset.armed; btn.textContent = old; }, 3000);
   return false;
 }
-$("fltOpen").onclick = () => { hideResolved = !hideResolved; renderComments(); };
+$("cFilter").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; cFilter = b.dataset.f; renderComments(); });
 $("cText").addEventListener("focus", () => { if ($("useStamp").checked) $("stampT").textContent = fmt(media.currentTime); });
 $("cText").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) $("compose").requestSubmit(); });
 $("compose").addEventListener("submit", async (e) => {
@@ -725,7 +832,7 @@ $("compose").addEventListener("submit", async (e) => {
   }
   $("cSend").disabled = true;
   try {
-    if (isClient) await rpc("rv_share_comment", { token: SHARE, vid: v.id, t, body, author });
+    if (isClient) { const cid = await rpc("rv_share_comment", { token: SHARE, vid: v.id, t, body, author, key: ownerKey() }); if (cid) addMine(cid); }
     else await rpc("rv_studio_comment", { vid: v.id, t, body, author });
     $("cText").value = "";
     await loadProject(project.id, true);
@@ -743,6 +850,13 @@ $("approveBtn").onclick = async () => {
 };
 
 /* ---------- Studio-handlinger ---------- */
+$("pArtistSel").onchange = async () => {
+  const aid = $("pArtistSel").value;
+  try { await rpc("rv_set_project_artist", { pid: project.id, aid }); const a = artistById(aid);
+    project.artist_id = aid || null; project.artist_name = a ? a.name : null; project.artist_color = a ? a.color : null;
+    $("pArtistDot").style.background = project.artist_color || "#8B7FB8"; toast(a ? "Flyttet til " + a.name : "Flyttet til «Uten artist»"); }
+  catch (e) { toast(e.message, true); }
+};
 $("copyLink").onclick = async () => {
   const url = location.origin + location.pathname + "?s=" + project.share_token;
   try { await navigator.clipboard.writeText(url); toast("Kundelenke kopiert"); }
