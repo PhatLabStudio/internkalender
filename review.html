@@ -140,7 +140,6 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .vrow .acts button:hover{border-color:var(--line);color:var(--text);background:#2A2440}
 @media (max-width:600px){.vrow{grid-template-columns:auto 1fr auto}.vrow .lvl{display:none}}
 @media (prefers-reduced-motion:reduce){.vrow .eq i{animation:none;height:8px}}
-.approved{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.35);color:var(--ok);margin-bottom:14px;font-size:14px}
 
 /* Kommentarer */
 .comments{display:flex;flex-direction:column;max-height:calc(100vh - 120px);position:sticky;top:76px}
@@ -298,7 +297,6 @@ table.stream td.n{font-variant-numeric:tabular-nums}
     <div>
       <div class="card player">
         <div class="vtabs" id="vtabs"></div>
-        <div id="approvedBox" class="approved hidden"></div>
         <div id="noFile" class="empty hidden">Ingen filer ennå. Last opp en miks under for å komme i gang.</div>
         <div id="playerUI" class="hidden">
           <div class="fileline">
@@ -307,7 +305,6 @@ table.stream td.n{font-variant-numeric:tabular-nums}
             <div class="spacer"></div>
             <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">📊 Master-analyse</button>
             <button class="btn sm" id="downloadBtn">⬇ Last ned</button>
-            <button class="btn sm ok hidden" id="approveBtn">✓ Godkjenn versjon</button>
           </div>
           <video id="video" class="hidden" playsinline></video>
           <div class="wavebox" id="wavebox"><canvas id="wave"></canvas></div>
@@ -510,7 +507,6 @@ function renderList() {
     const m = el("div", "meta");
     m.appendChild(el("span", "pill", p.versions + (p.versions === 1 ? " versjon" : " versjoner")));
     if (p.open_comments) m.appendChild(el("span", "pill new", p.open_comments + " åpne kommentarer"));
-    if (p.approved) m.appendChild(el("span", "pill ok", "✓ Godkjent"));
     if (p.archived) m.appendChild(el("span", "pill", "Arkivert"));
     m.appendChild(el("span", null, ago(p.updated_at)));
     c.appendChild(m);
@@ -538,7 +534,8 @@ $("newForm").addEventListener("submit", async (e) => {
 
 /* ---------- Prosjektvisning ---------- */
 let project = null, curVid = null, cFilter = "all", pollT = null, activeCid = null;
-const hideResolvedFn = (c) => cFilter === "open" ? !c.resolved : cFilter === "res" ? c.resolved : true;
+const isApprovalNote = (c) => c.t == null && (c.body === "✅ Godkjente denne versjonen" || c.body === "Trakk tilbake godkjenningen");
+const hideResolvedFn = (c) => !isApprovalNote(c) && (cFilter === "open" ? !c.resolved : cFilter === "res" ? c.resolved : true);
 // Kundens egne kommentarer: en hemmelig nøkkel per nettleser + liste over egne kommentar-id-er
 const KEY_KEY = "phatlab_review_key", MINE_KEY = "phatlab_review_mine";
 function ownerKey() { let k = store.get(KEY_KEY); if (!k) { k = Array.from(crypto.getRandomValues(new Uint8Array(16)), b => b.toString(16).padStart(2, "0")).join(""); store.set(KEY_KEY, k); } return k; }
@@ -596,12 +593,6 @@ function renderProject() {
   if (v) {
     $("fileName").textContent = v.file_name;
     $("fileMeta").textContent = ["v" + v.version, fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
-    const ab = $("approvedBox");
-    ab.classList.toggle("hidden", !v.approved_at);
-    if (v.approved_at) ab.textContent = "✓ Godkjent av " + (v.approved_by || "kunde") + " " + ago(v.approved_at);
-    $("approveBtn").classList.toggle("hidden", !isClient);
-    $("approveBtn").textContent = v.approved_at ? "Angre godkjenning" : "✓ Godkjenn versjon";
-    $("approveBtn").className = "btn sm " + (v.approved_at ? "" : "ok");
     preloadAll();
     if (loadedVid !== v.id) { loadMedia(v, pendingCarry); }
     pendingCarry = null;
@@ -649,9 +640,8 @@ function renderVersionList() {
     const m = el("div", "m");
     m.appendChild(el("span", null, (v.uploaded_by || "") + " · " + new Date(v.created_at).toLocaleDateString("nb-NO", { day: "numeric", month: "short", year: "numeric" })));
     if (v.duration) m.appendChild(el("span", null, fmt(+v.duration)));
-    const open = v.comments.filter(c => !c.resolved && !/^(✅|Trakk)/.test(c.body)).length;
+    const open = v.comments.filter(c => !c.resolved && !isApprovalNote(c)).length;
     if (open) m.appendChild(el("span", null, "💬 " + open));
-    if (v.approved_at) m.appendChild(el("span", "okk", "✓ Godkjent av " + (v.approved_by || "kunde")));
     vn.appendChild(m);
     const lvl = el("div", "lvl");
     if (v.lufs != null) { lvl.appendChild(el("b", null, f1(+v.lufs) + " LUFS")); if (v.true_peak != null) { lvl.appendChild(el("br")); lvl.appendChild(document.createTextNode(f1(+v.true_peak) + " dBTP")); } }
@@ -780,7 +770,7 @@ function jumpTo(c) {
 function renderComments() {
   const v = curVersion(), list = $("clist"); list.replaceChildren();
   const cs = v ? v.comments.filter(hideResolvedFn) : [];
-  const all = v ? v.comments : [], nOpen = all.filter(c => !c.resolved).length;
+  const all = v ? v.comments.filter(c => !isApprovalNote(c)) : [], nOpen = all.filter(c => !c.resolved).length;
   $("cCount").textContent = nOpen;
   const counts = { all: all.length, open: nOpen, res: all.length - nOpen };
   $("cFilter").querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.f === cFilter); b.querySelector("span").textContent = counts[b.dataset.f] || ""; });
@@ -847,14 +837,6 @@ $("compose").addEventListener("submit", async (e) => {
   $("cSend").disabled = false;
 });
 
-/* ---------- Godkjenning (kunde) ---------- */
-$("approveBtn").onclick = async () => {
-  const v = curVersion(); const author = $("authorName").value.trim();
-  if (!author) { $("authorName").focus(); toast("Skriv navnet ditt først", true); return; }
-  store.set(NAME_KEY, author);
-  try { await rpc("rv_share_approve", { token: SHARE, vid: v.id, author, approve: !v.approved_at }); await loadProject(project.id, true); toast(v.approved_at ? "Godkjenning trukket tilbake" : "Takk! Versjonen er godkjent 🎉"); }
-  catch (e) { toast(e.message, true); }
-};
 
 /* ---------- Studio-handlinger ---------- */
 $("pArtistSel").onchange = async () => {
