@@ -11,13 +11,13 @@
   --surface:  #1c1c1c;
   --surf2:    #2a2a2a;
   --border:   #3a3a3a;
-  --orange:   #e8682a;
-  --orange-d: #c45520;
+  --orange:   #7c3aed;
+  --orange-d: #6d28d9;
   --text:     #f0f0f0;
   --muted:    #888;
   --dim:      #555;
-  --ra:       #e8682a;
-  --ra-bg:    rgba(232,104,42,.18);
+  --ra:       #7c3aed;
+  --ra-bg:    rgba(124,58,237,.22);
   --rb:       #4a9edd;
   --rb-bg:    rgba(74,158,221,.18);
   --green:    #3db87a;
@@ -29,7 +29,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 /* TOP BAR */
 .top-bar { display:flex; align-items:center; justify-content:space-between; margin-bottom:1.25rem; flex-wrap:wrap; gap:10px; }
 .logo { font-size:18px; font-weight:600; letter-spacing:-.02em; }
-.logo .accent { color:var(--orange); }
+.logo .accent { color:#a78bfa; }
 .logo .sub { color:var(--muted); font-weight:400; font-size:14px; margin-left:4px; }
 .nav { display:flex; align-items:center; gap:6px; }
 .nav-btn { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:6px 14px; font-size:18px; cursor:pointer; color:var(--text); line-height:1; }
@@ -48,7 +48,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .help-content .h-row { display:flex; align-items:flex-start; gap:10px; margin-bottom:0.85rem; }
 .help-content .h-ico { flex-shrink:0; font-size:16px; line-height:1.5; }
 .help-content .h-swatch { flex-shrink:0; width:14px; height:14px; border-radius:4px; margin-top:3px; }
-.help-content strong { color:var(--orange); }
+.help-content strong { color:#c4b5fd; }
 
 /* FILTER BUTTONS */
 .room-legend { display:flex; gap:8px; margin-bottom:1.25rem; }
@@ -78,7 +78,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   max-width:100%; font-weight:500; line-height:1.5; border-left:2px solid transparent;
 }
-.pill-a { background:var(--ra-bg); color:#f0a070; border-left-color:var(--ra); }
+.pill-a { background:var(--ra-bg); color:#c4b5fd; border-left-color:var(--ra); }
 .pill-b { background:var(--rb-bg); color:#7dbfe8; border-left-color:var(--rb); }
 .tip {
   display:none; position:absolute; bottom:calc(100% + 6px); left:0; z-index:200;
@@ -107,7 +107,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 .modal-head { display:flex; align-items:center; gap:10px; margin-bottom:1.25rem; }
 .modal h3 { font-size:16px; font-weight:600; color:var(--text); margin:0; }
 .modal-badge { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; padding:3px 9px; border-radius:20px; }
-.badge-new { background:var(--ra-bg); color:var(--orange); }
+.badge-new { background:var(--ra-bg); color:#c4b5fd; }
 .booked-box {
   background:var(--green-bg); border:1px solid rgba(61,184,122,.35);
   border-radius:10px; padding:10px 12px; margin-bottom:1.25rem;
@@ -136,7 +136,7 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
   background:var(--surf2); color:var(--muted); font-size:14px; font-weight:500;
   cursor:pointer; text-align:center; transition:all .15s;
 }
-.rpbtn-a-sel { border-color:var(--ra); background:var(--ra-bg); color:var(--ra); }
+.rpbtn-a-sel { border-color:var(--ra); background:var(--ra-bg); color:#c4b5fd; }
 .rpbtn-b-sel { border-color:var(--rb); background:var(--rb-bg); color:var(--rb); }
 .conflict-msg { font-size:13px; color:#f08080; background:rgba(200,60,60,.15); border:1px solid rgba(200,60,60,.3); border-radius:10px; padding:10px 12px; margin-bottom:1rem; display:none; }
 .confirm-box { background:rgba(200,60,60,.12); border:1px solid rgba(200,60,60,.3); border-radius:10px; padding:12px; margin-bottom:1rem; display:none; }
