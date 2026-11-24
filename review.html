@@ -146,7 +146,12 @@ canvas#wave{width:100%;height:100%;display:block;border-radius:12px}
 .vrow .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
 .vrow .acts button{background:none;border:1px solid var(--line);border-radius:8px;padding:4px 8px;color:var(--muted);font-size:12px}
 .vrow .acts button:hover{border-color:var(--line);color:var(--text);background:#2A2440}
-@media (max-width:600px){.vrow{grid-template-columns:auto 1fr auto}.vrow .lvl{display:none}}
+@media (max-width:600px){
+  .vrow{grid-template-columns:auto minmax(0,1fr);gap:8px 10px;padding:10px}
+  .vrow .lvl{display:none}
+  .vrow .acts{grid-column:1/-1;justify-content:flex-start}
+  .vrow .vn .f{white-space:normal;word-break:break-word}
+}
 @media (prefers-reduced-motion:reduce){.vrow .eq i{animation:none;height:8px}}
 
 /* Kommentarer */
@@ -297,6 +302,20 @@ table.stream td.n{font-variant-numeric:tabular-nums}
   .band .track{background:#E7E1F3}
 }
 .kbd{font-size:12px;color:var(--muted);margin-top:10px}
+/* Mobil: hold alt innenfor skjermbredden */
+html,body{overflow-x:hidden}
+.grid>*{min-width:0}
+.player,.comments{min-width:0;max-width:100%}
+@media (max-width:600px){
+  .wrap{padding:14px}
+  .player{padding:14px}
+  .vol,.volwrap{display:none}
+  .fileline .spacer{display:none}
+  .compose .row{flex-wrap:wrap}
+  .ptabs button{padding:12px 6px}
+}
+/* Tastatursnarveier gir ingen mening på berøringsskjerm */
+@media (hover:none),(max-width:600px){.kbd{display:none}}
 .kbd kbd{background:var(--panel2);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-family:inherit}
 </style>
 </head>
@@ -388,7 +407,7 @@ table.stream td.n{font-variant-numeric:tabular-nums}
             <button class="play" id="playBtn" aria-label="Spill av"></button>
             <div class="time"><b id="tCur">0:00</b> / <span id="tDur">0:00</span></div>
             <div class="spacer"></div>
-            <span class="muted" style="font-size:13px">Volum</span>
+            <span class="muted volwrap" style="font-size:13px">Volum</span>
             <input type="range" class="vol" id="vol" min="0" max="1" step="0.01" value="1">
           </div>
           <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
