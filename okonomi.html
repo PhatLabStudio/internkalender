@@ -381,7 +381,7 @@ table.pay .act{white-space:nowrap;text-align:right}
   <form class="lockbox" id="lockForm" autocomplete="off">
     <div class="logo" style="font-size:13px">PHAT <span>LAB</span></div>
     <h2>Øko<em>nomi</em></h2>
-    <p class="muted" style="margin:0;font-size:14px">Skriv inn PIN-koden for å åpne.</p>
+    <p class="muted" style="margin:0;font-size:14px">Økonomi har egen PIN-kode. Skriv den inn for å åpne.</p>
     <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode">
     <div class="lockerr" id="lockErr" role="alert"></div>
     <button class="btn primary" style="justify-content:center">Lås opp</button>
@@ -411,11 +411,11 @@ const INT_TXT = { 1: "per måned", 3: "per kvartal", 6: "per halvår", 12: "per 
 const STATUS_TXT = { forventet: "Forventet", fakturert: "Fakturert", betalt: "Betalt" };
 function toast(msg, err) { const t = el("div", "toast" + (err ? " err" : ""), msg); document.body.appendChild(t); setTimeout(() => t.remove(), err ? 5000 : 2400); }
 
-/* ---------- Innlogging (samme PIN som produksjonskalenderen) ---------- */
-let token = (() => { try { return localStorage.getItem("plk-token"); } catch { return null; } })();
-const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-prod-token": token } : {} } });
+/* ---------- Innlogging (egen økonomi-PIN) ---------- */
+let token = (() => { try { return localStorage.getItem("plk-fin-token"); } catch { return null; } })();
+const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-fin-token": token } : {} } });
 let sb = client();
-function setToken(t) { token = t; try { t ? localStorage.setItem("plk-token", t) : localStorage.removeItem("plk-token"); } catch {} sb = client(); }
+function setToken(t) { token = t; try { t ? localStorage.setItem("plk-fin-token", t) : localStorage.removeItem("plk-fin-token"); } catch {} sb = client(); }
 async function rpc(name, args) {
   const { data, error } = await sb.rpc(name, args || {});
   if (error) { if (/Ikke innlogget/.test(error.message)) { lock(); } throw new Error(error.message); }
@@ -424,20 +424,20 @@ async function rpc(name, args) {
 function lock(msg) { $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || ""; setTimeout(() => $("pin").focus(), 30); }
 $("lockForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("lockErr").textContent = "";
-  const { data, error } = await client().rpc("prod_login", { pin: $("pin").value });
+  const { data, error } = await client().rpc("fin_login", { pin: $("pin").value });
   if (error) { $("lockErr").textContent = error.message; return; }
   if (!data) { $("lockErr").textContent = "Feil PIN"; $("pin").select(); return; }
   setToken(data); $("pin").value = ""; $("lock").classList.add("hidden"); load();
 });
-$("logout").onclick = async () => { try { await sb.rpc("prod_logout"); } catch {} setToken(null); lock(); };
+$("logout").onclick = async () => { try { await sb.rpc("fin_logout"); } catch {} setToken(null); lock(); };
 
 /* ---------- Data ---------- */
 let entries = [], recurring = [], artists = [];
 async function load() {
   if (!token) { lock(); return; }
   try {
-    const [d, a] = await Promise.all([rpc("pay_list"), rpc("rv_list_artists").catch(() => [])]);
-    entries = d.entries || []; recurring = d.recurring || []; artists = a || [];
+    const d = await rpc("pay_list");
+    entries = d.entries || []; recurring = d.recurring || []; artists = d.artists || [];
     $("lock").classList.add("hidden");
     renderAll();
   } catch (e) { if (token) toast(e.message, true); }
