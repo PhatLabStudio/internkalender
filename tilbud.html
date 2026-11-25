@@ -72,6 +72,7 @@ td .d{font-size:13px;color:var(--muted);margin-top:2px}
 .banner b{display:block;font:700 17px var(--f-display);margin-bottom:2px}
 .tools{max-width:820px;margin:0 auto 40px;display:flex;justify-content:space-between;gap:10px;padding:0 6px;font-size:13px;color:var(--muted);flex-wrap:wrap}
 .tools button{background:none;border:0;color:#6D28D9;font-weight:600;cursor:pointer;padding:0;font-size:13px}
+.mob{display:none}
 .msg{max-width:520px;margin:12vh auto;text-align:center;padding:0 20px;color:var(--muted)}
 .msg h1{color:var(--ink)}
 @media (max-width:600px){
@@ -79,6 +80,7 @@ td .d{font-size:13px;color:var(--muted);margin-top:2px}
   .parties{grid-template-columns:1fr;gap:14px}
   .meta{text-align:left}
   th.hide,td.hide{display:none}
+  .mob{display:block}
 }
 @media print{
   body{background:#fff}
@@ -204,8 +206,9 @@ function render(o) {
   for (const l of o.lines || []) {
     const tr = el("tr");
     const td = el("td"); td.appendChild(el("div", null, l.name));
-    const sub = [l.description, +l.discount ? "Rabatt " + nf(l.discount) + " %" : "", (+l.qty !== 1) ? String(+l.qty).replace(".", ",") + " " + (UNIT[l.unit] || l.unit || "") + " × " + kr(l.price) : ""].filter(Boolean);
+    const sub = [l.description, +l.discount ? "Rabatt " + nf(l.discount) + " %" : ""].filter(Boolean);
     if (sub.length) td.appendChild(el("div", "d", sub.join(" · ")));
+    if (+l.qty !== 1) td.appendChild(el("div", "d mob", String(+l.qty).replace(".", ",") + " " + (UNIT[l.unit] || l.unit || "") + " × " + kr(l.price)));
     const q = el("td", "n hide", String(+l.qty).replace(".", ",") + " " + (UNIT[l.unit] || l.unit || ""));
     const p = el("td", "n hide", kr(l.price));
     const s = el("td", "n", kr(lineSum(l))); s.style.fontWeight = "600";
