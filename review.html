@@ -327,7 +327,6 @@ html,body{overflow-x:hidden}
   <button class="btn sm sub hidden" id="newArtistBtn">+ Ny artist</button>
   <button class="btn sm sub hidden" id="newBtn">+ Nytt prosjekt</button>
   <a class="btn ghost sm hidden" id="navProd" href="produksjon.html" style="text-decoration:none;color:var(--text)">Produksjonskalender &#8594;</a>
-  <a class="btn ghost sm hidden" id="navOko" href="okonomi.html" style="text-decoration:none;color:var(--text)">Økonomi &#8594;</a>
   <button class="btn ghost sm hidden" id="logoutBtn">Logg ut</button>
 </header>
 
@@ -573,7 +572,6 @@ function show(view) {
   if (view === "vList") $("backBtn").textContent = "← Alle artister";
   $("logoutBtn").classList.toggle("hidden", isClient || view === "vLogin");
   $("navProd").classList.toggle("hidden", isClient || view === "vLogin");
-  $("navOko").classList.toggle("hidden", isClient || view === "vLogin");
   $("newBtn").classList.toggle("hidden", isClient || view !== "vList");
   $("newArtistBtn").classList.toggle("hidden", isClient || view !== "vList");
 }
