@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>Phat Lab admin</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
@@ -52,14 +53,25 @@ h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;back
 .card:hover .go i{transform:translateX(3px)}
 footer{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion: reduce){.card,.go i{transition:none}}
+.lock{position:fixed;inset:0;z-index:100;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:24px}
+.lockbox{width:min(380px,100%);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 26px;display:flex;flex-direction:column;gap:14px;text-align:center}
+.lockbox h2{font:700 26px/1.1 var(--f-display);margin:0}
+.lockbox h2 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.lockbox input{background:#0F0C17;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;font-size:22px;letter-spacing:8px;outline:none}
+.lockbox input:focus{border-color:#D946EF}
+.lockbox button{border:0;border-radius:12px;padding:12px;font:600 15px var(--f-body);color:#fff;background:var(--grad);cursor:pointer}
+.lockerr{color:#FF8A8A;font-size:14px;min-height:20px}
+.lockbox a,.out{color:var(--muted);font-size:13px}
+.out{background:none;border:0;cursor:pointer;text-decoration:underline;padding:0;margin-left:14px;font-family:inherit}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
-<main>
+<main id="main" class="hidden">
   <div class="brand">
     <div class="logo"><a href="../" style="color:inherit;text-decoration:none">PHAT <span>LAB</span></a> <span style="color:var(--muted);font-weight:500">/ Admin</span></div>
     <h1>Phat Lab <em>admin</em></h1>
-    <div class="date">Interne verktøy. Hver del har sin egen PIN-kode.</div>
+    <div class="date">Interne verktøy for drift av studioet.</div>
   </div>
 
   <div class="cards">
@@ -71,7 +83,44 @@ footer{color:var(--muted);font-size:13px}
     </a>
   </div>
 
-  <footer><a href="../" style="color:inherit">← Til startsiden</a></footer>
+  <footer><a href="../" style="color:inherit">← Til startsiden</a><button class="out" id="logout">Logg ut av admin</button></footer>
 </main>
+
+<div class="lock hidden" id="lock">
+  <form class="lockbox" id="lockForm" autocomplete="off">
+    <div class="logo" style="font-size:13px">PHAT <span>LAB</span></div>
+    <h2>Phat Lab <em>admin</em></h2>
+    <p style="margin:0;font-size:14px;color:var(--muted)">Skriv inn admin-PIN for å åpne.</p>
+    <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode">
+    <div class="lockerr" id="lockErr" role="alert"></div>
+    <button>Lås opp</button>
+    <a href="../">← Til startsiden</a>
+  </form>
+</div>
+
+<script>
+"use strict";
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
+const $ = id => document.getElementById(id);
+let token = (() => { try { return localStorage.getItem("plk-fin-token"); } catch { return null; } })();
+const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-fin-token": token } : {} } });
+function setToken(t) { token = t; try { t ? localStorage.setItem("plk-fin-token", t) : localStorage.removeItem("plk-fin-token"); } catch {} }
+function lock(msg) { $("main").classList.add("hidden"); $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || ""; setTimeout(() => $("pin").focus(), 30); }
+function open_() { $("lock").classList.add("hidden"); $("main").classList.remove("hidden"); }
+$("lockForm").onsubmit = async e => {
+  e.preventDefault(); $("lockErr").textContent = "";
+  const { data, error } = await client().rpc("fin_login", { pin: $("pin").value });
+  if (error) { $("lockErr").textContent = error.message; return; }
+  if (!data) { $("lockErr").textContent = "Feil PIN"; $("pin").select(); return; }
+  setToken(data); $("pin").value = ""; open_();
+};
+$("logout").onclick = async () => { try { await client().rpc("fin_logout"); } catch {} setToken(null); lock(); };
+(async () => {
+  if (!token) return lock();
+  const { data, error } = await client().rpc("fin_check");
+  if (error || !data) { setToken(null); return lock(); }
+  open_();
+})();
+</script>
 </body>
 </html>

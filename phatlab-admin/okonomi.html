@@ -421,7 +421,7 @@ async function rpc(name, args) {
   if (error) { if (/Ikke innlogget/.test(error.message)) { lock(); } throw new Error(error.message); }
   return data;
 }
-function lock(msg) { $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || ""; setTimeout(() => $("pin").focus(), 30); }
+function lock() { location.replace("./"); } /* PIN-en tas på admin-siden */
 $("lockForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("lockErr").textContent = "";
   const { data, error } = await client().rpc("fin_login", { pin: $("pin").value });
