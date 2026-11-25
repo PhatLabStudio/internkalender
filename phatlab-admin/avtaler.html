@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Phat Lab avtaler</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>
+:root{
+  --bg:#0A0A0F; --surface:#13111C; --card:#1A1625; --card2:#211C30; --ink:#F5F3FF; --muted:#8B7FB8; --line:#2D2640;
+  --grad:linear-gradient(135deg,#D946EF 0%,#7C3AED 100%);
+  --grad-hot:linear-gradient(135deg,#F97316 0%,#EC4899 100%);
+  --ok:#3DDC97; --warn:#FFB547; --bad:#FF6B6B; --exp:#A78BFA; --rec:#D946EF;
+  --f-display:"Space Grotesk","Inter",system-ui,sans-serif;
+  --f-body:"Inter",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:inherit}
+.hidden{display:none!important}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 20px 60px}
+
+/* Header */
+header.top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:20;background:rgba(10,10,15,.92);backdrop-filter:blur(8px)}
+.logo{font:700 15px var(--f-display);letter-spacing:.04em;text-decoration:none}
+.logo span{background:var(--grad-hot);-webkit-background-clip:text;background-clip:text;color:transparent}
+.crumb{color:var(--muted);font-size:14px}
+.spacer{flex:1}
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:8px 13px;text-decoration:none;white-space:nowrap;transition:.15s}
+.btn:hover{border-color:#4A3F66}
+.btn.primary{background:var(--grad);border-color:transparent;color:#fff;font-weight:600}
+.btn.sub{background:transparent;color:var(--muted);font-size:13px;padding:6px 10px}
+.btn.sub:hover{color:var(--ink);border-color:var(--muted)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink)}
+.btn.sm{padding:5px 10px;font-size:13px;border-radius:8px}
+.btn.ok{color:var(--ok);border-color:rgba(61,220,151,.35);background:transparent}
+.btn.danger{color:#FF8A8A}
+.btn:disabled{opacity:.5;cursor:default}
+
+h1{font:700 clamp(24px,3vw,30px)/1.1 var(--f-display);margin:0 0 4px;letter-spacing:-.01em}
+h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+h2{font:700 18px var(--f-display);margin:0}
+.sub-h{color:var(--muted);font-size:14px;margin:0 0 18px}
+
+/* Faner */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:18px 0 20px;overflow-x:auto}
+.tabs button{background:none;border:0;border-bottom:2px solid transparent;padding:10px 14px;color:var(--muted);font-weight:600;white-space:nowrap}
+.tabs button.on{color:var(--ink);border-bottom-color:#D946EF}
+.tabs .n{font-size:12px;font-weight:500;opacity:.8;margin-left:4px}
+
+/* Nøkkeltall */
+.groups{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:820px){.groups{grid-template-columns:1fr}}
+.group{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px}
+.group h3{font:600 13px var(--f-body);text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:0 0 12px;display:flex;align-items:center;gap:8px}
+.group h3 i{width:9px;height:9px;border-radius:3px;background:var(--c)}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.tile{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.tile .v{font:700 24px/1.15 var(--f-display);font-variant-numeric:tabular-nums}
+.tile .l{font-size:13px;color:var(--muted);margin-top:3px}
+.tile .s{font-size:12px;margin-top:6px;color:var(--muted)}
+.tile.bad .v{color:#FF8A8A}
+.tile.ok .v{color:var(--ok)}
+
+.cols{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:14px;margin-top:14px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;min-width:0}
+.panel .ph{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.panel .ph .muted{font-size:13px}
+.muted{color:var(--muted)}
+
+/* Graf */
+.chartbox{position:relative}
+.chartbox svg{width:100%;height:auto;display:block}
+.legend{display:flex;gap:14px;font-size:13px;color:var(--muted);flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:11px;height:11px;border-radius:3px;background:var(--c)}
+.tt{position:absolute;pointer-events:none;background:#0A0A0F;border:1px solid var(--line);border-radius:9px;padding:7px 10px;font-size:12.5px;white-space:nowrap;transform:translate(-50%,-110%);z-index:3}
+.tt b{font-variant-numeric:tabular-nums}
+
+/* Lister */
+.mlist{display:flex;flex-direction:column;gap:14px}
+.month h4{margin:0 0 6px;font:600 13px var(--f-body);color:var(--muted);display:flex;justify-content:space-between;gap:10px}
+.month h4 b{color:var(--ink);font-variant-numeric:tabular-nums}
+.row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;background:var(--card2);border:1px solid transparent;margin-bottom:5px}
+.row:hover{border-color:var(--line)}
+.row .dot{width:9px;height:9px;border-radius:50%;background:var(--c,#8B7FB8)}
+.row .t{min-width:0}
+.row .t .c{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t .d{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .a{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.row .a small{display:block;font-weight:500;font-size:11.5px;color:var(--muted)}
+.row.clickable{cursor:pointer}
+.tag{font-size:11px;font-weight:600;padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--muted);margin-left:6px;vertical-align:1px}
+.tag.fast{color:#F0ABFC;border-color:rgba(217,70,239,.45)}
+.tag.bad{color:#FF8A8A;border-color:rgba(255,107,107,.45)}
+.tag.ok{color:var(--ok);border-color:rgba(61,220,151,.4)}
+.tag.inv{color:#93C5FD;border-color:rgba(147,197,253,.4)}
+.empty{padding:26px 10px;text-align:center;color:var(--muted);font-size:14px}
+
+/* Tabell (betalinger) */
+.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;flex-wrap:wrap}
+.seg button{background:none;border:0;padding:7px 11px;font-size:13px;color:var(--muted)}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:#D946EF;color:#fff}
+.seg button .n{opacity:.75;margin-left:3px}
+input.search{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;min-width:200px;outline:none}
+input.search:focus{border-color:#D946EF}
+.sumline{margin-left:auto;font-size:13px;color:var(--muted)}
+.sumline b{color:var(--ink);font-variant-numeric:tabular-nums}
+table.pay{width:100%;border-collapse:collapse;font-size:14px}
+table.pay th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+table.pay td{padding:10px;border-bottom:1px solid var(--line);vertical-align:middle}
+table.pay td.n,table.pay th.n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+table.pay tr{cursor:pointer}
+table.pay tr:hover td{background:rgba(255,255,255,.02)}
+table.pay .cust{display:flex;align-items:center;gap:8px;font-weight:600}
+table.pay .desc{color:var(--muted);font-size:13px}
+table.pay .act{white-space:nowrap;text-align:right}
+@media (max-width:720px){
+  table.pay thead{display:none}
+  table.pay,table.pay tbody,table.pay tr,table.pay td{display:block;width:100%}
+  table.pay tr{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;padding:8px 10px;background:var(--card)}
+  table.pay td{border:0;padding:3px 0}
+  table.pay td.n{text-align:left}
+  table.pay .act{text-align:left;padding-top:6px}
+  .sumline{margin-left:0;width:100%}
+}
+
+/* Faste inntekter */
+.rcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.rcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px;cursor:pointer;position:relative;overflow:hidden}
+.rcard::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:var(--c,#D946EF)}
+.rcard:hover{border-color:#4A3F66}
+.rcard.off{opacity:.55}
+.rcard .top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.rcard .amt{font:700 20px var(--f-display);font-variant-numeric:tabular-nums;white-space:nowrap}
+.rcard .amt small{font:500 12px var(--f-body);color:var(--muted)}
+.rcard .meta{font-size:13px;color:var(--muted)}
+.rcard .foot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:2px}
+
+/* Modal */
+.mback{position:fixed;inset:0;z-index:50;background:rgba(5,4,10,.75);backdrop-filter:blur(4px);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:30px 14px}
+.modal{width:min(620px,100%);background:var(--card);border:1px solid var(--line);border-radius:18px;padding:20px;border-top:4px solid #D946EF}
+.modal .mh{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.modal h2{font-size:20px}
+.f{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.f label{font-size:13px;font-weight:600}
+.f .hint{font-size:12px;color:var(--muted)}
+.f input,.f select,.f textarea{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none;width:100%}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:#D946EF}
+.f textarea{min-height:70px;resize:vertical}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.f2{grid-template-columns:1fr}}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:13px;color:var(--muted)}
+.chip:hover,.chip.on{color:var(--ink);border-color:#D946EF}
+.chip b{color:var(--ink);font-weight:600}
+.hours{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:14px}
+.hours input[type=number]{width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
+.check{display:inline-flex;align-items:center;gap:7px;font-size:14px;cursor:pointer}
+.check input{accent-color:#D946EF;width:16px;height:16px}
+.lines{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;align-items:center}
+.lrow input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 9px;outline:none;width:100%;min-width:0}
+.lrow input:focus{border-color:#D946EF}
+.lrow input.num{text-align:right;font-variant-numeric:tabular-nums}
+.lrow .ls{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.lrow .x{background:none;border:0;color:var(--muted);font-size:16px;padding:4px}
+.lrow .x:hover{color:#FF8A8A}
+.lhead{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;font-size:11.5px;color:var(--muted);padding:0 2px}
+.lhead span:not(:first-child){text-align:right}
+.lfoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px}
+.lfoot .tot{margin-left:auto;font-variant-numeric:tabular-nums}
+.lfoot .tot b{font:700 17px var(--f-display)}
+@media (max-width:560px){
+  .lhead{display:none}
+  .lrow{grid-template-columns:1fr 1fr 1fr 30px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .lrow .ln{grid-column:1/-1}
+  .lrow .ls{grid-column:1/4;text-align:left}
+}
+.split{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.mfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#211C30;border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:80;box-shadow:0 10px 30px rgba(0,0,0,.45)}
+.toast.err{border-color:#FF6B6B;color:#FFB3B3}
+
+.lines{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;align-items:center}
+.lrow input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 9px;outline:none;width:100%;min-width:0}
+.lrow input:focus{border-color:#D946EF}
+.lrow input.num{text-align:right;font-variant-numeric:tabular-nums}
+.lrow .ls{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.lrow .x{background:none;border:0;color:var(--muted);font-size:16px;padding:4px}
+.lrow .x:hover{color:#FF8A8A}
+.lhead{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;font-size:11.5px;color:var(--muted);padding:0 2px}
+.lhead span:not(:first-child){text-align:right}
+.lfoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px}
+.lfoot .tot{margin-left:auto;font-variant-numeric:tabular-nums}
+.lfoot .tot b{font:700 17px var(--f-display)}
+@media (max-width:560px){
+  .lhead{display:none}
+  .lrow{grid-template-columns:1fr 1fr 1fr 30px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .lrow .ln{grid-column:1/-1}
+  .lrow .ls{grid-column:1/4;text-align:left}
+}
+.modal.wide{width:min(860px,100%)}
+.trail{font-size:13px;color:var(--muted);margin:-6px 0 12px}
+.ldesc{grid-column:1/-1;font-size:12px;color:var(--muted);padding:0 2px 4px}
+.sendbox{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+.linkrow{display:flex;gap:6px;margin-top:8px}
+.linkrow input{flex:1;min-width:0;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:7px 10px;font-size:13px;color:var(--muted);outline:none}
+@media (max-width:640px){header.top{padding:10px 14px}.navlinks,#newProd{display:none}.wrap{padding:16px 14px 50px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="../">PHAT <span>LAB</span></a><span class="crumb">/ <a href="./" style="color:inherit">Admin</a> / Avtaler</span>
+  <span class="spacer"></span>
+  <button class="btn sub" id="newProd" type="button">+ Produkt</button>
+  <button class="btn primary sm" id="newOffer" type="button">+ Nytt tilbud</button>
+  <span class="navlinks">
+    <a class="btn ghost sm" href="okonomi.html">Økonomi</a>
+  </span>
+  <button class="btn ghost sm" id="logout" type="button">Logg ut</button>
+</header>
+
+<main class="wrap">
+  <h1>Avtaler og <em>tilbud</em></h1>
+  <p class="sub-h">Lag tilbud fra prislisten, legg ved vilkår og send kunden en lenke der tilbudet kan godtas digitalt.</p>
+
+  <nav class="tabs" id="tabs">
+    <button type="button" data-t="tilbud" class="on">Tilbud <span class="n" id="nOff"></span></button>
+    <button type="button" data-t="produkter">Produkter <span class="n" id="nProd"></span></button>
+    <button type="button" data-t="vilkar">Vilkår <span class="n" id="nTerms"></span></button>
+  </nav>
+
+  <!-- TILBUD -->
+  <section id="v-tilbud">
+    <div class="toolbar">
+      <div class="seg" id="oflt">
+        <button type="button" data-f="alle" class="on">Alle<span class="n"></span></button>
+        <button type="button" data-f="utkast">Utkast<span class="n"></span></button>
+        <button type="button" data-f="sendt">Sendt<span class="n"></span></button>
+        <button type="button" data-f="godtatt">Godtatt<span class="n"></span></button>
+        <button type="button" data-f="avslått">Avslått<span class="n"></span></button>
+      </div>
+      <input class="search" id="oq" type="search" placeholder="Søk kunde eller tittel…">
+      <div class="sumline" id="osum"></div>
+    </div>
+    <table class="pay">
+      <thead><tr><th>Nr.</th><th>Kunde</th><th>Tittel</th><th>Status</th><th class="n">Beløp</th><th></th></tr></thead>
+      <tbody id="offBody"></tbody>
+    </table>
+    <div id="offEmpty" class="empty hidden"></div>
+  </section>
+
+  <!-- PRODUKTER -->
+  <section id="v-produkter" class="hidden">
+    <p class="muted" style="margin-top:0">Prislisten du bygger tilbud og betalinger fra. Prisene er inkludert mva. Endrer du en pris her, påvirker det bare nye linjer, ikke tilbud og betalinger som allerede er laget.</p>
+    <table class="pay">
+      <thead><tr><th>Produkt</th><th>Beskrivelse</th><th>Enhet</th><th class="n">Pris</th><th></th></tr></thead>
+      <tbody id="prodBody"></tbody>
+    </table>
+    <div style="margin-top:12px"><button class="btn sub" type="button" id="newProd2">+ Nytt produkt</button></div>
+  </section>
+
+  <!-- VILKÅR -->
+  <section id="v-vilkar" class="hidden">
+    <p class="muted" style="margin-top:0">Avtaleverket: vilkårsmaler som legges ved tilbudene. Du velger mal i hvert tilbud, og kan tilpasse teksten der uten at malen endres.</p>
+    <div class="rcards" id="termCards"></div>
+  </section>
+</main>
+
+<!-- Tilbud -->
+<div class="mback hidden" id="offModal">
+  <form class="modal wide" id="offForm" autocomplete="off">
+    <div class="mh"><h2 id="offTitle">Nytt tilbud</h2><span id="offStatusTag"></span><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="trail" id="offTrail"></div>
+    <div class="f2">
+      <div class="f"><label for="o-customer">Kunde</label><input id="o-customer" list="custList" required maxlength="120" placeholder="Navn på kunde eller artist"></div>
+      <div class="f"><label for="o-title">Tittel</label><input id="o-title" maxlength="200" placeholder="For eksempel «Produksjon – Important Message»"></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label for="o-email">E-post</label><input id="o-email" type="email" maxlength="200" placeholder="kunde@epost.no"></div>
+      <div class="f"><label for="o-phone">Telefon</label><input id="o-phone" maxlength="40" placeholder="Valgfritt"></div>
+    </div>
+    <div class="f"><label for="o-intro">Innledning til kunden</label><textarea id="o-intro" maxlength="4000" placeholder="Kort om hva tilbudet gjelder. Vises øverst i tilbudet."></textarea></div>
+
+    <div class="f">
+      <label>Produktlinjer</label>
+      <div class="chips" id="oQuick"></div>
+      <div class="lhead" id="oLhead"><span>Beskrivelse</span><span>Antall</span><span>Pris</span><span>Rabatt</span><span>Sum</span><span></span></div>
+      <div class="lines" id="oLines"></div>
+      <div class="lfoot">
+        <button type="button" class="btn sub sm" id="oAddLine">+ Egen linje</button>
+        <label class="check"><input type="checkbox" id="o-friend"> Venn-rabatt 50 % på alle linjer</label>
+        <span class="tot" id="oTot"></span>
+      </div>
+    </div>
+
+    <div class="f2">
+      <div class="f"><label for="o-plan">Betalingsplan</label>
+        <select id="o-plan">
+          <option value="50/50">50 % ved oppstart, 50 % ved levering</option>
+          <option value="forskudd">Hele beløpet ved oppstart</option>
+          <option value="levering">Hele beløpet ved levering</option>
+          <option value="etter">Faktura etter utført arbeid</option>
+        </select></div>
+      <div class="f"><label for="o-valid">Gyldig til</label><input type="date" id="o-valid"></div>
+    </div>
+
+    <div class="f">
+      <label for="o-terms">Vilkår</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <select id="o-terms" style="flex:1;min-width:200px"></select>
+        <button type="button" class="btn sub sm" id="o-termsEdit">Vis og tilpass tekst</button>
+      </div>
+      <textarea id="o-termsBody" class="hidden" style="min-height:220px;margin-top:8px" maxlength="30000"></textarea>
+      <span class="hint" id="o-termsHint"></span>
+    </div>
+
+    <div class="f2">
+      <div class="f"><label for="o-status">Status</label>
+        <select id="o-status"><option value="utkast">Utkast</option><option value="sendt">Sendt</option><option value="godtatt">Godtatt</option><option value="avslått">Avslått</option></select>
+        <span class="hint">Settes automatisk når du sender og når kunden svarer. Har kunden sagt ja muntlig, kan du sette «Godtatt» selv.</span></div>
+      <div class="f"><label for="o-notes">Internt notat</label><textarea id="o-notes" maxlength="4000" style="min-height:62px" placeholder="Vises ikke for kunden"></textarea></div>
+    </div>
+
+    <div class="sendbox hidden" id="sendBox">
+      <div><b>Kundelenke</b> <span class="muted" style="font-size:13px">· kunden ser tilbudet og kan godta det her</span></div>
+      <div class="linkrow"><input id="o-link" readonly><button type="button" class="btn sub sm" id="o-copy">Kopier</button><a class="btn sub sm" id="o-preview" target="_blank" rel="noopener">Forhåndsvis</a></div>
+      <div class="mfoot" style="margin-top:8px">
+        <button type="button" class="btn primary sm" id="o-send">Send på e-post</button>
+        <button type="button" class="btn ok sm hidden" id="o-transfer">Legg inn i økonomi</button>
+        <span class="muted" id="o-transferInfo" style="font-size:13px"></span>
+      </div>
+    </div>
+
+    <div class="mfoot">
+      <button type="button" class="btn danger hidden" id="o-del">Slett</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Lukk</button>
+      <button class="btn primary" id="o-save">Lagre</button>
+    </div>
+  </form>
+</div>
+
+<!-- Produkt -->
+<div class="mback hidden" id="prodModal">
+  <form class="modal" id="prodForm" autocomplete="off" style="width:min(520px,100%)">
+    <div class="mh"><h2 id="prodTitle">Nytt produkt</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="pr-name">Navn</label><input id="pr-name" required maxlength="120" placeholder="For eksempel «Vokalinnspilling»"></div>
+    <div class="f"><label for="pr-desc">Beskrivelse</label><input id="pr-desc" maxlength="500" placeholder="Kort forklaring som kan vises i tilbudet"></div>
+    <div class="f2">
+      <div class="f"><label for="pr-price">Pris inkl. mva (kr)</label><input id="pr-price" type="number" min="0" step="1" required></div>
+      <div class="f"><label for="pr-unit">Enhet</label>
+        <select id="pr-unit"><option value="stk">per stk</option><option value="låt">per låt</option><option value="time">per time</option><option value="dag">per dag</option><option value="mnd">per måned</option></select></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label for="pr-sort">Rekkefølge</label><input id="pr-sort" type="number" step="10" value="100"><span class="hint">Lavest tall vises først</span></div>
+      <div class="f" style="justify-content:flex-end"><label class="check"><input type="checkbox" id="pr-active" checked> Vis som hurtigvalg</label></div>
+    </div>
+    <div class="mfoot">
+      <button type="button" class="btn danger hidden" id="pr-del">Slett</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Avbryt</button>
+      <button class="btn primary">Lagre</button>
+    </div>
+  </form>
+</div>
+
+<!-- Vilkår -->
+<div class="mback hidden" id="termModal">
+  <form class="modal wide" id="termForm" autocomplete="off">
+    <div class="mh"><h2 id="termTitle">Ny vilkårsmal</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="t-name">Navn på malen</label><input id="t-name" required maxlength="120" placeholder="For eksempel «Mix og master»"></div>
+    <div class="f"><label for="t-body">Tekst</label><textarea id="t-body" style="min-height:360px;font-size:14px;line-height:1.5" maxlength="30000"></textarea>
+      <span class="hint">Start en linje med <b>##</b> for å lage en overskrift, og <b>-</b> for et kulepunkt. Tom linje gir nytt avsnitt.</span></div>
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" id="t-default"> Standard for nye tilbud</label>
+    <div class="mfoot">
+      <button type="button" class="btn danger hidden" id="t-del">Slett</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn ghost" data-close>Avbryt</button>
+      <button class="btn primary">Lagre</button>
+    </div>
+  </form>
+</div>
+
+<datalist id="custList"></datalist>
+
+<script>
+(() => {
+"use strict";
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co";
+const SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const nf = (n) => Math.round(+n || 0).toLocaleString("nb-NO");
+const kr = (n) => "kr " + nf(n);
+const pad = (n) => String(n).padStart(2, "0");
+const ymd = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+const today = () => { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); };
+const addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const MONTHS = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
+const dShort = (s) => { if (!s) return ""; const d = new Date(s); return d.getDate() + ". " + MONTHS[d.getMonth()] + (d.getFullYear() !== new Date().getFullYear() ? " " + d.getFullYear() : ""); };
+const STATUS = { utkast: ["Utkast", ""], sendt: ["Sendt", "inv"], godtatt: ["Godtatt", "ok"], "avslått": ["Avslått", "bad"] };
+const PLAN = { "50/50": "50 % ved oppstart, 50 % ved levering", forskudd: "Hele beløpet ved oppstart", levering: "Hele beløpet ved levering", etter: "Faktura etter utført arbeid" };
+const UNIT = { stk: "stk", "låt": "låt", time: "time", dag: "dag", mnd: "mnd" };
+function toast(msg, err) { const t = el("div", "toast" + (err ? " err" : ""), msg); document.body.appendChild(t); setTimeout(() => t.remove(), err ? 5000 : 2400); }
+const offerUrl = (tok) => new URL("../tilbud.html?t=" + tok, location.href).href;
+
+/* ---------- Innlogging (admin-PIN) ---------- */
+let token = (() => { try { return localStorage.getItem("plk-fin-token"); } catch { return null; } })();
+const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-fin-token": token } : {} } });
+const sb = client();
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args || {});
+  if (error) { if (/Ikke innlogget/.test(error.message)) location.replace("./"); throw new Error(error.message); }
+  return data;
+}
+$("logout").onclick = async () => { try { await sb.rpc("fin_logout"); } catch {} try { localStorage.removeItem("plk-fin-token"); } catch {} location.replace("./"); };
+
+/* ---------- Data ---------- */
+let products = [], terms = [], offers = [], artists = [];
+async function load() {
+  if (!token) { location.replace("./"); return; }
+  try {
+    const d = await rpc("avt_list");
+    products = d.products || []; terms = d.terms || []; offers = d.offers || []; artists = d.artists || [];
+    renderAll();
+  } catch (e) { toast(e.message, true); }
+}
+const lineSum = (l) => (+l.qty || 0) * (+l.price || 0) * (1 - (+l.discount || 0) / 100);
+const total = (ls) => Math.round((ls || []).reduce((s, l) => s + lineSum(l), 0));
+const artistColor = (name, id) => { const a = artists.find(x => (id && x.id === id) || x.name.toLowerCase() === String(name || "").trim().toLowerCase()); return a ? a.color : null; };
+
+let tab = "tilbud", oflt = "alle";
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.t; renderTabs(); });
+function renderTabs() {
+  $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  for (const t of ["tilbud", "produkter", "vilkar"]) $("v-" + t).classList.toggle("hidden", t !== tab);
+}
+function renderAll() {
+  const names = new Set([...artists.map(a => a.name), ...offers.map(o => o.customer)]);
+  $("custList").replaceChildren(...[...names].filter(Boolean).sort((a, b) => a.localeCompare(b, "nb")).map(n => { const o = el("option"); o.value = n; return o; }));
+  $("nOff").textContent = offers.length || ""; $("nProd").textContent = products.length || ""; $("nTerms").textContent = terms.length || "";
+  renderOffers(); renderProducts(); renderTerms(); renderTabs();
+}
+
+/* ---------- Tilbudsliste ---------- */
+$("oflt").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; oflt = b.dataset.f; renderOffers(); });
+$("oq").addEventListener("input", renderOffers);
+function offerTrail(o) {
+  return [o.sent_at && "sendt " + dShort(o.sent_at), o.viewed_at && "åpnet " + dShort(o.viewed_at),
+    o.accepted_at && "godtatt " + dShort(o.accepted_at) + (o.accepted_by ? " av " + o.accepted_by : ""),
+    o.declined_at && "avslått " + dShort(o.declined_at), o.transferred && "lagt inn i økonomi"].filter(Boolean).join(" · ");
+}
+function renderOffers() {
+  const q = $("oq").value.trim().toLowerCase();
+  const counts = { alle: offers.length }; offers.forEach(o => counts[o.status] = (counts[o.status] || 0) + 1);
+  $("oflt").querySelectorAll("button").forEach(b => { b.classList.toggle("on", b.dataset.f === oflt); b.querySelector(".n").textContent = counts[b.dataset.f] ? " " + counts[b.dataset.f] : ""; });
+  const list = offers.filter(o => (oflt === "alle" || o.status === oflt) && (!q || (o.customer + " " + (o.title || "") + " " + o.number).toLowerCase().includes(q)));
+  const sum = list.reduce((s, o) => s + total(o.lines), 0);
+  $("osum").innerHTML = list.length ? `${list.length} tilbud · sum <b>${esc(kr(sum))}</b>` : "";
+  const body = $("offBody"); body.replaceChildren();
+  for (const o of list) {
+    const tr = el("tr");
+    const td1 = el("td", null, "#" + o.number); td1.style.cssText = "white-space:nowrap;color:var(--muted)";
+    const td2 = el("td"); const cu = el("div", "cust"); const dot = el("span"); dot.style.cssText = "width:9px;height:9px;border-radius:50%;flex:none;background:" + (artistColor(o.customer, o.artist_id) || "#8B7FB8"); cu.append(dot, document.createTextNode(o.customer)); td2.appendChild(cu);
+    const td3 = el("td"); td3.append(el("div", null, o.title || "Uten tittel")); const tr2 = offerTrail(o); td3.appendChild(el("div", "desc", tr2 || "opprettet " + dShort(o.created_at)));
+    const st = STATUS[o.status] || STATUS.utkast; const td4 = el("td"); const tg = el("span", "tag " + st[1], st[0]); tg.style.marginLeft = "0"; td4.appendChild(tg);
+    if (o.status === "sendt" && o.valid_until && new Date(o.valid_until) < today()) { const ex = el("span", "tag bad", "Utløpt"); td4.appendChild(ex); }
+    const td5 = el("td", "n", kr(total(o.lines))); td5.style.fontWeight = "600";
+    const td6 = el("td", "act");
+    const cp = el("button", "btn sub sm", "Kopier lenke"); cp.type = "button"; cp.onclick = async (ev) => { ev.stopPropagation(); await copy(offerUrl(o.share_token)); }; td6.appendChild(cp);
+    tr.append(td1, td2, td3, td4, td5, td6); tr.onclick = () => openOffer(o); body.appendChild(tr);
+  }
+  $("offEmpty").classList.toggle("hidden", !!list.length);
+  $("offEmpty").textContent = offers.length ? "Ingen treff." : "Ingen tilbud ennå. Trykk «+ Nytt tilbud» øverst til høyre.";
+}
+async function copy(txt) { try { await navigator.clipboard.writeText(txt); toast("Lenken er kopiert"); } catch { prompt("Kopier lenken:", txt); } }
+
+/* ---------- Produkter ---------- */
+function renderProducts() {
+  const body = $("prodBody"); body.replaceChildren();
+  for (const p of products) {
+    const tr = el("tr"); if (!p.active) tr.style.opacity = ".55";
+    const td1 = el("td"); td1.append(el("b", null, p.name)); if (!p.active) td1.appendChild(el("span", "tag", "Skjult"));
+    tr.append(td1, el("td", "desc", p.description || "–"), el("td", "desc", "per " + (UNIT[p.unit] || p.unit)));
+    const tp = el("td", "n", kr(p.price)); tp.style.fontWeight = "600"; tr.appendChild(tp); tr.appendChild(el("td"));
+    tr.onclick = () => openProd(p); body.appendChild(tr);
+  }
+  if (!products.length) { const tr = el("tr"); const td = el("td", "empty", "Ingen produkter ennå."); td.colSpan = 5; tr.appendChild(td); body.appendChild(tr); }
+}
+let editProd = null;
+function openProd(p) {
+  editProd = p || null; $("prodTitle").textContent = p ? "Endre produkt" : "Nytt produkt";
+  $("pr-name").value = p ? p.name : ""; $("pr-desc").value = p ? (p.description || "") : ""; $("pr-price").value = p ? Math.round(+p.price) : "";
+  $("pr-unit").value = p ? p.unit : "stk"; $("pr-sort").value = p ? p.sort : (products.reduce((m, x) => Math.max(m, +x.sort || 0), 0) + 10); $("pr-active").checked = p ? !!p.active : true;
+  $("pr-del").classList.toggle("hidden", !p); openModal("prodModal"); setTimeout(() => $("pr-name").focus(), 30);
+}
+$("newProd").onclick = $("newProd2").onclick = () => openProd(null);
+$("prodForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try { await rpc("avt_save_product", { p: { id: editProd?.id || "", name: $("pr-name").value.trim(), description: $("pr-desc").value.trim(), price: $("pr-price").value, unit: $("pr-unit").value, sort: $("pr-sort").value, active: $("pr-active").checked } });
+    toast("Produkt lagret"); closeModal("prodModal"); load(); } catch (e) { toast(e.message, true); }
+});
+armDelete($("pr-del"), async () => { await rpc("avt_remove_product", { pid: editProd.id }); toast("Produkt slettet"); closeModal("prodModal"); load(); });
+
+/* ---------- Vilkår ---------- */
+function renderTerms() {
+  const box = $("termCards"); box.replaceChildren();
+  for (const t of terms) {
+    const c = el("div", "rcard"); c.style.setProperty("--c", t.is_default ? "#D946EF" : "#7C3AED");
+    const top = el("div", "top"); const nm = el("div"); nm.appendChild(el("div", null, t.name)).style.fontWeight = "700";
+    const heads = (t.body.match(/^##\s*(.+)$/gm) || []).map(x => x.replace(/^##\s*/, ""));
+    nm.appendChild(el("div", "meta", heads.length ? heads.join(" · ") : (t.body.slice(0, 120) || "Tom")));
+    top.appendChild(nm); c.appendChild(top);
+    const foot = el("div", "foot"); if (t.is_default) foot.appendChild(el("span", "tag fast", "Standard")); foot.appendChild(el("span", "meta", heads.length + " punkter"));
+    c.appendChild(foot); c.onclick = () => openTerm(t); box.appendChild(c);
+  }
+  const add = el("button", "rcard", "+ Ny vilkårsmal"); add.type = "button"; add.style.cssText = "border-style:dashed;align-items:center;justify-content:center;color:var(--muted);font-weight:600;min-height:120px;background:transparent";
+  add.onclick = () => openTerm(null); box.appendChild(add);
+}
+let editTerm = null;
+function openTerm(t) {
+  editTerm = t || null; $("termTitle").textContent = t ? "Endre vilkårsmal" : "Ny vilkårsmal";
+  $("t-name").value = t ? t.name : ""; $("t-body").value = t ? t.body : "## Pris og betaling\n\n\n## Levering\n\n";
+  $("t-default").checked = t ? !!t.is_default : !terms.length; $("t-del").classList.toggle("hidden", !t);
+  openModal("termModal"); setTimeout(() => $("t-name").focus(), 30);
+}
+$("termForm").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  try { await rpc("avt_save_terms", { t: { id: editTerm?.id || "", name: $("t-name").value.trim(), body: $("t-body").value, is_default: $("t-default").checked } });
+    toast("Vilkår lagret"); closeModal("termModal"); load(); } catch (e) { toast(e.message, true); }
+});
+armDelete($("t-del"), async () => { await rpc("avt_remove_terms", { tid: editTerm.id }); toast("Vilkårsmal slettet"); closeModal("termModal"); load(); });
+
+/* ---------- Tilbud: editor ---------- */
+let editOff = null, oLines = [];
+function renderOLines() {
+  $("oLhead").classList.toggle("hidden", !oLines.length);
+  const box = $("oLines"); box.replaceChildren();
+  oLines.forEach((l, i) => {
+    const r = el("div", "lrow");
+    const sum = el("div", "ls", nf(lineSum(l)));
+    const inp = (cls, key, ph, attrs) => { const x = el("input", cls); x.value = l[key] ?? ""; if (ph) x.placeholder = ph; Object.assign(x, attrs || {}); x.oninput = () => { l[key] = x.value; sum.textContent = nf(lineSum(l)); oTotal(); }; return x; };
+    const x = el("button", "x", "✕"); x.type = "button"; x.title = "Fjern linjen"; x.onclick = () => { oLines.splice(i, 1); renderOLines(); oTotal(); };
+    r.append(inp("ln", "name", "Beskrivelse", { maxLength: 200 }),
+      inp("num", "qty", "1", { type: "number", min: 0, step: "0.5", title: "Antall (" + (l.unit || "stk") + ")" }),
+      inp("num", "price", "Pris", { type: "number", min: 0, step: 1, title: "Pris per " + (l.unit || "stk") }),
+      inp("num", "discount", "0 %", { type: "number", min: 0, max: 100, step: 1, title: "Rabatt i prosent" }), sum, x);
+    if (l.description) { const d = el("div", "ldesc", l.description); r.appendChild(d); }
+    box.appendChild(r);
+  });
+}
+function oTotal() { const t = total(oLines); $("oTot").innerHTML = oLines.length ? "Totalt <b>" + esc(kr(t)) + "</b> <span class=\"muted\" style=\"font-size:12px\">inkl. mva " + esc(kr(t / 5)) + "</span>" : ""; }
+function oAddLine(l) { oLines.push({ name: "", qty: 1, unit: "stk", price: "", discount: $("o-friend").checked ? 50 : 0, ...l }); renderOLines(); oTotal(); const rows = $("oLines").querySelectorAll(".lrow"); const last = rows[rows.length - 1]; if (last) last.querySelector(l ? ".num" : ".ln").focus(); }
+$("oAddLine").onclick = () => oAddLine();
+$("o-friend").onchange = () => { const v = $("o-friend").checked ? 50 : 0; oLines.forEach(l => l.discount = v); renderOLines(); oTotal(); };
+function renderOQuick() {
+  $("oQuick").replaceChildren(...products.filter(p => p.active).map(p => { const b = el("button", "chip"); b.type = "button"; b.append(document.createTextNode(p.name + " "), el("b", null, nf(p.price) + (p.unit === "time" ? "/t" : ""))); b.onclick = () => oAddLine({ name: p.name, description: p.description || "", unit: p.unit, price: +p.price, qty: 1 }); return b; }));
+}
+let termsCustom = false;
+function renderTermsSelect(selName, body) {
+  const s = $("o-terms"); s.replaceChildren();
+  const none = el("option", null, "Ingen vilkår"); none.value = ""; s.appendChild(none);
+  for (const t of terms) { const o = el("option", null, t.name + (t.is_default ? " (standard)" : "")); o.value = t.id; s.appendChild(o); }
+  const match = terms.find(t => t.name === selName);
+  if (selName && !match) { const o = el("option", null, selName + " (tilpasset)"); o.value = "__custom"; s.appendChild(o); s.value = "__custom"; }
+  else s.value = match ? match.id : "";
+  $("o-termsBody").value = body ?? (match ? match.body : "");
+  termsCustom = !!(match && body != null && body !== match.body) || (selName && !match);
+  termsHint();
+}
+function termsHint() { $("o-termsHint").textContent = !$("o-terms").value ? "Tilbudet sendes uten vilkår." : termsCustom ? "Teksten er tilpasset for dette tilbudet. Malen er ikke endret." : "Vilkårene vises nederst i tilbudet."; }
+$("o-terms").onchange = () => {
+  const t = terms.find(x => x.id === $("o-terms").value);
+  if (t) { if (termsCustom && !confirm("Erstatte den tilpassede teksten med malen «" + t.name + "»?")) { return; } $("o-termsBody").value = t.body; termsCustom = false; }
+  else if (!$("o-terms").value) { $("o-termsBody").value = ""; termsCustom = false; }
+  termsHint();
+};
+$("o-termsBody").oninput = () => { termsCustom = true; termsHint(); };
+$("o-termsEdit").onclick = () => { const b = $("o-termsBody"); b.classList.toggle("hidden"); $("o-termsEdit").textContent = b.classList.contains("hidden") ? "Vis og tilpass tekst" : "Skjul tekst"; };
+
+function setOfferHeader(o) {
+  $("offTitle").textContent = o ? "Tilbud #" + o.number : "Nytt tilbud";
+  const st = o ? (STATUS[o.status] || STATUS.utkast) : null;
+  $("offStatusTag").replaceChildren(...(st ? [el("span", "tag " + st[1], st[0])] : []));
+  $("offTrail").textContent = o ? offerTrail(o) : ""; $("offTrail").classList.toggle("hidden", !o || !offerTrail(o));
+  $("sendBox").classList.toggle("hidden", !o); $("o-del").classList.toggle("hidden", !o);
+  if (o) {
+    const url = offerUrl(o.share_token); $("o-link").value = url; $("o-preview").href = url;
+    $("o-send").textContent = o.status === "utkast" ? "Send på e-post" : "Send på nytt";
+    const canT = o.status === "godtatt" && !o.transferred; $("o-transfer").classList.toggle("hidden", !canT);
+    $("o-transferInfo").textContent = o.transferred ? "Lagt inn i økonomi" : o.status === "godtatt" ? "" : "Når tilbudet er godtatt, kan du legge det inn i økonomi med ett klikk.";
+  }
+}
+function openOffer(o) {
+  editOff = o || null;
+  $("o-customer").value = o ? o.customer : ""; $("o-title").value = o ? (o.title || "") : ""; $("o-email").value = o ? (o.contact_email || "") : ""; $("o-phone").value = o ? (o.contact_phone || "") : "";
+  $("o-intro").value = o ? (o.intro || "") : ""; $("o-plan").value = o ? o.payment_plan : "50/50"; $("o-valid").value = o && o.valid_until ? o.valid_until.slice(0, 10) : ymd(addDays(today(), 14));
+  $("o-status").value = o ? o.status : "utkast"; $("o-notes").value = o ? (o.notes || "") : ""; $("o-friend").checked = false;
+  oLines = (o ? o.lines || [] : []).map(l => ({ ...l }));
+  if (o) renderTermsSelect(o.terms_name, o.terms_body ?? ""); else { const d = terms.find(t => t.is_default); renderTermsSelect(d ? d.name : "", d ? d.body : ""); }
+  $("o-termsBody").classList.add("hidden"); $("o-termsEdit").textContent = "Vis og tilpass tekst";
+  renderOQuick(); renderOLines(); oTotal(); setOfferHeader(o);
+  openModal("offModal"); setTimeout(() => $(o ? "o-title" : "o-customer").focus(), 30);
+}
+$("newOffer").onclick = () => openOffer(null);
+function offerPayload(extra) {
+  const customer = $("o-customer").value.trim(); const a = artists.find(x => x.name.toLowerCase() === customer.toLowerCase());
+  const sel = terms.find(t => t.id === $("o-terms").value);
+  const tname = $("o-terms").value === "__custom" ? (editOff?.terms_name || "Vilkår") : sel ? sel.name : "";
+  return { id: editOff?.id || "", customer, artist_id: a ? a.id : (editOff?.artist_id || ""), title: $("o-title").value.trim(), contact_email: $("o-email").value.trim(), contact_phone: $("o-phone").value.trim(),
+    intro: $("o-intro").value.trim(), payment_plan: $("o-plan").value, valid_until: $("o-valid").value, status: $("o-status").value, notes: $("o-notes").value.trim(),
+    terms_name: tname, terms_body: tname ? $("o-termsBody").value : "",
+    lines: oLines.filter(l => (l.name || "").trim() || +l.price).map(l => ({ name: (l.name || "").trim(), description: l.description || "", qty: +l.qty || 0, unit: l.unit || "stk", price: +l.price || 0, discount: +l.discount || 0 })), ...(extra || {}) };
+}
+async function saveOffer(extra, quiet) {
+  if (!$("o-customer").value.trim()) { $("o-customer").focus(); throw new Error("Skriv inn kunde"); }
+  const res = await rpc("avt_save_offer", { o: offerPayload(extra) });
+  await load();
+  editOff = offers.find(x => x.id === res.id) || editOff;
+  if (editOff) { $("o-status").value = editOff.status; setOfferHeader(editOff); }
+  if (!quiet) toast("Tilbud lagret");
+  return editOff;
+}
+$("offForm").addEventListener("submit", async (ev) => { ev.preventDefault(); $("o-save").disabled = true; try { await saveOffer(); } catch (e) { toast(e.message, true); } $("o-save").disabled = false; });
+$("o-copy").onclick = async () => { try { const o = await saveOffer(null, true); await copy(offerUrl(o.share_token)); } catch (e) { toast(e.message, true); } };
+$("o-preview").addEventListener("click", async (ev) => { ev.preventDefault(); const w = window.open("about:blank", "_blank"); try { const o = await saveOffer(null, true); if (w) w.location = offerUrl(o.share_token); } catch (e) { if (w) w.close(); toast(e.message, true); } });
+$("o-send").onclick = async () => {
+  try {
+    if (!oLines.length) throw new Error("Legg til minst én linje før du sender");
+    const st = $("o-status").value === "utkast" ? "sendt" : $("o-status").value;
+    $("o-status").value = st;
+    const o = await saveOffer({ status: st }, true);
+    const url = offerUrl(o.share_token);
+    const subj = "Tilbud fra Phat Lab" + (o.title ? " – " + o.title : "");
+    const body = "Hei " + o.customer.split(" ")[0] + "!\n\nHer er tilbudet fra Phat Lab" + (o.title ? " på " + o.title : "") + ":\n" + url +
+      "\n\nDu kan lese gjennom tilbudet og vilkårene, og godta det direkte på siden." + (o.valid_until ? " Tilbudet gjelder til " + new Date(o.valid_until).toLocaleDateString("nb-NO", { day: "numeric", month: "long", year: "numeric" }) + "." : "") +
+      "\n\nSi fra hvis du har spørsmål!\n\nHilsen\nPhat Lab Music\nNedre Storgate 1, 3015 Drammen";
+    try { await navigator.clipboard.writeText(url); } catch {}
+    location.href = "mailto:" + encodeURIComponent(o.contact_email || "") + "?subject=" + encodeURIComponent(subj) + "&body=" + encodeURIComponent(body);
+    toast("E-posten åpnes i e-postprogrammet ditt. Lenken er også kopiert.");
+  } catch (e) { toast(e.message, true); }
+};
+$("o-transfer").onclick = async () => {
+  const b = $("o-transfer"); b.disabled = true;
+  try {
+    const o = await saveOffer(null, true);
+    const t = total(o.lines), base = { customer: o.customer, artist_id: o.artist_id || "", method: "Faktura", status: "forventet",
+      notes: "Fra tilbud #" + o.number + (o.accepted_at ? ", godtatt " + dShort(o.accepted_at) + (o.accepted_by ? " av " + o.accepted_by : "") : ""), lines: o.lines };
+    const name = "Tilbud #" + o.number + (o.title ? " – " + o.title : "");
+    const due = ymd(addDays(today(), 14));
+    if (o.payment_plan === "50/50") {
+      const half = Math.round(t / 2);
+      await rpc("pay_save_entry", { e: { ...base, amount: half, description: name + " – forskudd 50 %", due_date: due } });
+      await rpc("pay_save_entry", { e: { ...base, amount: t - half, description: name + " – sluttbetaling 50 %", due_date: "" } });
+    } else {
+      await rpc("pay_save_entry", { e: { ...base, amount: t, description: name, due_date: o.payment_plan === "forskudd" ? due : "" } });
+    }
+    await saveOffer({ transferred: true }, true);
+    toast(o.payment_plan === "50/50" ? "Forskudd og sluttbetaling er lagt inn i økonomi" : "Lagt inn i økonomi");
+  } catch (e) { toast(e.message, true); }
+  b.disabled = false;
+};
+armDelete($("o-del"), async () => { await rpc("avt_remove_offer", { oid_: editOff.id }); toast("Tilbud slettet"); closeModal("offModal"); load(); });
+
+/* ---------- Felles ---------- */
+function openModal(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function closeModal(id) { $(id).classList.add("hidden"); if (!document.querySelector(".mback:not(.hidden)")) document.body.style.overflow = ""; }
+function armDelete(b, fn) {
+  b.onclick = async () => {
+    if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Sikker? Klikk igjen"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Slett"; }, 3000); return; }
+    try { await fn(); } catch (e) { toast(e.message, true); }
+  };
+}
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = () => closeModal(b.closest(".mback").id));
+document.querySelectorAll(".mback").forEach(m => m.addEventListener("click", (e) => { if (e.target === m) closeModal(m.id); }));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") document.querySelectorAll(".mback:not(.hidden)").forEach(m => closeModal(m.id)); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && token && !document.querySelector(".mback:not(.hidden)")) load(); });
+load();
+})();
+</script>
+</body>
+</html>

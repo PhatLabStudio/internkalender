@@ -170,6 +170,25 @@ table.pay .act{white-space:nowrap;text-align:right}
 .hours input[type=number]{width:80px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:6px 8px}
 .check{display:inline-flex;align-items:center;gap:7px;font-size:14px;cursor:pointer}
 .check input{accent-color:#D946EF;width:16px;height:16px}
+.lines{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.lrow{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;align-items:center}
+.lrow input{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px 9px;outline:none;width:100%;min-width:0}
+.lrow input:focus{border-color:#D946EF}
+.lrow input.num{text-align:right;font-variant-numeric:tabular-nums}
+.lrow .ls{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}
+.lrow .x{background:none;border:0;color:var(--muted);font-size:16px;padding:4px}
+.lrow .x:hover{color:#FF8A8A}
+.lhead{display:grid;grid-template-columns:minmax(0,1fr) 64px 92px 62px 92px 30px;gap:6px;font-size:11.5px;color:var(--muted);padding:0 2px}
+.lhead span:not(:first-child){text-align:right}
+.lfoot{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-top:8px;font-size:14px}
+.lfoot .tot{margin-left:auto;font-variant-numeric:tabular-nums}
+.lfoot .tot b{font:700 17px var(--f-display)}
+@media (max-width:560px){
+  .lhead{display:none}
+  .lrow{grid-template-columns:1fr 1fr 1fr 30px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .lrow .ln{grid-column:1/-1}
+  .lrow .ls{grid-column:1/4;text-align:left}
+}
 .split{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
 .mfoot{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:6px}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#211C30;border:1px solid var(--line);padding:10px 16px;border-radius:10px;z-index:80;box-shadow:0 10px 30px rgba(0,0,0,.45)}
@@ -290,27 +309,23 @@ table.pay .act{white-space:nowrap;text-align:right}
       <input id="p-customer" list="custList" required maxlength="120" placeholder="Navn på kunde eller artist">
     </div>
     <div class="f">
-      <label>Hurtigvalg</label>
-      <div class="chips" id="quick">
-        <button type="button" class="chip" data-q="mix">Mix <b>2 500</b></button>
-        <button type="button" class="chip" data-q="master">Master <b>1 000</b></button>
-        <button type="button" class="chip" data-q="mixmaster">Mix + master <b>3 500</b></button>
-        <button type="button" class="chip" data-q="prod">Produksjon <b>15 000</b></button>
-        <button type="button" class="chip" data-q="leie">Studioleie <b>400/t</b></button>
+      <label>Produktlinjer</label>
+      <div class="chips" id="quick"></div>
+      <div class="hint">Trykk på et produkt for å legge det til som en linje. Studioleie regnes per time: skriv antall timer i «Antall».</div>
+      <div class="lhead" id="lhead"><span>Beskrivelse</span><span>Antall</span><span>Pris</span><span>Rabatt</span><span>Sum</span><span></span></div>
+      <div class="lines" id="pLines"></div>
+      <div class="lfoot">
+        <button type="button" class="btn sub sm" id="addLine">+ Egen linje</button>
+        <label class="check"><input type="checkbox" id="p-friend"> Venn-rabatt 50 % på alle linjer</label>
+        <span class="tot" id="linesTot"></span>
       </div>
-      <div class="hours hidden" id="hoursBox">
-        <label class="check" style="gap:6px">Timer <input type="number" id="p-hours" min="0.5" step="0.5" value="4"></label>
-        <span>× <b id="rateLbl">400</b> kr</span>
-        <label class="check"><input type="checkbox" id="p-friend"> Venn-rabatt 50 %</label>
-      </div>
-      <div class="hint">Fyller inn beskrivelse og beløp. Alt kan endres etterpå.</div>
     </div>
     <div class="f">
       <label for="p-desc">Beskrivelse</label>
-      <input id="p-desc" maxlength="500" placeholder="For eksempel «Mix og master – Pendel»">
+      <input id="p-desc" maxlength="500" placeholder="Fylles ut fra linjene, eller skriv selv">
     </div>
     <div class="f2">
-      <div class="f"><label for="p-amount">Beløp (kr)</label><input id="p-amount" type="number" min="0" step="1" inputmode="numeric" required placeholder="0"></div>
+      <div class="f"><label for="p-amount">Beløp (kr)</label><input id="p-amount" type="number" min="0" step="1" inputmode="numeric" required placeholder="0"><span class="hint" id="amtHint"></span></div>
       <div class="f"><label for="p-status">Status</label>
         <select id="p-status"><option value="forventet">Forventet</option><option value="fakturert">Fakturert</option><option value="betalt">Betalt</option></select></div>
     </div>
@@ -432,12 +447,12 @@ $("lockForm").addEventListener("submit", async (e) => {
 $("logout").onclick = async () => { try { await sb.rpc("fin_logout"); } catch {} setToken(null); lock(); };
 
 /* ---------- Data ---------- */
-let entries = [], recurring = [], artists = [];
+let entries = [], recurring = [], artists = [], products = [];
 async function load() {
   if (!token) { lock(); return; }
   try {
     const d = await rpc("pay_list");
-    entries = d.entries || []; recurring = d.recurring || []; artists = d.artists || [];
+    entries = d.entries || []; recurring = d.recurring || []; artists = d.artists || []; products = d.products || [];
     $("lock").classList.add("hidden");
     renderAll();
   } catch (e) { if (token) toast(e.message, true); }
@@ -652,7 +667,7 @@ function renderPayments() {
     const dateTxt = e.status === "betalt" ? "Betalt " + dShort(e.paid_date) : e.due_date ? "Forfaller " + dShort(e.due_date) : "Ingen dato";
     const td1 = el("td", null, dateTxt); td1.style.whiteSpace = "nowrap"; if (isOverdue(e)) td1.style.color = "#FF8A8A";
     const td2 = el("td"); const cu = el("div", "cust"); const dot = el("span"); dot.style.cssText = "width:9px;height:9px;border-radius:50%;flex:none;background:" + (artistColor(e.customer, e.artist_id) || "#8B7FB8"); cu.append(dot, document.createTextNode(e.customer)); if (isRecEntry(e)) cu.appendChild(el("span", "tag fast", "Fast")); td2.appendChild(cu);
-    const td3 = el("td", "desc", [e.description, e.method].filter(Boolean).join(" · ") || "–");
+    const td3 = el("td", "desc", [e.description, (e.lines || []).length > 1 ? e.lines.length + " linjer" : "", e.method].filter(Boolean).join(" · ") || "–");
     const td4 = el("td"); td4.appendChild(el("span", "tag " + (isOverdue(e) ? "bad" : e.status === "betalt" ? "ok" : e.status === "fakturert" ? "inv" : ""), isOverdue(e) ? "Forfalt" : STATUS_TXT[e.status])); td4.firstChild.style.marginLeft = "0";
     const td5 = el("td", "n", kr(e.amount)); td5.style.fontWeight = "600";
     const td6 = el("td", "act");
@@ -693,7 +708,6 @@ function renderRecurring() {
 
 /* ---------- Modal: betaling ---------- */
 let editPay = null;
-const QUICK = { mix: ["Mix", 2500], master: ["Master", 1000], mixmaster: ["Mix og master", 3500], prod: ["Produksjon", 15000], leie: ["Studioleie", 400] };
 function openModal(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
 function closeModals() { document.querySelectorAll(".mback").forEach(m => m.classList.add("hidden")); document.body.style.overflow = ""; }
 document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeModals);
@@ -702,18 +716,44 @@ document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal
 function setPaidVisibility() { const b = $("p-status").value === "betalt"; $("paidWrap").style.visibility = b ? "visible" : "hidden"; if (b && !$("p-paid").value) $("p-paid").value = ymd(today()); }
 $("p-status").onchange = setPaidVisibility;
 $("p-split").onchange = () => { const on = $("p-split").checked; $("splitDates").classList.toggle("hidden", !on); $("dateRow").classList.toggle("hidden", on); if (on && $("p-status").value === "betalt") $("p-status").value = "forventet"; };
-function calcHours() { const h = +$("p-hours").value || 0, rate = 400 * ($("p-friend").checked ? .5 : 1); $("rateLbl").textContent = rate; $("p-amount").value = Math.round(h * rate); $("p-desc").value = "Studioleie " + String(h).replace(".", ",") + " t" + ($("p-friend").checked ? " (venn-rabatt 50 %)" : ""); }
-$("p-hours").oninput = calcHours; $("p-friend").onchange = calcHours;
-$("quick").addEventListener("click", (e) => {
-  const b = e.target.closest("[data-q]"); if (!b) return;
-  $("quick").querySelectorAll(".chip").forEach(c => c.classList.toggle("on", c === b));
-  const k = b.dataset.q; $("hoursBox").classList.toggle("hidden", k !== "leie");
-  if (k === "leie") { calcHours(); return; }
-  const [name, amt] = QUICK[k]; const d = $("p-desc").value.trim();
-  $("p-desc").value = d && !/^(Mix|Master|Mix og master|Produksjon|Studioleie)\b/.test(d) ? name + " – " + d : name;
-  $("p-amount").value = amt;
-  if (k === "prod") { $("p-split").checked = true; $("p-split").onchange(); }
-});
+/* Produktlinjer */
+let lines = [], autoAmt = true, autoDesc = "";
+const lineSum = (l) => (+l.qty || 0) * (+l.price || 0) * (1 - (+l.discount || 0) / 100);
+const linesTotal = () => Math.round(lines.reduce((s, l) => s + lineSum(l), 0));
+const nf = (n) => Math.round(+n || 0).toLocaleString("nb-NO");
+function linesDesc() { return lines.filter(l => l.name).map(l => l.name + ((+l.qty || 0) !== 1 ? " ×" + String(+l.qty).replace(".", ",") : "")).join(" + "); }
+function syncFromLines() {
+  const tot = linesTotal();
+  $("linesTot").innerHTML = lines.length ? "Sum linjer <b>" + esc(kr(tot)) + "</b>" : "";
+  if (lines.length && autoAmt) $("p-amount").value = tot;
+  const d = $("p-desc").value.trim();
+  if (!d || d === autoDesc) { autoDesc = linesDesc(); $("p-desc").value = autoDesc; }
+  $("amtHint").textContent = lines.length && Math.round(+$("p-amount").value || 0) !== tot ? "Linjene summerer til " + kr(tot) + (autoAmt ? "" : " · beløpet er endret for hånd") : "";
+}
+function renderLines() {
+  $("lhead").classList.toggle("hidden", !lines.length);
+  const box = $("pLines"); box.replaceChildren();
+  lines.forEach((l, i) => {
+    const r = el("div", "lrow");
+    const inp = (cls, val, ph, attrs, key) => { const x = el("input", cls); x.value = val ?? ""; if (ph) x.placeholder = ph; Object.assign(x, attrs || {}); x.oninput = () => { l[key] = x.type === "number" ? x.value : x.value; upd(); syncFromLines(); }; return x; };
+    const name = inp("ln", l.name, "Beskrivelse", { maxLength: 200 }, "name");
+    const qty = inp("num", l.qty, "1", { type: "number", min: 0, step: "0.5", title: l.unit ? "Antall (" + l.unit + ")" : "Antall" }, "qty");
+    const price = inp("num", l.price, "Pris", { type: "number", min: 0, step: 1, title: "Pris per " + (l.unit || "stk") }, "price");
+    const disc = inp("num", l.discount || "", "0 %", { type: "number", min: 0, max: 100, step: 1, title: "Rabatt i prosent" }, "discount");
+    const sum = el("div", "ls", nf(lineSum(l)));
+    const upd = () => { sum.textContent = nf(lineSum(l)); };
+    const x = el("button", "x", "✕"); x.type = "button"; x.title = "Fjern linjen"; x.onclick = () => { lines.splice(i, 1); renderLines(); syncFromLines(); };
+    r.append(name, qty, price, disc, sum, x); box.appendChild(r);
+  });
+}
+function addLine(l) { lines.push({ name: "", qty: 1, unit: "stk", price: "", discount: $("p-friend").checked ? 50 : 0, ...l }); renderLines(); syncFromLines(); const ins = $("pLines").querySelectorAll(".lrow"); const last = ins[ins.length - 1]; if (last) last.querySelector(l && l.unit === "time" ? ".num" : (l && l.name ? ".num" : ".ln")).focus(); }
+function renderQuick() {
+  const list = products.length ? products : [{ name: "Mix", unit: "låt", price: 2500 }, { name: "Master", unit: "låt", price: 1000 }, { name: "Mix og master", unit: "låt", price: 3500 }, { name: "Produksjon", unit: "låt", price: 15000 }, { name: "Studioleie", unit: "time", price: 400 }];
+  $("quick").replaceChildren(...list.map(p => { const b = el("button", "chip"); b.type = "button"; b.append(document.createTextNode(p.name + " "), el("b", null, nf(p.price) + (p.unit === "time" ? "/t" : ""))); b.onclick = () => { addLine({ name: p.name, unit: p.unit, price: +p.price, qty: 1 }); if (/produksjon/i.test(p.name) && !editPay && !$("p-split").checked) { $("p-split").checked = true; $("p-split").onchange(); } }; return b; }));
+}
+$("addLine").onclick = () => addLine();
+$("p-friend").onchange = () => { const v = $("p-friend").checked ? 50 : 0; lines.forEach(l => l.discount = v); renderLines(); syncFromLines(); };
+$("p-amount").addEventListener("input", () => { autoAmt = !lines.length || Math.round(+$("p-amount").value || 0) === linesTotal(); syncFromLines(); });
 function openPay(e) {
   editPay = e || null;
   $("payTitle").textContent = e ? "Endre betaling" : "Ny betaling";
@@ -722,7 +762,9 @@ function openPay(e) {
   $("p-paid").value = e && e.paid_date ? e.paid_date.slice(0, 10) : ""; $("p-method").value = e ? (e.method || "") : ""; $("p-notes").value = e ? (e.notes || "") : "";
   $("p-split").checked = false; $("splitDates").classList.add("hidden"); $("dateRow").classList.remove("hidden");
   $("splitBox").classList.toggle("hidden", !!e); $("p-del").classList.toggle("hidden", !e);
-  $("hoursBox").classList.add("hidden"); $("quick").querySelectorAll(".chip").forEach(c => c.classList.remove("on"));
+  lines = (e && Array.isArray(e.lines) ? e.lines : []).map(l => ({ ...l })); $("p-friend").checked = false;
+  autoAmt = !e || !lines.length || Math.round(+e.amount) === linesTotal(); autoDesc = e ? (lines.length && (e.description || "") === linesDesc() ? e.description : "") : "";
+  renderQuick(); renderLines(); syncFromLines();
   const t = today(); $("p-due1").value = ymd(t); $("p-due2").value = ymd(new Date(t.getFullYear(), t.getMonth() + 1, t.getDate()));
   setPaidVisibility(); openModal("payModal"); setTimeout(() => (e ? $("p-amount") : $("p-customer")).focus(), 30);
 }
@@ -731,7 +773,8 @@ $("payForm").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const customer = $("p-customer").value.trim(); const a = artists.find(x => x.name.toLowerCase() === customer.toLowerCase());
   const base = { customer, artist_id: a ? a.id : (editPay?.artist_id || ""), description: $("p-desc").value.trim(), amount: $("p-amount").value, status: $("p-status").value,
-    method: $("p-method").value.trim(), notes: $("p-notes").value.trim() };
+    method: $("p-method").value.trim(), notes: $("p-notes").value.trim(),
+    lines: lines.filter(l => (l.name || "").trim() || +l.price).map(l => ({ name: (l.name || "").trim(), qty: +l.qty || 0, unit: l.unit || "stk", price: +l.price || 0, discount: +l.discount || 0 })) };
   $("p-save").disabled = true;
   try {
     if (!editPay && $("p-split").checked) {
