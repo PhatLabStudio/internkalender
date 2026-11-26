@@ -1456,7 +1456,7 @@ async function upload(file) {
 
 
 /* ---------- Spotify-referanse (Spotify iFrame API) ---------- */
-let spCtl = null, spUri = null, spApiP = null, spPending = null, onSpotify = false;
+let spCtl = null, spUri = null, spApiP = null, spPending = null, onSpotify = false, abLeft = null, spCheck = null, spPreviewWarned = false;
 const spState = { pos: 0, paused: true, started: false, dur: 0 };
 function spotifyUri(u) {
   u = String(u || "").trim(); let m = u.match(/^spotify:(track|album|playlist|episode):([A-Za-z0-9]+)$/); if (m) return u;
@@ -1487,7 +1487,15 @@ async function renderSpotify() {
         const d = e.data || {}; spState.pos = (d.position || 0) / 1000; spState.dur = (d.duration || 0) / 1000; spState.paused = !!d.isPaused;
         if (!d.isPaused && !d.isBuffering) {
           spState.started = true;
-          if (spPending != null) { const t = spPending; spPending = null; if (t > 0.5 && (!spState.dur || t < spState.dur - 1)) c.seek(t); }
+          // Hopp til samme sted som miksen; prøv igjen hvis Spotify ikke fikk det med seg første gang
+          if (spPending != null) { const t = spPending; spPending = null; if (t > 0.5 && (!spState.dur || t < spState.dur - 1)) { c.seek(t); spCheck = { t, tries: 1, at: performance.now() }; } }
+          else if (spCheck) {
+            const exp = spCheck.t + (performance.now() - spCheck.at) / 1000;
+            if (Math.abs(spState.pos - exp) < 2.5) spCheck = null;
+            else if (spCheck.tries < 3 && performance.now() - spCheck.at > 400) { spCheck.tries++; spCheck.at = performance.now(); spCheck.t = exp; c.seek(exp); }
+            else if (spCheck.tries >= 3) spCheck = null;
+          }
+          if (spState.dur && spState.dur <= 31 && !spPreviewWarned) { spPreviewWarned = true; toast("Spotify spiller bare et utdrag på 30 sek. Logg inn på Spotify i denne nettleseren for å høre hele låta."); }
           if (!media.paused) media.pause();
           if (!onSpotify) { onSpotify = true; renderABBtn(); }
         }
@@ -1505,7 +1513,15 @@ function renderABBtn() {
 function abSpotify() {
   if (!spCtl) { toast("Spotify-spilleren laster fortsatt …"); return; }
   if (onSpotify) {
-    const t = spState.pos, wasPlaying = !spState.paused;
+    // Tilbake til miksen: bruk Spotifys posisjon bare hvis den faktisk fulgte miksen, ellers fortsett der miksen slapp (+ tiden som har gått)
+    const wasPlaying = !spState.paused;
+    let t = spState.pos;
+    if (abLeft) {
+      const exp = abLeft.t + (wasPlaying ? (performance.now() - abLeft.at) / 1000 : 0);
+      if (Math.abs(spState.pos - exp) > 3) t = exp;
+    }
+    const d = duration(); if (d) t = Math.min(t, d - 0.05);
+    abLeft = null; spCheck = null;
     try { spCtl.pause(); } catch {}
     onSpotify = false;
     const v = curVersion();
@@ -1515,8 +1531,9 @@ function abSpotify() {
   }
   let v = curVersion(); if (isRefV(v)) { curVid = lastMixVid || project.versions[0]?.id; renderProject(); }
   const t = media.currentTime || 0;
+  abLeft = { t, at: performance.now() };
   pause();
-  if (spState.started) { try { spCtl.seek(t); spCtl.resume(); } catch {} }
+  if (spState.started) { try { spCtl.seek(t); spCtl.resume(); spCheck = { t, tries: 1, at: performance.now() }; } catch {} }
   else { spPending = t; try { spCtl.play(); } catch {} }
   onSpotify = true; renderABBtn();
 }
