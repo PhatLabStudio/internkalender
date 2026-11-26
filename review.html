@@ -322,6 +322,7 @@ html,body{overflow-x:hidden}
 <body>
 <header class="top">
   <div class="brand"><a id="homeLink" href="phatlab-admin/"><div class="dot">PL</div>Phat Lab</a> <small>Review</small></div>
+  <a class="btn sm hidden" id="fromLink" style="text-decoration:none;color:var(--text)"></a>
   <div class="spacer"></div>
   <button class="btn ghost sm hidden" id="backBtn">← Tilbake</button>
   <button class="btn sm sub hidden" id="newArtistBtn">+ Ny artist</button>
@@ -567,6 +568,17 @@ async function fn(action, payload) {
 }
 
 if (isClient) { const hl = document.getElementById("homeLink"); hl.removeAttribute("href"); hl.style.cursor = "default"; }
+// Tilbake til artistsiden / artistprofilen når Review er åpnet derfra
+(() => {
+  const fl = document.getElementById("fromLink"), from = params.get("from"), aid = params.get("aid");
+  let href = null, txt = null;
+  if (from === "portal") { href = "portal.html#laater"; txt = "← Tilbake til artistsiden"; }
+  else if (from === "artist" && aid) { href = "artist.html?id=" + encodeURIComponent(aid) + "#laater"; txt = "← Tilbake til artistprofilen"; }
+  else {
+    try { const r = new URL(document.referrer); if (r.origin === location.origin && /\/(portal|artist)\.html$/.test(r.pathname)) { href = r.pathname + r.search + "#laater"; txt = /portal/.test(r.pathname) ? "← Tilbake til artistsiden" : "← Tilbake til artistprofilen"; } } catch {}
+  }
+  if (href) { fl.href = href; fl.textContent = txt; fl.classList.remove("hidden"); }
+})();
 function show(view) {
   for (const v of ["vLogin", "vList", "vProject", "vError", "vPw"]) $(v).classList.toggle("hidden", v !== view);
   const inArtist = view === "vList" && curArtist != null && !$("search").value.trim();

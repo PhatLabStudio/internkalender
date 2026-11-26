@@ -329,12 +329,12 @@ function renderSongs() {
     if (projs.length) {
       const r = projs[0], g = el("div", "grow");
       g.append(el("b", null, "Review"), document.createTextNode(" · " + (r.versions ? r.versions + (r.versions === 1 ? " versjon" : " versjoner") + (r.last ? ", siste " + r.last.label : "") : "ingen filer ennå") + (r.open_comments ? " · " + r.open_comments + " åpne kommentarer" : "")));
-      const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id);
+      const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id) + "&from=artist&aid=" + encodeURIComponent(AID);
       rv.append(g, o);
     } else {
       rv.append(el("div", "grow muted", "Ingen Review-prosjekt for låten ennå"));
       const b = el("button", "btn sub sm", "Lag Review-prosjekt"); b.type = "button";
-      b.onclick = async () => { b.disabled = true; try { const pid = await rpc("rv_create_project_for_song", { sid: s.id }); location.href = "review.html?p=" + encodeURIComponent(pid); } catch (e) { toast(e.message, true); b.disabled = false; } };
+      b.onclick = async () => { b.disabled = true; try { const pid = await rpc("rv_create_project_for_song", { sid: s.id }); location.href = "review.html?p=" + encodeURIComponent(pid) + "&from=artist&aid=" + encodeURIComponent(AID); } catch (e) { toast(e.message, true); b.disabled = false; } };
       rv.appendChild(b);
     }
     c.appendChild(rv);
@@ -346,7 +346,7 @@ function renderSongs() {
   const loose = D.review.filter(r => !r.song_id);
   if (loose.length) {
     const c = el("div", "song"); c.appendChild(el("div", "t")).appendChild(el("b", null, "Andre Review-prosjekter"));
-    for (const r of loose) { const rv = el("div", "rv"); const g = el("div", "grow"); g.append(el("b", null, r.title), document.createTextNode(" · " + r.versions + " versjoner" + (r.archived ? " · arkivert" : ""))); const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id); rv.append(g, o); c.appendChild(rv); }
+    for (const r of loose) { const rv = el("div", "rv"); const g = el("div", "grow"); g.append(el("b", null, r.title), document.createTextNode(" · " + r.versions + " versjoner" + (r.archived ? " · arkivert" : ""))); const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id) + "&from=artist&aid=" + encodeURIComponent(AID); rv.append(g, o); c.appendChild(rv); }
     box.appendChild(c);
   }
   if (!D.songs.length && !loose.length) { const e = el("div", "empty"); e.innerHTML = "Ingen låter ennå. Legg dem inn i <a href=\"produksjon.html#artist-" + esc(encodeURIComponent(AID)) + "\">produksjonskalenderen</a>."; box.appendChild(e); }

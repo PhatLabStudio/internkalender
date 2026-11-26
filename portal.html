@@ -161,7 +161,7 @@ function renderTabs() {
   $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
   for (const t of ["oversikt", "laater", "kalender", "dok", "profil"]) $("v-" + t).classList.toggle("hidden", t !== tab);
 }
-const reviewUrl = (r) => "review.html?s=" + encodeURIComponent(r.share_token);
+const reviewUrl = (r) => "review.html?s=" + encodeURIComponent(r.share_token) + "&from=portal";
 
 function render() {
   const a = D.artist, pr = D.profile;
