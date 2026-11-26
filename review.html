@@ -270,6 +270,10 @@ button.step:hover{border-color:var(--sc)}
 .refadd{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
 .refadd input[type=url]{flex:1;min-width:180px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--text);outline:none;font-size:13px}
 .refadd input[type=url]:focus{border-color:#38BDF8}
+.refrow .rb.sp{color:#1ED760;border-color:rgba(30,215,96,.5)}
+.refrow.on.sp{border-color:#1ED760;box-shadow:inset 3px 0 0 #1ED760}
+.abbtn.spot{background:#1ED760;border-color:#1ED760;color:#04140A}
+#spEmbed iframe{border-radius:12px;display:block}
 .reftag{display:inline-block;font:700 11px Inter;color:#04121C;background:#38BDF8;border-radius:6px;padding:2px 7px;margin-right:6px;vertical-align:2px}
 .cmp{width:100%;border-collapse:collapse;font-size:13.5px}
 .cmp th{text-align:right;color:var(--muted);font-weight:500;font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
@@ -469,6 +473,7 @@ html,body{overflow-x:hidden}
         <div class="refbox hidden" id="refBox">
           <div class="rh"><h3>Referanse</h3><span class="muted" style="font-size:13px">Sammenlign miksen med en ferdig låt</span></div>
           <div class="reflist" id="refList"></div>
+          <div id="spEmbed" class="hidden" style="margin-top:10px"><div id="spHost"></div></div>
           <div class="refctl hidden" id="refCtl">
             <button type="button" class="abbtn" id="abBtn"></button>
             <label class="stamp" style="margin:0"><input type="checkbox" id="refMatch" checked> Nivåtilpass</label>
@@ -477,12 +482,12 @@ html,body{overflow-x:hidden}
           <div class="refadd">
             <button type="button" class="btn sm" id="refUpBtn">+ Last opp referanselåt</button>
             <input type="file" id="refFile" accept="audio/*" hidden>
-            <input type="url" id="refUrl" placeholder="… eller lim inn lenke (Spotify, YouTube, Tidal)">
+            <input type="url" id="refUrl" placeholder="… eller lim inn Spotify-lenke (eller YouTube, Tidal)">
             <button type="button" class="btn sm" id="refUrlSave">Lagre lenke</button>
             <a class="btn sm hidden" id="refUrlOpen" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:var(--text)">Åpne lenke ↗</a>
           </div>
           <div id="refStatus" class="hidden" style="margin-top:10px"><div id="refText" style="font-size:13px"></div><div class="progress"><i id="refBar"></i></div></div>
-          <div class="muted" style="font-size:12px;margin-top:8px">Last opp en fil for A/B-lytting og sammenligning i mix-analysen. Lenker kan bare åpnes for å lytte.</div>
+          <div class="muted" style="font-size:12px;margin-top:8px">Spotify-lenker spilles rett her og kan A/B-es med R (hele låta når du er logget inn på Spotify i nettleseren, ellers et utdrag). For nivåtilpasning og analyse: last opp en fil.</div>
         </div>
         <div class="drop" id="drop">
           <div><b>Last opp ny versjon</b> – dra en fil hit eller <a href="#" id="pickFile">velg fil</a></div>
@@ -871,6 +876,7 @@ function renderProject() {
 function wire(m) {
   for (const ev of ["timeupdate", "play", "pause", "loadedmetadata", "ended", "seeked"]) m.addEventListener(ev, () => { if (m === media) updateTime(); });
   m.addEventListener("loadedmetadata", () => { if (m === media) renderMarkers(); });
+  m.addEventListener("play", () => { if (onSpotify && spCtl) { try { spCtl.pause(); } catch {} onSpotify = false; renderABBtn(); } });
 }
 wire(video); wire(media);
 const isVideoV = (v) => /^video\//.test(v.mime || "");
@@ -982,7 +988,7 @@ async function loadMedia(v, carry) {
 }
 function duration() { const v = curVersion(); return (isFinite(media.duration) && media.duration) || (v && +v.duration) || 0; }
 function pause() { video.pause(); media.pause(); audios.forEach(a => a.pause()); }
-function togglePlay() { if (!curVersion()) return; media.paused ? media.play().catch(e => toast(e.message, true)) : media.pause(); }
+function togglePlay() { if (onSpotify && spCtl) { try { spCtl.togglePlay(); } catch {} return; } if (!curVersion()) return; media.paused ? media.play().catch(e => toast(e.message, true)) : media.pause(); }
 function seek(t) { const d = duration(); if (!d) return; media.currentTime = Math.max(0, Math.min(d - 0.01, t)); updateTime(); }
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
 const ICON_PAUSE = '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>';
@@ -1448,11 +1454,78 @@ async function upload(file) {
 }
 
 
+
+/* ---------- Spotify-referanse (Spotify iFrame API) ---------- */
+let spCtl = null, spUri = null, spApiP = null, spPending = null, onSpotify = false;
+const spState = { pos: 0, paused: true, started: false, dur: 0 };
+function spotifyUri(u) {
+  u = String(u || "").trim(); let m = u.match(/^spotify:(track|album|playlist|episode):([A-Za-z0-9]+)$/); if (m) return u;
+  try { const x = new URL(u); if (!/(^|\.)spotify\.com$/.test(x.hostname)) return null; m = x.pathname.match(/\/(track|album|playlist|episode)\/([A-Za-z0-9]+)/); return m ? "spotify:" + m[1] + ":" + m[2] : null; } catch { return null; }
+}
+function loadSpApi() {
+  if (spApiP) return spApiP;
+  spApiP = new Promise((res, rej) => {
+    window.onSpotifyIframeApiReady = (api) => res(api);
+    const s = document.createElement("script"); s.src = "https://open.spotify.com/embed/iframe-api/v1"; s.async = true;
+    s.onerror = () => { spApiP = null; rej(new Error("Kunne ikke laste Spotify-spilleren")); };
+    document.body.appendChild(s);
+  });
+  return spApiP;
+}
+async function renderSpotify() {
+  const uri = spotifyUri(project?.ref_url);
+  $("spEmbed").classList.toggle("hidden", !uri);
+  if (!uri) { if (spCtl) { try { spCtl.destroy(); } catch {} spCtl = null; } spUri = null; onSpotify = false; return; }
+  if (uri === spUri) return; spUri = uri;
+  try {
+    const api = await loadSpApi();
+    if (spCtl) { spState.started = false; spCtl.loadUri(uri); return; }
+    const host = document.createElement("div"); $("spHost").replaceChildren(host);
+    api.createController(host, { uri, width: "100%", height: 152 }, (c) => {
+      spCtl = c;
+      c.addListener("playback_update", (e) => {
+        const d = e.data || {}; spState.pos = (d.position || 0) / 1000; spState.dur = (d.duration || 0) / 1000; spState.paused = !!d.isPaused;
+        if (!d.isPaused && !d.isBuffering) {
+          spState.started = true;
+          if (spPending != null) { const t = spPending; spPending = null; if (t > 0.5 && (!spState.dur || t < spState.dur - 1)) c.seek(t); }
+          if (!media.paused) media.pause();
+          if (!onSpotify) { onSpotify = true; renderABBtn(); }
+        }
+      });
+    });
+  } catch (e) { toast(e.message, true); spUri = null; }
+}
+function renderABBtn() {
+  const b = $("abBtn"); if (!b) return;
+  const spSel = selRefVid === "spotify";
+  const onRef = isRefV(curVersion()) || (spSel && onSpotify);
+  b.className = "abbtn" + (onRef ? (spSel ? " spot" : " ref") : "");
+  b.innerHTML = onRef ? "Hører: " + (spSel ? "SPOTIFY" : "REFERANSE") + " <kbd>R</kbd> bytt til miksen" : "Hører: MIKSEN <kbd>R</kbd> bytt til " + (spSel ? "Spotify" : "referansen");
+}
+function abSpotify() {
+  if (!spCtl) { toast("Spotify-spilleren laster fortsatt …"); return; }
+  if (onSpotify) {
+    const t = spState.pos, wasPlaying = !spState.paused;
+    try { spCtl.pause(); } catch {}
+    onSpotify = false;
+    const v = curVersion();
+    if (isRefV(v)) { pendingCarry = { t, play: wasPlaying }; curVid = lastMixVid || project.versions[0]?.id; renderProject(); }
+    else { seek(t); if (wasPlaying) media.play().catch(() => {}); }
+    renderABBtn(); return;
+  }
+  let v = curVersion(); if (isRefV(v)) { curVid = lastMixVid || project.versions[0]?.id; renderProject(); }
+  const t = media.currentTime || 0;
+  pause();
+  if (spState.started) { try { spCtl.seek(t); spCtl.resume(); } catch {} }
+  else { spPending = t; try { spCtl.play(); } catch {} }
+  onSpotify = true; renderABBtn();
+}
+
 /* ---------- Referanselåt: A/B og nivåtilpasning ---------- */
 function mixForCompare() { return project?.versions.find(x => x.id === lastMixVid) || project?.versions[0] || null; }
 // Senker den høyeste av miks og referanse så begge spilles like høyt (basert på integrert LUFS)
 function gainDb(v) {
-  if (!v || !$("refMatch")?.checked || !project?.refs?.length) return 0;
+  if (!v || !$("refMatch")?.checked || !project?.refs?.length || selRefVid === "spotify") return 0;
   const ref = project.refs.find(x => x.id === selRefVid) || project.refs[0], mix = mixForCompare();
   if (!ref || !mix || ref.lufs == null || mix.lufs == null) return 0;
   const d = +mix.lufs - +ref.lufs;
@@ -1470,6 +1543,8 @@ function curVersionById(id) { return project?.versions.find(v => v.id === id) ||
 function renderRefInfo() {
   const ref = project?.refs?.find(x => x.id === selRefVid) || project?.refs?.[0], mix = mixForCompare(), info = $("refGainInfo");
   if (!info) return;
+  if (selRefVid === "spotify") { info.textContent = "Spotify-spilleren kan ikke nivåtilpasses automatisk – juster volumet i Spotify-spilleren"; $("refMatch").parentElement.classList.add("hidden"); return; }
+  $("refMatch").parentElement.classList.remove("hidden");
   if (!ref || !mix) { info.textContent = ""; return; }
   if (!$("refMatch").checked) { info.textContent = "Spilles på originalt nivå"; return; }
   if (ref.lufs == null || mix.lufs == null) { info.textContent = "Mangler nivåmåling – kjør Master-analyse på filene for å nivåtilpasse"; return; }
@@ -1479,9 +1554,12 @@ function renderRefInfo() {
 function renderRefs() {
   const box = $("refBox"); if (!project) return;
   box.classList.toggle("hidden", !project.versions.length && !project.refs.length && !project.ref_url);
+  $("refUrlSave").textContent = "Lagre lenke";
   if (!project.versions.length && !project.refs.length) box.classList.add("hidden");
   const refs = project.refs || [];
-  if (!refs.some(r => r.id === selRefVid)) selRefVid = refs[0]?.id || null;
+  const sp = spotifyUri(project.ref_url);
+  if (selRefVid === "spotify" && !sp) selRefVid = null;
+  if (selRefVid !== "spotify" && !refs.some(r => r.id === selRefVid)) selRefVid = refs[0]?.id || (sp ? "spotify" : null);
   const list = $("refList"); list.replaceChildren();
   for (const r of refs) {
     const on = r.id === curVid;
@@ -1493,18 +1571,26 @@ function renderRefs() {
       try { await fn("delete_version", { version_id: r.id, project_id: project.id }); audios.get(r.id)?.pause(); audios.delete(r.id); if (r.id === curVid) { curVid = lastMixVid || project.versions[0]?.id || null; loadedVid = null; } await loadProject(project.id, true); toast("Referansen er fjernet"); } catch (err) { toast(err.message, true); } };
       acts.appendChild(bx); }
     row.append(el("span", "rb", "REF"), nm, lv, acts);
-    row.onclick = () => { selRefVid = r.id; applyVol(); switchVersion(r.id); };
+    row.onclick = () => { if (onSpotify) { try { spCtl.pause(); } catch {} onSpotify = false; } selRefVid = r.id; applyVol(); switchVersion(r.id); renderABBtn(); };
     list.appendChild(row);
   }
-  $("refCtl").classList.toggle("hidden", !refs.length || !project.versions.length);
-  const onRef = isRefV(curVersion());
-  $("abBtn").className = "abbtn" + (onRef ? " ref" : "");
-  $("abBtn").innerHTML = onRef ? "Hører: REFERANSE <kbd>R</kbd> bytt til miksen" : "Hører: MIKSEN <kbd>R</kbd> bytt til referansen";
-  const u = project.ref_url; $("refUrlOpen").classList.toggle("hidden", !u); if (u) $("refUrlOpen").href = u;
+  if (sp) {
+    const row = el("div", "refrow sp" + (selRefVid === "spotify" ? " on" : "")); row.title = "Bruk Spotify-låta som referanse (R for å bytte)";
+    const acts = el("div", "acts");
+    const bx = el("button", null, "Fjern"); bx.type = "button"; bx.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(bx)) return; $("refUrl").value = ""; $("refUrlSave").click(); };
+    acts.appendChild(bx);
+    row.append(el("span", "rb sp", "SPOTIFY"), el("div", "f", "Spotify-referanse"), el("div", "lv", selRefVid === "spotify" ? "valgt for A/B" : "klikk for å bruke"), acts);
+    row.onclick = () => { selRefVid = "spotify"; if (isRefV(curVersion())) { curVid = lastMixVid || project.versions[0]?.id; renderProject(); } applyVol(); renderRefs(); };
+    list.appendChild(row);
+  }
+  $("refCtl").classList.toggle("hidden", !(refs.length || sp) || !project.versions.length);
+  renderABBtn(); renderSpotify();
+  const u = project.ref_url; $("refUrlOpen").classList.toggle("hidden", !u || !!sp); if (u) $("refUrlOpen").href = u;
   if (document.activeElement !== $("refUrl")) $("refUrl").value = u || "";
   renderRefInfo();
 }
 function toggleAB() {
+  if (selRefVid === "spotify" && project?.versions.length) { abSpotify(); return; }
   if (!project?.refs?.length || !project.versions.length) return;
   const v = curVersion();
   if (isRefV(v)) switchVersion(lastMixVid && project.versions.some(x => x.id === lastMixVid) ? lastMixVid : project.versions[0].id);
