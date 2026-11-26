@@ -26,6 +26,9 @@ table.pay th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;p
 table.pay td{padding:10px;border-bottom:1px solid var(--line)}
 table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 @media (max-width:640px){table.pay th:nth-child(3),table.pay td:nth-child(3){display:none}}
+.btn.dbx{background:#0061FE;border-color:#0061FE;color:#fff;font-weight:600}
+.btn.dbx:hover{background:#1A73FF;border-color:#1A73FF}
+@media (max-width:640px){#dbxBtn,#dbxAdd{order:3;width:100%}}
 .vis{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer}
 .vis input{accent-color:#D946EF}
 </style>
@@ -50,7 +53,9 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         <h1 id="name"></h1>
         <div class="sub" id="heroSub"></div>
       </div>
-      <a class="btn sub" id="previewPortal" target="_blank" rel="noopener">Se portalen ↗</a>
+      <a class="btn dbx hidden" id="dbxBtn" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M6 2 0 6l6 4 6-4zm12 0-6 4 6 4 6-4zM0 14l6 4 6-4-6-4zm18-4-6 4 6 4 6-4zM6 19.3l6 4 6-4-6-4z"/></svg>Dropbox-mappe</a>
+      <button class="btn sub hidden" id="dbxAdd" type="button">+ Legg til Dropbox-mappe</button>
+      <a class="btn sub hidden" id="previewPortal" target="_blank" rel="noopener">Se portalen ↗</a>
     </div>
     <div class="stats" id="stats"></div>
     <div class="links" id="links"></div>
@@ -119,6 +124,8 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
         <div class="f"><label for="pf-web">Nettside</label><input id="pf-web" maxlength="300"></div>
       </div>
       <h3 class="sec" style="margin-top:6px">Bare for studioet</h3>
+      <div class="f"><label for="pf-dbx">Dropbox-mappe</label><input id="pf-dbx" maxlength="1000" placeholder="https://www.dropbox.com/home/PHAT LAB STUDIO/Artister/…">
+        <span class="hint">Samme lenke som i produksjonskalenderen. Vises bare for studioet.</span></div>
       <div class="f"><label for="pf-alias">Navn i bookingkalenderen</label><input id="pf-alias" maxlength="300" placeholder="Artistnavn, kallenavn, bandnavn – skill med komma">
         <span class="hint">Bookinger med disse navnene vises i artistens kalender. Står feltet tomt, brukes artistnavnet.</span></div>
       <div class="f"><label for="pf-notes">Interne notater</label><textarea id="pf-notes" maxlength="8000" placeholder="Vises aldri for artisten"></textarea></div>
@@ -298,6 +305,7 @@ function render() {
   $("navProd").href = $("editInProd").href = "produksjon.html#artist-" + encodeURIComponent(a.id);
   $("navReview").href = "review.html?a=" + encodeURIComponent(a.id);
   $("previewPortal").classList.add("hidden");
+  const dbx = P.safeUrl(a.dropbox); $("dbxBtn").classList.toggle("hidden", !dbx); $("dbxAdd").classList.toggle("hidden", !!dbx); if (dbx) $("dbxBtn").href = dbx;
 
   const active = D.songs.filter(s => !P.songState(s).done).length;
   const next = P.agendaItems(D.songs, D.plans, D.bookings).find(x => x.d && x.d >= today());
@@ -307,7 +315,7 @@ function render() {
     [next ? dShort(next.d) : "–", "neste i kalenderen", next ? next.title : "ingenting planlagt"],
     [pr.portal_enabled ? "På" : "Av", "artistportal", pr.portal_enabled ? (D.sessions ? D.sessions + " innlogget" : "ingen innlogget ennå") : "ikke aktivert"],
   ].map(([v, l, s]) => { const d = el("div", "stat"); d.append(el("b", null, v), el("span", null, l)); const x = el("div", "muted", s); x.style.cssText = "font-size:11.5px;margin-top:2px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"; d.appendChild(x); return d; }));
-  const L = [["Instagram", P.social("instagram", pr.instagram)], ["Spotify", P.safeUrl(pr.spotify)], ["TikTok", P.social("tiktok", pr.tiktok)], ["YouTube", P.social("youtube", pr.youtube)], ["Nettside", P.safeUrl(pr.website)], ["Dropbox", P.safeUrl(a.dropbox)]].filter(x => x[1]);
+  const L = [["Instagram", P.social("instagram", pr.instagram)], ["Spotify", P.safeUrl(pr.spotify)], ["TikTok", P.social("tiktok", pr.tiktok)], ["YouTube", P.social("youtube", pr.youtube)], ["Nettside", P.safeUrl(pr.website)]].filter(x => x[1]);
   $("links").replaceChildren(...L.map(([n, u]) => { const x = el("a", null, n + " ↗"); x.href = u; x.target = "_blank"; x.rel = "noopener noreferrer"; return x; }));
   $("nSongs").textContent = D.songs.length || ""; $("nDocs").textContent = D.docs.length || "";
   renderSongs(); renderCal(); renderDocs(); fillProfile(); renderPortal(); renderTabs();
@@ -455,11 +463,17 @@ armDelete($("d-del"), async () => { await fn("doc_delete", { doc_id: editDoc.id 
 
 /* ---------- Profil ---------- */
 const PF = { bio: "pf-bio", genre: "pf-genre", contact_name: "pf-contact", email: "pf-email", phone: "pf-phone", instagram: "pf-ig", tiktok: "pf-tt", youtube: "pf-yt", spotify: "pf-sp", website: "pf-web", booking_aliases: "pf-alias", internal_notes: "pf-notes" };
-function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; $("pf-alias").placeholder = D.artist.name + " (standard)"; $("pfSaved").textContent = D.profile.updated_at ? "Sist endret " + dShort(D.profile.updated_at) : ""; }
+function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; $("pf-dbx").value = D.artist.dropbox || ""; $("pf-alias").placeholder = D.artist.name + " (standard)"; $("pfSaved").textContent = D.profile.updated_at ? "Sist endret " + dShort(D.profile.updated_at) : ""; }
 $("profForm").addEventListener("submit", async (e) => {
   e.preventDefault(); const p = {}; for (const [k, id] of Object.entries(PF)) p[k] = $(id).value.trim();
-  try { await rpc("art_studio_save_profile", { aid: AID, p }); toast("Profil lagret"); load(); } catch (err) { toast(err.message, true); }
+  try {
+    await rpc("art_studio_save_profile", { aid: AID, p });
+    if (($("pf-dbx").value.trim() || null) !== (D.artist.dropbox || null)) await rpc("art_studio_set_dropbox", { aid: AID, url: $("pf-dbx").value.trim() });
+    toast("Profil lagret"); load();
+  } catch (err) { toast(err.message, true); }
 });
+
+$("dbxAdd").onclick = () => { tab = "profil"; history.replaceState(null, "", "#profil"); renderTabs(); setTimeout(() => { $("pf-dbx").scrollIntoView({ block: "center", behavior: "smooth" }); $("pf-dbx").focus(); }, 50); };
 
 /* ---------- Økonomi (admin-PIN) ---------- */
 let finLoaded = false;
