@@ -250,6 +250,30 @@ button.step:hover{border-color:var(--sc)}
 .seg button.on{background:var(--accent);color:#fff}
 .seg button+button{border-left:1px solid var(--line)}
 .filters{display:flex;gap:6px;margin-left:auto}
+/* Mix-analyse */
+.gsel{display:flex;gap:4px;flex-wrap:wrap;margin:-2px 0 10px}
+.gsel button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:4px 11px;font-size:12.5px;cursor:pointer}
+.gsel button.on{background:var(--accent);border-color:transparent;color:#fff}
+.tb{display:grid;grid-template-columns:118px 1fr 92px;gap:10px;align-items:center;font-size:13px;padding:3px 0}
+.tb .tr{position:relative;height:16px;background:#221D33;border-radius:8px;overflow:hidden}
+.tb .zone{position:absolute;top:0;bottom:0;background:rgba(61,220,151,.14)}
+.tb .mid{position:absolute;top:0;bottom:0;width:2px;background:rgba(245,243,255,.55);left:50%;margin-left:-1px}
+.tb .dot{position:absolute;top:3px;width:10px;height:10px;border-radius:50%;margin-left:-5px;background:#3DDC97;box-shadow:0 0 0 2px #15121F}
+.tb .dot.warn{background:#FFB547}.tb .dot.bad{background:#FF6B6B}
+.tb .v{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbscale{display:grid;grid-template-columns:118px 1fr 92px;gap:10px;font-size:11px;color:var(--muted)}
+.tbscale div:nth-child(2){display:flex;justify-content:space-between}
+table.stx{width:100%;border-collapse:collapse;font-size:13.5px}
+table.stx th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
+table.stx td{padding:8px;border-bottom:1px solid var(--line)}
+table.stx td.n{text-align:right;font-variant-numeric:tabular-nums}
+.check{display:flex;flex-direction:column;gap:6px}
+.check .row{display:flex;gap:10px;align-items:flex-start;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;font-size:14px}
+.check .row b{font-weight:600}
+.ready{display:flex;align-items:center;gap:12px;border-radius:14px;padding:14px 16px;margin-bottom:6px;font-size:15px}
+.ready.ok{background:rgba(61,220,151,.1);border:1px solid rgba(61,220,151,.35)}
+.ready.warn{background:rgba(255,181,71,.1);border:1px solid rgba(255,181,71,.35)}
+.ready b{font:700 18px "Space Grotesk",Inter,sans-serif;display:block}
 /* Master-analyse */
 .ana-back{position:fixed;inset:0;background:rgba(5,4,10,.72);backdrop-filter:blur(4px);z-index:40;overflow:auto;padding:30px 16px}
 .ana{max-width:980px;margin:0 auto;padding:22px}
@@ -399,6 +423,7 @@ html,body{overflow-x:hidden}
             <button class="btn sm ghost hidden" id="renameFileBtn" title="Gi filen nytt navn">Endre navn</button>
             <span class="muted" id="fileMeta" style="font-size:13px"></span>
             <div class="spacer"></div>
+            <button class="btn sm" id="mixBtn" title="Headroom, frekvensbalanse mot sjanger, stereo per bånd, resonanser og klar-for-master-sjekk">Mix-analyse</button>
             <button class="btn sm" id="anaBtn" title="Loudness, true peak, dynamikk, stereo og frekvensbalanse">Master-analyse</button>
             <button class="btn sm" id="downloadBtn">Last ned</button>
           </div>
@@ -1431,6 +1456,7 @@ async function analyzeMaster(buf, progress) {
   const fs = ab.sampleRate, n = ab.length, nch = Math.min(2, ab.numberOfChannels);
   const chans = []; for (let c = 0; c < nch; c++) chans.push(ab.getChannelData(c));
   const R = { fs, n, duration: n / fs, nch, info, srcChannels: ab.numberOfChannels };
+  Object.defineProperty(R, "chans", { value: chans, enumerable: false });
 
   // 1) Sample peak, RMS, DC, klipping
   progress("Måler nivåer…"); await yieldUI();
@@ -1628,7 +1654,7 @@ function lineChart(canvas, pts, opt) {
   return draw;
 }
 
-let anaReport = null, anaRedraw = [];
+let anaReport = null, anaRedraw = [], anaMode = "master";
 function closeAna() { $("anaModal").classList.add("hidden"); document.body.style.overflow = ""; }
 $("anaClose").onclick = closeAna;
 $("anaModal").addEventListener("click", (e) => { if (e.target === $("anaModal")) closeAna(); });
@@ -1637,7 +1663,7 @@ window.addEventListener("beforeprint", () => anaRedraw.forEach(f => f(null)));
 
 $("anaBtn").onclick = async () => {
   const v = curVersion(); if (!v) return;
-  pause();
+  pause(); anaMode = "master"; $("anaTitle").textContent = "Master-analyse";
   $("anaFile").textContent = (v.label || v.file_name) + " · v" + v.version;
   $("anaModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
   $("anaPrint").disabled = $("anaCopy").disabled = true; anaRedraw = [];
@@ -1754,12 +1780,216 @@ function renderAna(R) {
   body.appendChild(el("div", "foot", "Målt etter ITU-R BS.1770-4 / EBU R128 (K-vekting, gating, LRA etter EBU Tech 3342). True peak med 4× oversampling. Mål for strømmetjenester er omtrentlige og kan endres." + (fi.sr ? "" : " *Komprimerte filer måles ved dekodet samplerate.") + " · Phat Lab Review, " + new Date().toLocaleDateString("nb-NO")));
 }
 
+
+/* ---------- Mix-analyse ---------- */
+// Veiledende referansekurver: nivå per oktav (rosa-støy-kompensert) relativt til snittet, typisk for ferdige låter i sjangeren.
+const MIX_BANDS = [["Sub", 20, 60], ["Bass", 60, 120], ["Øvre bass", 120, 250], ["Lav-mellom", 250, 500], ["Mellom", 500, 2000], ["Høy-mellom", 2000, 5000], ["Presence", 5000, 10000], ["Luft", 10000, 20000]];
+const MIX_BASE = [7.2, 5.3, 3.8, 2.3, 0, -2.5, -4.2, -5.7];
+const GENRES = [
+  ["pop", "Pop", [0, 0, 0, 0, 0, 0, 0, 0]],
+  ["elektronisk", "Elektronisk / EDM", [3, 2, 0, -1, -1, 0, 0, 0.5]],
+  ["hiphop", "Hip-hop / R&B", [4, 2.5, 0, -1, -1, -0.5, -0.5, 0]],
+  ["rock", "Rock / band", [-3, -1, 0, 0.5, 0.5, 1, 0.5, -0.5]],
+  ["akustisk", "Akustisk / vise", [-5, -2, 0.5, 1, 1, 0, -0.5, -1]],
+];
+let mixGenre = (() => { try { return localStorage.getItem("plr-mix-genre") || "pop"; } catch { return "pop"; } })();
+function mixTarget(gk) { const g = (GENRES.find(x => x[0] === gk) || GENRES[0])[2]; const t = MIX_BASE.map((b, i) => b + g[i]); const m = t.reduce((a, b) => a + b, 0) / t.length; return t.map(x => x - m); }
+
+async function analyzeMix(buf, progress) {
+  const R = await analyzeMaster(buf, progress);
+  const ch = R.chans, n = R.n, fs = R.fs, nch = R.nch;
+  progress("Analyserer frekvenser og stereo per bånd…"); await yieldUI();
+  const N = 4096, frames = Math.max(1, Math.min(320, Math.floor(n / N)));
+  const half = N / 2, hann = new Float64Array(N); for (let i = 0; i < N; i++) hann[i] = 0.5 - 0.5 * Math.cos(2 * Math.PI * i / (N - 1));
+  const pM = new Float64Array(half), pS = new Float64Array(half), pL = new Float64Array(half), pR = new Float64Array(half), cLR = new Float64Array(half);
+  const lr = new Float64Array(N), li = new Float64Array(N), rr = new Float64Array(N), ri = new Float64Array(N);
+  for (let f = 0; f < frames; f++) {
+    const st = frames === 1 ? 0 : Math.floor(f * (n - N) / (frames - 1));
+    for (let i = 0; i < N; i++) { const k = st + i; const l = k < n ? ch[0][k] : 0, r = k < n ? (nch === 2 ? ch[1][k] : l) : 0; lr[i] = l * hann[i]; rr[i] = r * hann[i]; li[i] = 0; ri[i] = 0; }
+    fft(lr, li); fft(rr, ri);
+    for (let i = 0; i < half; i++) {
+      const Lr = lr[i], Li = li[i], Rr = rr[i], Ri = ri[i];
+      pL[i] += Lr * Lr + Li * Li; pR[i] += Rr * Rr + Ri * Ri; cLR[i] += Lr * Rr + Li * Ri;
+      const mr = (Lr + Rr) / 2, mi = (Li + Ri) / 2, sr = (Lr - Rr) / 2, si = (Li - Ri) / 2;
+      pM[i] += mr * mr + mi * mi; pS[i] += sr * sr + si * si;
+    }
+    if (f % 40 === 39) await yieldUI();
+  }
+  const binHz = fs / N, fmax = Math.min(20000, fs / 2);
+  const sumBand = (arr, lo, hi) => { let s = 0; for (let i = Math.max(1, Math.ceil(lo / binHz)); i < half && i * binHz < hi; i++) s += arr[i]; return s; };
+  // Tonal balanse
+  const tot = MIX_BANDS.map(([, lo, hi]) => { const hi2 = Math.min(hi, fmax); const e = sumBand(pM, lo, hi2) + sumBand(pS, lo, hi2); return { e, oct: Math.log2(Math.max(hi2, lo * 1.01) / lo) }; });
+  const lvl = tot.map(b => 10 * Math.log10(b.e / b.oct + 1e-20));
+  const mean = lvl.reduce((a, b) => a + b, 0) / lvl.length;
+  R.mixBands = MIX_BANDS.map(([name, lo, hi], i) => ({ name, lo, hi, rel: lvl[i] - mean, empty: hi > fmax && lo >= fmax }));
+  // Stereo per bånd
+  const SB = [["Bass", 20, 150], ["Lav-mellom", 150, 500], ["Mellom", 500, 2000], ["Høy-mellom", 2000, 6000], ["Diskant", 6000, fmax]];
+  R.stereoBands = SB.map(([name, lo, hi]) => {
+    const l = sumBand(pL, lo, hi), r = sumBand(pR, lo, hi), c = sumBand(cLR, lo, hi), m = sumBand(pM, lo, hi), s = sumBand(pS, lo, hi);
+    return { name, lo, hi, corr: l && r ? c / Math.sqrt(l * r) : 1, width: m ? 10 * Math.log10((s + 1e-20) / m) : -Infinity, energy: m + s };
+  });
+  // Mulige resonanser: smale topper over 1/2-oktavs snitt (80 Hz–10 kHz)
+  const spec = []; let lo = 40;
+  while (lo < Math.min(12000, fmax)) { const hi = lo * Math.pow(2, 1 / 24); let s = 0, c = 0;
+    for (let i = Math.max(1, Math.floor(lo / binHz)); i <= Math.ceil(hi / binHz) && i < half; i++) { s += pM[i] + pS[i]; c++; }
+    if (c) spec.push([Math.sqrt(lo * hi), 10 * Math.log10(s / c + 1e-20)]); lo = hi; }
+  const peaks = [];
+  for (let i = 6; i < spec.length - 6; i++) {
+    const [fq, v] = spec[i]; if (fq < 80 || fq > 10000) continue;
+    let avg = 0; for (let j = i - 6; j <= i + 6; j++) if (j !== i) avg += spec[j][1]; avg /= 12;
+    if (v - avg > 4.5 && v >= spec[i - 1][1] && v >= spec[i + 1][1]) peaks.push({ f: fq, d: v - avg });
+  }
+  peaks.sort((a, b) => b.d - a.d);
+  R.resonances = []; for (const p of peaks) { if (R.resonances.every(q => Math.abs(Math.log2(q.f / p.f)) > 1 / 3)) R.resonances.push(p); if (R.resonances.length >= 5) break; }
+  R.resonances.sort((a, b) => a.f - b.f);
+  return R;
+}
+
+const hz = (f) => f >= 1000 ? (Math.round(f / 100) / 10).toString().replace(".", ",") + " kHz" : Math.round(f) + " Hz";
+function mixChecks(R) {
+  const C = [];
+  const hr = -db(R.samplePeak);
+  C.push(hr >= 3 ? ["ok", "Headroom", `${f1(hr)} dB under 0 dBFS – god plass til mastering.`] : hr >= 1 ? ["warn", "Headroom", `Bare ${f1(hr)} dB headroom. Senk mixbussen så toppene ligger rundt −6 til −3 dBFS.`] : ["bad", "Headroom", `Toppene går helt opp til ${f1(db(R.samplePeak))} dBFS. Senk mixbussen 4–6 dB før mastering.`]);
+  const clips = R.ch.reduce((s, c) => s + c.clipRuns + c.overs, 0);
+  C.push(clips ? ["bad", "Klipping", `${clips.toLocaleString("nb-NO")} mulige klippesteder. Sjekk mixbussen og sporene med høyest nivå.`] : ["ok", "Klipping", "Ingen klipping funnet."]);
+  C.push(R.plr < 8 ? ["warn", "Limiter", `PLR er ${f1(R.plr)} dB – det ser ut som det ligger en limiter eller hard kompresjon på mixbussen. Send helst masteringen en versjon uten.`] : ["ok", "Dynamikk", `PLR ${f1(R.plr)} dB – miksen har dynamikk igjen til masteren.`]);
+  if (R.nch === 2) {
+    const low = R.stereoBands[0];
+    C.push(low.corr < 0.6 || low.width > -10 ? ["warn", "Bass i mono", `Bassen under 150 Hz er bred (korrelasjon ${f1(low.corr, 2)}, bredde ${f1(low.width)} dB). Hold kick og bass i senter – det gir mer trykk og fungerer på klubb og mobil.`] : ["ok", "Bass i mono", `Bassen ligger samlet i senter (korrelasjon ${f1(low.corr, 2)}).`]);
+    C.push(R.correlation < -0.05 ? ["bad", "Fase", `Negativ korrelasjon (${f1(R.correlation, 2)}). Sjekk fasevendte spor og stereoverktøy.`] : R.correlation < 0.2 ? ["warn", "Fase", `Svært bredt (korrelasjon ${f1(R.correlation, 2)}). Sjekk miksen i mono.`] : ["ok", "Fase", `Monokompatibel (korrelasjon ${f1(R.correlation, 2)}).`]);
+  }
+  const dc = Math.max(...R.ch.map(c => Math.abs(c.dc)));
+  if (dc > 0.001) C.push(["warn", "DC-offset", `DC-offset på ${f1(dc * 100, 2)} %. Legg et høypassfilter på mixbussen.`]);
+  if (!R.info.lossless) C.push(["warn", "Filformat", "Analysen er gjort på en komprimert fil. Send WAV/AIFF i 24-bit til mastering."]);
+  else if (R.info.bits && R.info.bits < 24 && !R.info.float) C.push(["warn", "Filformat", `${R.info.bits}-bit. Send helst 24-bit eller 32-bit float til mastering.`]);
+  else C.push(["ok", "Filformat", `${R.info.container || "Lossless"}${R.info.bits ? " " + R.info.bits + "-bit" + (R.info.float ? " float" : "") : ""}${R.info.sr ? " / " + (R.info.sr / 1000).toLocaleString("nb-NO") + " kHz" : ""}.`]);
+  return C;
+}
+function mixTonalNotes(R) {
+  const t = mixTarget(mixGenre), N = [];
+  R.mixBands.forEach((b, i) => {
+    if (b.empty) return; const d = b.rel - t[i];
+    const tips = {
+      "Sub": ["Mye sub. Sjekk at det er kontrollert, og høypass spor som ikke trenger det.", "Lite sub. Kicken og bassen kan mangle tyngde på store anlegg."],
+      "Bass": ["Mye bass. Kan gi en tung, uklar miks – sjekk kick/bass-forholdet.", "Lite bass. Miksen kan oppleves tynn."],
+      "Øvre bass": ["Mye øvre bass (120–250 Hz). Typisk «grøt» fra gitarer, piano og synther.", "Lite øvre bass. Kan mangle varme og kropp."],
+      "Lav-mellom": ["Tykt i lav-mellom (250–500 Hz). Kan gi boksete eller grumsete lyd – prøv litt kutt i akkorder og vokal.", "Lite lav-mellom. Kan oppleves hul."],
+      "Mellom": ["Mye mellomtone. Kan låte nasalt eller «telefon».", "Lite mellomtone. Vokal og instrumenter kan forsvinne på små høyttalere."],
+      "Høy-mellom": ["Mye høy-mellom (2–5 kHz). Kan bli skarpt og slitsomt på høyt volum.", "Lite høy-mellom. Kan mangle tydelighet og attack."],
+      "Presence": ["Mye presence (5–10 kHz). Sjekk s-lyder og cymbaler.", "Lite presence. Vokalen kan mangle nærhet og tydelighet."],
+      "Luft": ["Mye luft over 10 kHz. Kan bli skingrende.", "Lite luft over 10 kHz. Miksen kan oppleves mørk eller lukket."],
+    }[b.name];
+    if (d > 3) N.push([d > 6 ? "warn" : "info", `${b.name}: ${sgn(d)} dB over referansen. ${tips[0]}`]);
+    else if (d < -3) N.push([d < -6 ? "warn" : "info", `${b.name}: ${sgn(d)} dB under referansen. ${tips[1]}`]);
+  });
+  if (!N.length) N.push(["ok", "Frekvensbalansen ligger innenfor ±3 dB av referansen i alle bånd."]);
+  return N;
+}
+
+function renderMix(R) {
+  const body = $("anaBody"); body.replaceChildren();
+  const sec = (title) => body.appendChild(el("h3", null, title));
+  const grid = (...ts) => { const g = el("div", "tiles"); g.append(...ts); body.appendChild(g); };
+  const checks = mixChecks(R);
+  const bad = checks.filter(c => c[0] !== "ok");
+  const rd = el("div", "ready " + (bad.length ? "warn" : "ok"));
+  const rt = el("div"); rt.append(el("b", null, bad.length ? "Nesten klar for mastering" : "Klar for mastering"), document.createTextNode(bad.length ? bad.length + (bad.length === 1 ? " ting å se på før den sendes videre." : " ting å se på før den sendes videre.") : "Headroom, fase, klipping og filformat ser bra ut."));
+  rd.append(el("span", "st-" + (bad.length ? "warn" : "ok"), bad.length ? "!" : "✓"), rt); rd.firstChild.style.cssText = "font:700 26px Inter"; body.appendChild(rd);
+
+  sec("Nivå og headroom");
+  const hr = -db(R.samplePeak);
+  grid(tile(f1(db(R.samplePeak)), "dBFS", "Høyeste topp", hr >= 3 ? ["ok", f1(hr) + " dB headroom"] : ["warn", "Lite headroom"]),
+       tile(f1(R.truePeak), "dBTP", "True peak"),
+       tile(f1(R.integrated), "LUFS", "Integrert loudness"),
+       tile(f1(R.plr), "dB", "PLR (peak til loudness)", R.plr < 8 ? ["warn", "Limiter på bussen?"] : ["ok", "Dynamikk igjen"]),
+       tile(f1(R.crest), "dB", "Crest factor"),
+       tile(f1(R.lra), "LU", "Loudness range"));
+
+  sec("Frekvensbalanse mot referanse");
+  const gs = el("div", "gsel");
+  for (const [k, n] of GENRES) { const b = el("button", k === mixGenre ? "on" : "", n); b.type = "button"; b.onclick = () => { mixGenre = k; try { localStorage.setItem("plr-mix-genre", k); } catch {} renderMix(R); }; gs.appendChild(b); }
+  body.appendChild(gs);
+  const box = el("div", "chart"); box.style.padding = "12px 14px"; body.appendChild(box);
+  const t = mixTarget(mixGenre), span = 12;
+  const sc = el("div", "tbscale"); const mid = el("div"); mid.append(el("span", null, "For lite"), el("span", null, "Referanse"), el("span", null, "For mye")); sc.append(el("div"), mid, el("div")); box.appendChild(sc);
+  R.mixBands.forEach((b, i) => {
+    const row = el("div", "tb"); const lab = el("div"); lab.append(el("div", null, b.name), el("div", "muted", hz(b.lo) + "–" + hz(b.hi))); lab.lastChild.style.fontSize = "11px";
+    const tr = el("div", "tr"); const z = el("div", "zone"); z.style.left = (50 - 3 / span * 50) + "%"; z.style.width = (6 / span * 50) + "%"; tr.append(z, el("div", "mid"));
+    const d = b.rel - t[i];
+    if (!b.empty) { const dt = el("div", "dot" + (Math.abs(d) > 6 ? " bad" : Math.abs(d) > 3 ? " warn" : "")); dt.style.left = (50 + Math.max(-span, Math.min(span, d)) / span * 50) + "%"; tr.appendChild(dt); }
+    row.append(lab, tr, el("div", "v", b.empty ? "–" : sgn(d) + " dB")); box.appendChild(row);
+  });
+  box.appendChild(el("div", "muted", "Grønt felt = innenfor ±3 dB av en typisk ferdig låt i sjangeren. Referansen er veiledende – stol på ørene og sammenlign med en referanselåt.")).style.cssText = "font-size:11px;margin-top:8px";
+
+  if (R.nch === 2) {
+    sec("Stereo per frekvensbånd");
+    const tw = el("div", "chart"); tw.style.padding = "4px 8px"; const tb = el("table", "stx"); const th = el("tr");
+    ["Bånd", "Korrelasjon", "Bredde (S/M)", "Vurdering"].forEach(x => th.appendChild(el("th", null, x))); tb.appendChild(th);
+    R.stereoBands.forEach((b, i) => {
+      const tr = el("tr"); let v;
+      if (b.corr < -0.1) v = ["bad", "Faseproblem"]; else if (i === 0 && (b.corr < 0.6 || b.width > -10)) v = ["warn", "For bredt for bass"];
+      else if (b.corr < 0.2) v = ["warn", "Svært bredt"]; else if (i > 1 && b.width < -18) v = ["info", "Smalt – nesten mono"]; else v = ["ok", "OK"];
+      const vt = el("td"); vt.appendChild(el("span", "st-" + v[0], v[1]));
+      tr.append(el("td", null, b.name + " (" + hz(b.lo) + "–" + hz(b.hi) + ")"), el("td", "n", f1(b.corr, 2)), el("td", "n", f1(b.width) + " dB"), vt); tb.appendChild(tr);
+    });
+    tw.appendChild(tb); body.appendChild(tw);
+    body.appendChild(el("div", "muted", "Bass bør ligge nær mono (korrelasjon over ca. 0,7). Bredde i høyere bånd er vanlig og gir et åpent stereobilde.")).style.cssText = "font-size:11px;margin-top:6px";
+  }
+
+  sec("Mulige resonanser");
+  if (R.resonances.length) {
+    const nb = el("div", "notes");
+    for (const r of R.resonances) { const d = el("div", "note"); d.append(el("span", "ic st-info", "i"), el("span", null, `${hz(r.f)} stikker ut ${f1(r.d)} dB over omgivelsene.` + (r.f < 250 ? " I bassområdet kan dette være grunntonen i låta – sjekk om det låter boomy." : r.f < 1000 ? " Kan være en rom- eller instrumentresonans – prøv et smalt kutt og lytt." : " Kan oppleves skarpt – prøv et smalt kutt eller en dynamisk EQ."))); nb.appendChild(d); }
+    body.appendChild(nb);
+  } else body.appendChild(el("div", "muted", "Ingen tydelige smale topper funnet mellom 80 Hz og 10 kHz.")).style.fontSize = "14px";
+
+  sec("Klar for mastering?");
+  const ck = el("div", "check"); const icons = { ok: "✓", warn: "!", bad: "✕", info: "i" };
+  for (const [l, name, txt] of checks) { const r = el("div", "row"); r.append(el("span", "st-" + l, icons[l]), el("span")); r.lastChild.append(el("b", null, name + ": "), document.createTextNode(txt)); ck.appendChild(r); }
+  body.appendChild(ck);
+
+  sec("Tips til frekvensbalansen");
+  const nb2 = el("div", "notes");
+  for (const [lvl, txt] of mixTonalNotes(R)) { const d = el("div", "note"); d.append(el("span", "ic st-" + lvl, icons[lvl]), el("span", null, txt)); nb2.appendChild(d); }
+  body.appendChild(nb2);
+
+  body.appendChild(el("div", "foot", "Mix-analysen er veiledende. Frekvensreferansene er omtrentlige kurver for ferdige låter i sjangeren, og nivåene er målt etter ITU-R BS.1770-4. · Phat Lab Review, " + new Date().toLocaleDateString("nb-NO")));
+}
+function mixText(R) {
+  const g = (GENRES.find(x => x[0] === mixGenre) || GENRES[0])[1], t = mixTarget(mixGenre);
+  const L = ["MIX-ANALYSE – " + R.file + " (v" + R.version + ")", "",
+    "Høyeste topp: " + f1(db(R.samplePeak)) + " dBFS (headroom " + f1(-db(R.samplePeak)) + " dB)", "True peak: " + f1(R.truePeak) + " dBTP", "Integrert: " + f1(R.integrated) + " LUFS", "PLR: " + f1(R.plr) + " dB", "",
+    "Frekvensbalanse mot " + g + ":", ...R.mixBands.map((b, i) => "  " + b.name + ": " + (b.empty ? "–" : sgn(b.rel - t[i]) + " dB"))];
+  if (R.nch === 2) L.push("", "Stereo per bånd:", ...R.stereoBands.map(b => "  " + b.name + ": korrelasjon " + f1(b.corr, 2) + ", bredde " + f1(b.width) + " dB"));
+  if (R.resonances.length) L.push("", "Mulige resonanser: " + R.resonances.map(r => hz(r.f) + " (+" + f1(r.d) + " dB)").join(", "));
+  L.push("", "Klar for mastering:", ...mixChecks(R).map(([l, n, x]) => "  " + ({ ok: "✓", warn: "!", bad: "✕", info: "i" })[l] + " " + n + ": " + x));
+  L.push("", "Tips:", ...mixTonalNotes(R).map(([l, x]) => "  - " + x));
+  return L.join("\n");
+}
+$("mixBtn").onclick = async () => {
+  const v = curVersion(); if (!v) return;
+  pause(); anaMode = "mix"; $("anaTitle").textContent = "Mix-analyse";
+  $("anaFile").textContent = (v.label || v.file_name) + " · v" + v.version;
+  $("anaModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
+  $("anaPrint").disabled = $("anaCopy").disabled = true; anaRedraw = [];
+  const body = $("anaBody"); body.replaceChildren();
+  const ld = el("div", "ana-loading", "Henter fil…"); body.appendChild(ld);
+  try {
+    const { url } = await fn("play_url", { version_id: v.id, project_id: project.id });
+    const r = await fetch(url); if (!r.ok) throw new Error("Kunne ikke hente filen (" + r.status + ")");
+    const R = await analyzeMix(await r.arrayBuffer(), (t) => { ld.textContent = t; });
+    R.file = v.label || v.file_name; R.version = v.version; anaReport = R; renderMix(R);
+    $("anaPrint").disabled = $("anaCopy").disabled = false;
+  } catch (e) { ld.textContent = "Analysen feilet: " + e.message + (/decode/i.test(e.message) ? " – nettleseren klarer ikke å lese dette formatet. Prøv WAV eller MP3." : ""); }
+};
+
 $("anaPrint").onclick = () => {
-  const t = document.title; document.title = "Master-analyse – " + (anaReport?.file || "");
+  const t = document.title; document.title = (anaMode === "mix" ? "Mix-analyse – " : "Master-analyse – ") + (anaReport?.file || "");
   anaRedraw.forEach(f => f(null)); window.print(); setTimeout(() => { document.title = t; }, 500);
 };
 $("anaCopy").onclick = async () => {
   const R = anaReport; if (!R) return;
+  if (anaMode === "mix") { try { await navigator.clipboard.writeText(mixText(R)); toast("Analysen er kopiert"); } catch { toast("Kunne ikke kopiere", true); } return; }
   const lines = [
     "MASTER-ANALYSE – " + R.file + " (v" + R.version + ")", "",
     "Integrert loudness: " + f1(R.integrated) + " LUFS", "Short-term maks: " + f1(R.shortTermMax) + " LUFS", "Momentary maks: " + f1(R.momentaryMax) + " LUFS", "LRA: " + f1(R.lra) + " LU",
