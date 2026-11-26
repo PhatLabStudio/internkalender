@@ -577,6 +577,7 @@ if (isClient) { const hl = document.getElementById("homeLink"); hl.removeAttribu
   else {
     try { const r = new URL(document.referrer); if (r.origin === location.origin && /\/(portal|artist)\.html$/.test(r.pathname)) { href = r.pathname + r.search + "#laater"; txt = /portal/.test(r.pathname) ? "← Tilbake til artistsiden" : "← Tilbake til artistprofilen"; } } catch {}
   }
+  if (!href && !isClient) { href = "phatlab-admin/"; txt = "← Admin"; }
   if (href) { fl.href = href; fl.textContent = txt; fl.classList.remove("hidden"); }
 })();
 function show(view) {

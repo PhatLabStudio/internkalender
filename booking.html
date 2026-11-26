@@ -181,13 +181,26 @@ body { background:#0a0a0a; font-family:-apple-system,BlinkMacSystemFont,'Segoe U
 <body>
 <div id="app">
   <div class="top-bar">
+    <a class="btn-link" id="back-link" href="./" style="white-space:nowrap">&#8592; Startsiden</a>
     <a class="logo" href="./" title="Til startsiden" style="color:inherit;text-decoration:none"><span class="accent">Phat</span>Lab<span class="sub">Studio</span></a>
     <div class="nav">
       <button class="nav-btn" id="prev-btn">&#8249;</button>
       <div class="month-label" id="month-label"></div>
       <button class="nav-btn" id="next-btn">&#8250;</button>
     </div>
-    <a class="btn-link" href="produksjon.html" title="Åpne produksjonskalenderen">Produksjon &#8594;</a>
+    <a class="btn-link" id="prod-link" href="produksjon.html" title="Åpne produksjonskalenderen" style="display:none">Produksjon &#8594;</a>
+    <script>
+    (() => {
+      // Åpnet fra Admin: tilbake til Admin og vis lenke til produksjon
+      let admin = new URLSearchParams(location.search).get("from") === "admin";
+      try { if (!admin && document.referrer && new URL(document.referrer).pathname.includes("/phatlab-admin/")) admin = true; } catch (e) {}
+      if (admin) {
+        const b = document.getElementById("back-link"); b.href = "phatlab-admin/"; b.innerHTML = "&#8592; Admin";
+        document.querySelector(".top-bar .logo").href = "phatlab-admin/";
+        document.getElementById("prod-link").style.display = "";
+      }
+    })();
+    </script>
     <button class="btn-new" id="new-btn">+ Ny booking</button>
     <button class="btn-help" id="refresh-btn" title="Oppdater">↻</button>
     <button class="btn-help" id="help-btn" title="Hjelp">?</button>
