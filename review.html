@@ -250,6 +250,32 @@ button.step:hover{border-color:var(--sc)}
 .seg button.on{background:var(--accent);color:#fff}
 .seg button+button{border-left:1px solid var(--line)}
 .filters{display:flex;gap:6px;margin-left:auto}
+/* Referanse */
+.refbox{margin-top:22px;border:1px solid var(--line);border-radius:14px;padding:14px;background:linear-gradient(180deg,rgba(56,189,248,.06),transparent 60%)}
+.refbox .rh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.refbox .rh h3{font-size:15px}
+.reflist{display:flex;flex-direction:column;gap:6px}
+.refrow{display:grid;grid-template-columns:auto 1fr auto auto;gap:10px;align-items:center;padding:9px 12px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.refrow.on{border-color:#38BDF8;box-shadow:inset 3px 0 0 #38BDF8}
+.refrow .rb{font:700 12px Inter;color:#38BDF8;border:1px solid rgba(56,189,248,.45);border-radius:6px;padding:2px 6px}
+.refrow .f{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.refrow .lv{font-size:12px;color:var(--muted);text-align:right;white-space:nowrap}
+.refrow .acts{display:flex;gap:4px}
+.refrow .acts button{background:none;border:1px solid var(--line);color:var(--muted);border-radius:7px;padding:3px 8px;font-size:12px;cursor:pointer}
+.refrow .acts button:hover{color:var(--text)}
+.refctl{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.abbtn{display:inline-flex;align-items:center;gap:8px;border-radius:10px;padding:9px 14px;font-weight:700;border:1px solid #38BDF8;background:rgba(56,189,248,.12);color:var(--text);cursor:pointer}
+.abbtn.ref{background:#38BDF8;color:#04121C}
+.abbtn kbd{font-size:11px;opacity:.75}
+.refadd{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.refadd input[type=url]{flex:1;min-width:180px;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 10px;color:var(--text);outline:none;font-size:13px}
+.refadd input[type=url]:focus{border-color:#38BDF8}
+.reftag{display:inline-block;font:700 11px Inter;color:#04121C;background:#38BDF8;border-radius:6px;padding:2px 7px;margin-right:6px;vertical-align:2px}
+.cmp{width:100%;border-collapse:collapse;font-size:13.5px}
+.cmp th{text-align:right;color:var(--muted);font-weight:500;font-size:12px;padding:6px 8px;border-bottom:1px solid var(--line)}
+.cmp th:first-child,.cmp td:first-child{text-align:left}
+.cmp td{padding:8px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+.tb .rdot{position:absolute;top:2px;width:2px;height:12px;background:#38BDF8;margin-left:-1px}
 /* Mix-analyse */
 .gsel{display:flex;gap:4px;flex-wrap:wrap;margin:-2px 0 10px}
 .gsel button{background:var(--panel2);border:1px solid var(--line);color:var(--muted);border-radius:99px;padding:4px 11px;font-size:12.5px;cursor:pointer}
@@ -436,10 +462,28 @@ html,body{overflow-x:hidden}
             <span class="muted volwrap" style="font-size:13px">Volum</span>
             <input type="range" class="vol" id="vol" min="0" max="1" step="0.01" value="1">
           </div>
-          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · klikk i bølgeformen for å hoppe</div>
+          <div class="kbd"><kbd>Mellomrom</kbd> spill/pause · <kbd>←</kbd><kbd>→</kbd> 5 sek · <kbd>C</kbd> skriv kommentar · <kbd>R</kbd> bytt til referanse · klikk i bølgeformen for å hoppe</div>
         </div>
         <div class="vhead hidden" id="vhead"><h3>Versjoner</h3><span class="muted" id="vcount"></span></div>
         <div class="vlist" id="vlist"></div>
+        <div class="refbox hidden" id="refBox">
+          <div class="rh"><h3>Referanse</h3><span class="muted" style="font-size:13px">Sammenlign miksen med en ferdig låt</span></div>
+          <div class="reflist" id="refList"></div>
+          <div class="refctl hidden" id="refCtl">
+            <button type="button" class="abbtn" id="abBtn"></button>
+            <label class="stamp" style="margin:0"><input type="checkbox" id="refMatch" checked> Nivåtilpass</label>
+            <span class="muted" id="refGainInfo" style="font-size:12.5px"></span>
+          </div>
+          <div class="refadd">
+            <button type="button" class="btn sm" id="refUpBtn">+ Last opp referanselåt</button>
+            <input type="file" id="refFile" accept="audio/*" hidden>
+            <input type="url" id="refUrl" placeholder="… eller lim inn lenke (Spotify, YouTube, Tidal)">
+            <button type="button" class="btn sm" id="refUrlSave">Lagre lenke</button>
+            <a class="btn sm hidden" id="refUrlOpen" target="_blank" rel="noopener noreferrer" style="text-decoration:none;color:var(--text)">Åpne lenke ↗</a>
+          </div>
+          <div id="refStatus" class="hidden" style="margin-top:10px"><div id="refText" style="font-size:13px"></div><div class="progress"><i id="refBar"></i></div></div>
+          <div class="muted" style="font-size:12px;margin-top:8px">Last opp en fil for A/B-lytting og sammenligning i mix-analysen. Lenker kan bare åpnes for å lytte.</div>
+        </div>
         <div class="drop" id="drop">
           <div><b>Last opp ny versjon</b> – dra en fil hit eller <a href="#" id="pickFile">velg fil</a></div>
           <div style="font-size:13px;margin-top:4px">MP3, WAV, AIFF, M4A eller video · maks 50 MB</div>
@@ -751,7 +795,7 @@ let media = new Audio(), loadedVid = null, pendingCarry = null;
 
 async function loadProject(pid, keepVersion) {
   try {
-    project = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid });
+    project = splitRefs(isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid }));
     if (!project) throw new Error("Fant ikke prosjektet");
   } catch (e) {
     if (isClient && /PASSORD_KREVES/.test(e.message)) {
@@ -761,11 +805,15 @@ async function loadProject(pid, keepVersion) {
   }
   show("vProject");
   document.title = project.title + " · Phat Lab Review";
-  if (!keepVersion || !project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null;
+  if (!keepVersion || !curVersion()) curVid = project.versions[0]?.id || null;
   renderProject();
   startPoll();
 }
-function curVersion() { return project?.versions.find(v => v.id === curVid) || null; }
+function curVersion() { return project?.versions.find(v => v.id === curVid) || project?.refs?.find(v => v.id === curVid) || null; }
+// Referanselåter har versjon <= 0 og vises i egen boks, ikke i versjonslisten
+const isRefV = (v) => !!v && (v.version <= 0 || v.stage === "referanse");
+function splitRefs(p) { if (!p || p.refs) return p; const all = p.versions || []; p.refs = all.filter(isRefV).sort((a, b) => b.version - a.version); p.versions = all.filter(v => !isRefV(v)); return p; }
+let lastMixVid = null, selRefVid = null;
 
 function renderProject() {
   $("pTitle").textContent = project.title;
@@ -796,7 +844,7 @@ function renderProject() {
   $("downloadBtn").classList.toggle("hidden", !canDl);
 
   $("vtabs").classList.add("hidden");
-  renderVersionList();
+  renderVersionList(); renderRefs();
 
   const v = curVersion();
   $("noFile").classList.toggle("hidden", !!v);
@@ -805,10 +853,14 @@ function renderProject() {
   $("compose").classList.toggle("hidden", !v && !isClient);
   $("cText").classList.toggle("hidden", !v);
   $("compose").querySelector(".row").classList.toggle("hidden", !v);
+  const onRef = isRefV(v);
+  if (v && !onRef) lastMixVid = v.id;
+  if (onRef) { $("cText").classList.add("hidden"); $("compose").querySelector(".row").classList.add("hidden"); }
   if (v) {
     $("fileName").textContent = v.label || v.file_name;
+    if (onRef) $("fileName").prepend(el("span", "reftag", "REFERANSE"));
     $("renameFileBtn").classList.toggle("hidden", isClient);
-    $("fileMeta").textContent = ["v" + v.version, v.label ? "original: " + v.file_name : "", fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
+    $("fileMeta").textContent = onRef ? ["Referanselåt", v.lufs != null ? f1(+v.lufs) + " LUFS" : "", fmtSize(v.size_bytes)].filter(Boolean).join(" · ") : ["v" + v.version, v.label ? "original: " + v.file_name : "", fmtSize(v.size_bytes), v.uploaded_by ? "av " + v.uploaded_by : "", ago(v.created_at)].filter(Boolean).join(" · ");
     preloadAll();
     if (loadedVid !== v.id) { loadMedia(v, pendingCarry); }
     pendingCarry = null;
@@ -830,12 +882,12 @@ async function signedUrl(vid) {
 function audioFor(v) {
   let a = audios.get(v.id);
   if (!a) {
-    a = new Audio(); a.preload = "auto"; a.volume = +$("vol").value; wire(a); audios.set(v.id, a);
+    a = new Audio(); a.preload = "auto"; a.volume = +$("vol").value * gainFor(v); wire(a); audios.set(v.id, a);
     signedUrl(v.id).then(u => { if (!a.src) { a.src = u; a.load(); } }).catch(e => { if (v.id === curVid) toast("Kunne ikke laste filen: " + e.message, true); });
   }
   return a;
 }
-function preloadAll() { for (const v of project.versions) if (!isVideoV(v)) audioFor(v); }
+function preloadAll() { for (const v of [...project.versions, ...(project.refs || [])]) if (!isVideoV(v)) audioFor(v); }
 function switchVersion(vid) {
   if (vid === curVid) return;
   pendingCarry = { t: media.currentTime || 0, play: !media.paused }; // fortsett på samme sted
@@ -914,7 +966,7 @@ async function loadMedia(v, carry) {
     try { const u = await signedUrl(v.id); if (loadedVid !== v.id) return; video.src = u; video.load(); }
     catch (e) { toast("Kunne ikke laste filen: " + e.message, true); }
   } else media = audioFor(v);
-  media.volume = +$("vol").value;
+  media.volume = +$("vol").value * gainFor(v);
   if (carry) {
     const m = media;
     const go = () => {
@@ -944,7 +996,7 @@ function updateTime() {
 let raf = null;
 (function tick() { if (!media.paused) { drawWave(); $("tCur").textContent = fmt(media.currentTime); $("stampT").textContent = fmt(media.currentTime); } raf = requestAnimationFrame(tick); })();
 $("playBtn").onclick = togglePlay;
-$("vol").oninput = () => { const v = +$("vol").value; video.volume = v; audios.forEach(a => { a.volume = v; }); };
+$("vol").oninput = applyVol;
 $("downloadBtn").onclick = async () => {
   try { const { url } = await fn("play_url", { version_id: curVid, project_id: project.id, download: true }); location.href = url; }
   catch (e) { toast(e.message, true); }
@@ -1395,6 +1447,106 @@ async function upload(file) {
   uploading = false; st.classList.add("hidden");
 }
 
+
+/* ---------- Referanselåt: A/B og nivåtilpasning ---------- */
+function mixForCompare() { return project?.versions.find(x => x.id === lastMixVid) || project?.versions[0] || null; }
+// Senker den høyeste av miks og referanse så begge spilles like høyt (basert på integrert LUFS)
+function gainDb(v) {
+  if (!v || !$("refMatch")?.checked || !project?.refs?.length) return 0;
+  const ref = project.refs.find(x => x.id === selRefVid) || project.refs[0], mix = mixForCompare();
+  if (!ref || !mix || ref.lufs == null || mix.lufs == null) return 0;
+  const d = +mix.lufs - +ref.lufs;
+  if (v.id === ref.id) return Math.min(0, d);
+  if (v.id === mix.id) return Math.min(0, -d);
+  return 0;
+}
+function gainFor(v) { return Math.pow(10, gainDb(v) / 20); }
+function applyVol() {
+  const b = +$("vol").value; video.volume = b;
+  audios.forEach((a, id) => { const v = curVersionById(id); a.volume = Math.max(0, Math.min(1, b * gainFor(v))); });
+  renderRefInfo();
+}
+function curVersionById(id) { return project?.versions.find(v => v.id === id) || project?.refs?.find(v => v.id === id) || null; }
+function renderRefInfo() {
+  const ref = project?.refs?.find(x => x.id === selRefVid) || project?.refs?.[0], mix = mixForCompare(), info = $("refGainInfo");
+  if (!info) return;
+  if (!ref || !mix) { info.textContent = ""; return; }
+  if (!$("refMatch").checked) { info.textContent = "Spilles på originalt nivå"; return; }
+  if (ref.lufs == null || mix.lufs == null) { info.textContent = "Mangler nivåmåling – kjør Master-analyse på filene for å nivåtilpasse"; return; }
+  const d = +mix.lufs - +ref.lufs;
+  info.textContent = Math.abs(d) < 0.3 ? "Like høye fra før" : (d < 0 ? "Referansen senkes " + f1(-d) + " dB" : "Miksen senkes " + f1(d) + " dB") + " så begge spilles like høyt";
+}
+function renderRefs() {
+  const box = $("refBox"); if (!project) return;
+  box.classList.toggle("hidden", !project.versions.length && !project.refs.length && !project.ref_url);
+  if (!project.versions.length && !project.refs.length) box.classList.add("hidden");
+  const refs = project.refs || [];
+  if (!refs.some(r => r.id === selRefVid)) selRefVid = refs[0]?.id || null;
+  const list = $("refList"); list.replaceChildren();
+  for (const r of refs) {
+    const on = r.id === curVid;
+    const row = el("div", "refrow" + (on ? " on" : "")); row.title = "Spill referansen (fortsetter på samme sted)";
+    const nm = el("div", "f", r.label || r.file_name.replace(/\.[^.]+$/, ""));
+    const lv = el("div", "lv", (r.lufs != null ? f1(+r.lufs) + " LUFS" : "") + (r.duration ? " · " + fmt(+r.duration) : ""));
+    const acts = el("div", "acts");
+    if (!isClient) { const bx = el("button", null, "Fjern"); bx.type = "button"; bx.onclick = async (e) => { e.stopPropagation(); if (!confirmInline(bx)) return;
+      try { await fn("delete_version", { version_id: r.id, project_id: project.id }); audios.get(r.id)?.pause(); audios.delete(r.id); if (r.id === curVid) { curVid = lastMixVid || project.versions[0]?.id || null; loadedVid = null; } await loadProject(project.id, true); toast("Referansen er fjernet"); } catch (err) { toast(err.message, true); } };
+      acts.appendChild(bx); }
+    row.append(el("span", "rb", "REF"), nm, lv, acts);
+    row.onclick = () => { selRefVid = r.id; applyVol(); switchVersion(r.id); };
+    list.appendChild(row);
+  }
+  $("refCtl").classList.toggle("hidden", !refs.length || !project.versions.length);
+  const onRef = isRefV(curVersion());
+  $("abBtn").className = "abbtn" + (onRef ? " ref" : "");
+  $("abBtn").innerHTML = onRef ? "Hører: REFERANSE <kbd>R</kbd> bytt til miksen" : "Hører: MIKSEN <kbd>R</kbd> bytt til referansen";
+  const u = project.ref_url; $("refUrlOpen").classList.toggle("hidden", !u); if (u) $("refUrlOpen").href = u;
+  if (document.activeElement !== $("refUrl")) $("refUrl").value = u || "";
+  renderRefInfo();
+}
+function toggleAB() {
+  if (!project?.refs?.length || !project.versions.length) return;
+  const v = curVersion();
+  if (isRefV(v)) switchVersion(lastMixVid && project.versions.some(x => x.id === lastMixVid) ? lastMixVid : project.versions[0].id);
+  else { if (v) lastMixVid = v.id; switchVersion(selRefVid || project.refs[0].id); }
+  applyVol();
+}
+$("abBtn").onclick = toggleAB;
+$("refMatch").onchange = applyVol;
+$("refUpBtn").onclick = () => $("refFile").click();
+$("refFile").onchange = () => { const f = $("refFile").files[0]; $("refFile").value = ""; if (f) uploadRef(f); };
+$("refUrlSave").onclick = async () => {
+  const u = $("refUrl").value.trim();
+  try { isClient ? await rpc("rv_share_set_ref_url", { token: SHARE, url: u }) : await rpc("rv_set_ref_url", { pid: project.id, url: u }); toast(u ? "Lenken er lagret" : "Lenken er fjernet"); await loadProject(project.id, true); }
+  catch (e) { toast(e.message, true); }
+};
+async function uploadRef(file) {
+  if (uploading) return;
+  const mime = guessMime(file);
+  if (!/^audio\//.test(mime)) { toast("Referansen må være en lydfil", true); return; }
+  if (file.size > 50 * 1024 * 1024) { toast("Filen er " + fmtSize(file.size) + ". Maks er 50 MB – bruk gjerne MP3 320 kbps for referanser.", true); return; }
+  let uploader = "Phat Lab";
+  if (isClient) { uploader = $("authorName").value.trim() || store.get(NAME_KEY) || "Kunde"; }
+  uploading = true;
+  const st = $("refStatus"), bar = $("refBar"), txt = $("refText");
+  st.classList.remove("hidden"); bar.style.width = "0%"; txt.textContent = "Analyserer " + file.name + "…";
+  try {
+    const info = await analyze(file);
+    const up = await fn("upload_url", { project_id: project.id, file_name: file.name, mime, size: file.size });
+    await new Promise((res, rej) => {
+      const fd = new FormData(); fd.append("cacheControl", "3600"); fd.append("", new File([file], file.name, { type: mime }));
+      const x = new XMLHttpRequest(); x.open("PUT", up.signedUrl); x.setRequestHeader("apikey", SB_KEY); x.setRequestHeader("x-upsert", "false");
+      x.upload.onprogress = (e) => { if (e.lengthComputable) { bar.style.width = (e.loaded / e.total * 100).toFixed(1) + "%"; txt.textContent = "Laster opp referanse – " + Math.round(e.loaded / e.total * 100) + " %"; } };
+      x.onload = () => x.status < 300 ? res() : rej(new Error("Opplasting feilet (" + x.status + ")")); x.onerror = () => rej(new Error("Nettverksfeil under opplasting")); x.send(fd);
+    });
+    const { id } = await fn("register", { project_id: project.id, path: up.path, file_name: file.name, mime, size: file.size, duration: info.duration, peaks: info.peaks, lufs: info.lufs, true_peak: info.true_peak,
+      label: file.name.replace(/\.[^.]+$/, "").slice(0, 100), uploaded_by: uploader, reference: true });
+    selRefVid = id; await loadProject(project.id, true); applyVol();
+    toast("Referansen er lastet opp. Trykk R for å bytte mellom miks og referanse.");
+  } catch (e) { toast(e.message, true); }
+  uploading = false; st.classList.add("hidden");
+}
+
 /* ---------- Master-analyse (EBU R128 / ITU-R BS.1770-4) ---------- */
 const yieldUI = () => new Promise(r => setTimeout(r, 0));
 const db = (x) => x > 0 ? 20 * Math.log10(x) : -Infinity;
@@ -1792,8 +1944,11 @@ const GENRES = [
   ["rock", "Rock / band", [-3, -1, 0, 0.5, 0.5, 1, 0.5, -0.5]],
   ["akustisk", "Akustisk / vise", [-5, -2, 0.5, 1, 1, 0, -0.5, -1]],
 ];
-let mixGenre = (() => { try { return localStorage.getItem("plr-mix-genre") || "pop"; } catch { return "pop"; } })();
-function mixTarget(gk) { const g = (GENRES.find(x => x[0] === gk) || GENRES[0])[2]; const t = MIX_BASE.map((b, i) => b + g[i]); const m = t.reduce((a, b) => a + b, 0) / t.length; return t.map(x => x - m); }
+let mixGenre = (() => { try { const g = localStorage.getItem("plr-mix-genre") || "pop"; return g.startsWith("ref:") ? "pop" : g; } catch { return "pop"; } })();
+const refAna = new Map();
+function mixTarget(gk) {
+  if (String(gk).startsWith("ref:")) { const RR = refAna.get(gk.slice(4)); if (RR) return RR.mixBands.map(b => b.rel); gk = "pop"; }
+  const g = (GENRES.find(x => x[0] === gk) || GENRES[0])[2]; const t = MIX_BASE.map((b, i) => b + g[i]); const m = t.reduce((a, b) => a + b, 0) / t.length; return t.map(x => x - m); }
 
 async function analyzeMix(buf, progress) {
   const R = await analyzeMaster(buf, progress);
@@ -1908,6 +2063,21 @@ function renderMix(R) {
   sec("Frekvensbalanse mot referanse");
   const gs = el("div", "gsel");
   for (const [k, n] of GENRES) { const b = el("button", k === mixGenre ? "on" : "", n); b.type = "button"; b.onclick = () => { mixGenre = k; try { localStorage.setItem("plr-mix-genre", k); } catch {} renderMix(R); }; gs.appendChild(b); }
+  for (const rf of (project.refs || [])) {
+    const k = "ref:" + rf.id, b = el("button", k === mixGenre ? "on" : "", "Referanse: " + (rf.label || rf.file_name).slice(0, 28)); b.type = "button";
+    b.style.borderColor = "#38BDF8"; if (k === mixGenre) { b.style.background = "#38BDF8"; b.style.color = "#04121C"; }
+    b.onclick = async () => {
+      if (!refAna.has(rf.id)) {
+        b.textContent = "Analyserer referansen…"; b.disabled = true;
+        try { const { url } = await fn("play_url", { version_id: rf.id, project_id: project.id }); const r = await fetch(url); if (!r.ok) throw new Error("Kunne ikke hente referansen");
+          const RR = await analyzeMix(await r.arrayBuffer(), (t) => { b.textContent = t; }); RR.file = rf.label || rf.file_name; refAna.set(rf.id, RR); }
+        catch (e) { toast(e.message, true); b.disabled = false; b.textContent = "Referanse: " + (rf.label || rf.file_name).slice(0, 28); return; }
+      }
+      mixGenre = k; renderMix(R);
+    };
+    gs.appendChild(b);
+  }
+  if (String(mixGenre).startsWith("ref:") && !refAna.has(mixGenre.slice(4))) mixGenre = "pop";
   body.appendChild(gs);
   const box = el("div", "chart"); box.style.padding = "12px 14px"; body.appendChild(box);
   const t = mixTarget(mixGenre), span = 12;
@@ -1919,7 +2089,31 @@ function renderMix(R) {
     if (!b.empty) { const dt = el("div", "dot" + (Math.abs(d) > 6 ? " bad" : Math.abs(d) > 3 ? " warn" : "")); dt.style.left = (50 + Math.max(-span, Math.min(span, d)) / span * 50) + "%"; tr.appendChild(dt); }
     row.append(lab, tr, el("div", "v", b.empty ? "–" : sgn(d) + " dB")); box.appendChild(row);
   });
-  box.appendChild(el("div", "muted", "Grønt felt = innenfor ±3 dB av en typisk ferdig låt i sjangeren. Referansen er veiledende – stol på ørene og sammenlign med en referanselåt.")).style.cssText = "font-size:11px;margin-top:8px";
+  const RREF = String(mixGenre).startsWith("ref:") ? refAna.get(mixGenre.slice(4)) : null;
+  box.appendChild(el("div", "muted", RREF ? "Midtstreken er referanselåta «" + RREF.file + "». Grønt felt = innenfor ±3 dB av den. Begge er normalisert, så det er balansen som sammenlignes – ikke volumet." : "Grønt felt = innenfor ±3 dB av en typisk ferdig låt i sjangeren. Last opp en referanselåt i Review for å sammenligne direkte.")).style.cssText = "font-size:11px;margin-top:8px";
+  if (RREF) {
+    sec("Miks mot referanse");
+    const tw = el("div", "chart"); tw.style.padding = "4px 8px"; const tb = el("table", "cmp"); const th = el("tr");
+    ["", "Miksen", "Referansen", "Forskjell"].forEach(x => th.appendChild(el("th", null, x))); tb.appendChild(th);
+    const rowC = (name, a, b, d = 1, unit = "") => { const tr = el("tr"); tr.append(el("td", null, name), el("td", null, f1(a, d) + unit), el("td", null, f1(b, d) + unit), el("td", null, isFinite(a - b) ? sgn(a - b, d) + unit : "–")); tb.appendChild(tr); };
+    rowC("Integrert loudness", R.integrated, RREF.integrated, 1, " LUFS");
+    rowC("True peak", R.truePeak, RREF.truePeak, 1, " dBTP");
+    rowC("PLR (dynamikk)", R.plr, RREF.plr, 1, " dB");
+    rowC("Crest factor", R.crest, RREF.crest, 1, " dB");
+    rowC("Loudness range", R.lra, RREF.lra, 1, " LU");
+    if (R.nch === 2 && RREF.nch === 2) {
+      rowC("Fasekorrelasjon", R.correlation, RREF.correlation, 2);
+      R.stereoBands.forEach((b, i) => { const rb = RREF.stereoBands[i]; if (rb) rowC("Bredde " + b.name.toLowerCase(), b.width, rb.width, 1, " dB"); });
+    }
+    tw.appendChild(tb); body.appendChild(tw);
+    const hints = [];
+    const dl = R.integrated - RREF.integrated, dp = R.plr - RREF.plr;
+    if (dl < -3) hints.push("Miksen er " + f1(-dl) + " dB svakere enn referansen. Helt normalt før mastering – nivået tas i masteren. Bruk Nivåtilpass når du lytter A/B.");
+    if (dp > 4) hints.push("Miksen har " + f1(dp) + " dB mer dynamikk (PLR) enn referansen. Masteringen vil typisk ta igjen noe av dette.");
+    if (dp < -2) hints.push("Miksen er mer komprimert enn referansen (PLR " + f1(dp) + " dB). Vurder mindre bussbehandling før mastering.");
+    if (R.nch === 2 && RREF.nch === 2) { const w = R.stereoBands[4].width - RREF.stereoBands[4].width; if (w < -4) hints.push("Diskanten er smalere enn i referansen (" + sgn(w) + " dB). Prøv litt mer bredde på pads, kor eller reverb."); if (w > 4) hints.push("Diskanten er bredere enn i referansen (" + sgn(w) + " dB). Sjekk monokompatibiliteten."); }
+    if (hints.length) { const nb = el("div", "notes"); hints.forEach(t => { const d = el("div", "note"); d.append(el("span", "ic st-info", "i"), el("span", null, t)); nb.appendChild(d); }); body.appendChild(nb); }
+  }
 
   if (R.nch === 2) {
     sec("Stereo per frekvensbånd");
@@ -1956,7 +2150,7 @@ function renderMix(R) {
   body.appendChild(el("div", "foot", "Mix-analysen er veiledende. Frekvensreferansene er omtrentlige kurver for ferdige låter i sjangeren, og nivåene er målt etter ITU-R BS.1770-4. · Phat Lab Review, " + new Date().toLocaleDateString("nb-NO")));
 }
 function mixText(R) {
-  const g = (GENRES.find(x => x[0] === mixGenre) || GENRES[0])[1], t = mixTarget(mixGenre);
+  const g = String(mixGenre).startsWith("ref:") ? "referanselåta «" + (refAna.get(mixGenre.slice(4))?.file || "") + "»" : (GENRES.find(x => x[0] === mixGenre) || GENRES[0])[1], t = mixTarget(mixGenre);
   const L = ["MIX-ANALYSE – " + R.file + " (v" + R.version + ")", "",
     "Høyeste topp: " + f1(db(R.samplePeak)) + " dBFS (headroom " + f1(-db(R.samplePeak)) + " dB)", "True peak: " + f1(R.truePeak) + " dBTP", "Integrert: " + f1(R.integrated) + " LUFS", "PLR: " + f1(R.plr) + " dB", "",
     "Frekvensbalanse mot " + g + ":", ...R.mixBands.map((b, i) => "  " + b.name + ": " + (b.empty ? "–" : sgn(b.rel - t[i]) + " dB"))];
@@ -1967,7 +2161,8 @@ function mixText(R) {
   return L.join("\n");
 }
 $("mixBtn").onclick = async () => {
-  const v = curVersion(); if (!v) return;
+  let v = curVersion(); if (!v) return;
+  if (isRefV(v)) { v = mixForCompare() || v; }
   pause(); anaMode = "mix"; $("anaTitle").textContent = "Mix-analyse";
   $("anaFile").textContent = (v.label || v.file_name) + " · v" + v.version;
   $("anaModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
@@ -2012,7 +2207,8 @@ document.addEventListener("keydown", (e) => {
   if (e.code === "Space") { e.preventDefault(); togglePlay(); }
   else if (e.key === "ArrowLeft") seek(media.currentTime - 5);
   else if (e.key === "ArrowRight") seek(media.currentTime + 5);
-  else if (e.key.toLowerCase() === "c") { e.preventDefault(); pause(); $("cText").focus(); }
+  else if (e.key.toLowerCase() === "c") { if (isRefV(curVersion())) return; e.preventDefault(); pause(); $("cText").focus(); }
+  else if (e.key.toLowerCase() === "r") { e.preventDefault(); toggleAB(); }
 });
 
 /* ---------- Automatisk oppdatering ---------- */
@@ -2020,8 +2216,8 @@ function startPoll() { stopPoll(); pollT = setInterval(async () => {
   if (document.hidden || !project || uploading || renaming || replyTo || notesTimer || notesSaving
       || document.activeElement === $("cText") || document.activeElement === $("notesText")) return;
   try {
-    const p = isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id });
-    if (p && JSON.stringify(p) !== JSON.stringify(project)) { project = p; if (!project.versions.some(v => v.id === curVid)) curVid = project.versions[0]?.id || null; renderProject(); }
+    const p = splitRefs(isClient ? await rpc("rv_share_get", { token: SHARE }) : await rpc("rv_get_project", { pid: project.id }));
+    if (p && JSON.stringify(p) !== JSON.stringify(project)) { project = p; if (!curVersion()) curVid = project.versions[0]?.id || null; renderProject(); }
   } catch {}
 }, 10000); }
 function stopPoll() { if (pollT) clearInterval(pollT); pollT = null; }
