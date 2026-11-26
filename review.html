@@ -748,6 +748,13 @@ function renderProject() {
   $("pArtistWrap").classList.toggle("hidden", isClient && !project.artist_name);
   $("pArtistName").textContent = project.artist_name || "Uten artist";
   if (!isClient) $("backBtn").textContent = "← " + (project.artist_name || "Uten artist");
+  // Kundelenke: vis vei til artistsiden når artisten har portal (og man ikke kom derfra)
+  if (isClient) {
+    const fl = $("fromLink");
+    if (project.artist_portal && (fl.classList.contains("hidden") || fl.dataset.auto)) {
+      fl.href = "portal.html#laater"; fl.textContent = "Til artistprofilen: alle låter →"; fl.dataset.auto = "1"; fl.classList.remove("hidden");
+    }
+  }
   $("pArtistDot").style.background = project.artist_color || "#8B7FB8"; $("vProject").style.setProperty("--pc", project.artist_color || "#8B7FB8");
   if (!isClient) {
     const sel = $("pArtistSel"); sel.classList.remove("hidden");
