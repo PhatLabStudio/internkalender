@@ -13,8 +13,6 @@
 <script src="assets/artist-common.js"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
-.ov{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:14px}
-@media (max-width:860px){.ov{grid-template-columns:1fr}}
 .mini{display:flex;flex-direction:column;gap:8px}
 .mini .rv{background:var(--card2)}
 .bio{white-space:pre-wrap;color:#D9D3F0;margin:14px 0 0;font-size:14.5px;max-width:760px}
@@ -42,21 +40,14 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   </section>
 
   <nav class="tabs" id="tabs">
-    <button type="button" data-t="oversikt" class="on">Oversikt</button>
-    <button type="button" data-t="laater">Låter <span class="n" id="nSongs"></span></button>
+    <button type="button" data-t="laater" class="on">Låter <span class="n" id="nSongs"></span></button>
     <button type="button" data-t="kalender">Kalender</button>
     <button type="button" data-t="dok">Dokumenter <span class="n" id="nDocs"></span></button>
     <button type="button" data-t="profil">Profil</button>
   </nav>
 
-  <section id="v-oversikt">
-    <div class="ov">
-      <div class="panel"><div class="ph"><h2>Det som skjer fremover</h2></div><div id="ovAgenda"></div></div>
-      <div class="panel"><div class="ph"><h2>Siste i Review</h2></div><div class="mini" id="ovReview"></div></div>
-    </div>
-  </section>
 
-  <section id="v-laater" class="hidden"><div class="songs" id="songs"></div></section>
+  <section id="v-laater"><div class="songs" id="songs"></div></section>
 
   <section id="v-kalender" class="hidden">
     <h2 style="margin-bottom:10px">Produksjonskalender</h2>
@@ -154,12 +145,12 @@ async function load() {
   } catch (e) { if (token) toast(e.message, true); }
 }
 
-let tab = location.hash.slice(1) || "oversikt";
+let tab = location.hash.slice(1) || "laater";
 $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.t; history.replaceState(null, "", location.search + "#" + tab); renderTabs(); });
 function renderTabs() {
-  if (!$("v-" + tab)) tab = "oversikt";
+  if (!$("v-" + tab)) tab = "laater";
   $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
-  for (const t of ["oversikt", "laater", "kalender", "dok", "profil"]) $("v-" + t).classList.toggle("hidden", t !== tab);
+  for (const t of ["laater", "kalender", "dok", "profil"]) $("v-" + t).classList.toggle("hidden", t !== tab);
 }
 const reviewUrl = (r) => "review.html?s=" + encodeURIComponent(r.share_token) + "&from=portal";
 
@@ -178,13 +169,6 @@ function render() {
   const L = [["Instagram", P.social("instagram", pr.instagram)], ["Spotify", P.safeUrl(pr.spotify)], ["TikTok", P.social("tiktok", pr.tiktok)], ["YouTube", P.social("youtube", pr.youtube)], ["Nettside", P.safeUrl(pr.website)]].filter(x => x[1]);
   $("links").replaceChildren(...L.map(([n, u]) => { const x = el("a", null, n + " ↗"); x.href = u; x.target = "_blank"; x.rel = "noopener noreferrer"; return x; }));
   $("nSongs").textContent = D.songs.length || ""; $("nDocs").textContent = D.docs.length || "";
-
-  // Oversikt
-  P.renderAgenda($("ovAgenda"), items.slice(0, 8));
-  const ov = $("ovReview"); ov.replaceChildren();
-  const recent = D.review.filter(r => r.versions).sort((p, q) => String(q.last?.created_at || "").localeCompare(String(p.last?.created_at || ""))).slice(0, 5);
-  for (const r of recent) ov.appendChild(rvRow(r, true));
-  if (!recent.length) ov.appendChild(el("div", "empty", "Ingen mikser lastet opp ennå. Du får dem her så snart de er klare."));
 
   renderSongs(); P.renderTimeline($("timeline"), D.songs); P.renderAgenda($("agenda"), items); renderDocs(); fillProfile(); renderTabs();
 }
