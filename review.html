@@ -541,7 +541,9 @@ const SHARE = params.get("s");
 const isClient = !!SHARE;
 let token = isClient ? null : store.get(TOKEN_KEY);
 const PW_KEY = "plr_pw_" + (SHARE || "");
-let sharePw = (() => { try { return sessionStorage.getItem(PW_KEY); } catch { return null; } })();
+let sharePw = (() => { try { return sessionStorage.getItem(PW_KEY); } catch { return null; } })()
+  // Innlogget i artistportalen: slipper passord på egne låter
+  || (isClient && store.get("plk-artist-token") ? "art:" + store.get("plk-artist-token") : null);
 async function sha256hex(s) { const b = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s)); return Array.from(new Uint8Array(b), x => x.toString(16).padStart(2, "0")).join(""); }
 let sb = makeClient();
 function makeClient() {

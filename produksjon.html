@@ -457,6 +457,7 @@ function renderFolders(){
     if(done) foot.push(`<span><b>${done}</b> ferdig</span>`);
     if(nextEnd) foot.push(`<span>Neste frist <b>${esc(fmt(isoOf(nextEnd.b)))}</b></span>`);
     if(openRv) foot.push(`<span><b>${openRv}</b> åpne review-kommentarer</span>`);
+    if(g.id) foot.push(`<span class="rvlink" role="link" tabindex="0" data-profile-artist="${esc(g.id)}">Profil ↗</span>`);
     if(g.id) foot.push(`<span class="rvlink" role="link" tabindex="0" data-rv-artist="${esc(g.id)}">Review ↗</span>`);
     const target = g.id ? "artist-"+g.id : "alle";
     html += `<a class="fcard" href="#${esc(target)}" style="--fc:${esc(g.color)};text-decoration:none">
@@ -479,6 +480,7 @@ function renderTabs(){
     </div>
     ${cur && safeUrl(cur.dropbox)?`<a class="btn dbx" href="${esc(safeUrl(cur.dropbox))}" target="_blank" rel="noopener noreferrer">${DBX}Åpne Dropbox</a>`:""}
     ${cur && !safeUrl(cur.dropbox)?`<button class="btn ghost" type="button" data-edit-artist="${esc(cur.id)}" style="color:var(--muted)">${DBX}Legg til Dropbox-lenke</button>`:""}
+    ${cur?`<a class="btn" href="artist.html?id=${encodeURIComponent(cur.id)}" title="Åpne artistprofilen: låter, dokumenter, planer og artistportal">Artistprofil →</a>`:""}
     ${cur?`<a class="btn" href="review.html?a=${encodeURIComponent(cur.id)}" title="Åpne artistens mappe i Review">Review-mappe ↗</a>`:""}
     ${cur?`<button class="btn" type="button" data-edit-artist="${esc(cur.id)}">Rediger artist</button>`:""}`;
 }
@@ -698,6 +700,11 @@ function reviewChip(s){
   const sg = r.latest_stage ? stageOf(r.latest_stage) : null;
   return `<a class="rvchip" href="review.html?p=${encodeURIComponent(r.project_id)}" title="Åpne i Phat Lab Review">Review ${r.latest ? "v"+Number(r.latest) : ""}${sg ? ` <span class="rvs">${esc(sg.n.toUpperCase())}</span>` : ""}${Number(r.open_comments) ? ` <span class="rvc">${Number(r.open_comments)} åpne</span>` : ""}</a>`;
 }
+document.addEventListener("click", e=>{
+  const p = e.target.closest("[data-profile-artist]"); if(!p) return;
+  e.preventDefault(); e.stopPropagation();
+  location.href = "artist.html?id=" + encodeURIComponent(p.dataset.profileArtist);
+}, true);
 document.addEventListener("click", e=>{
   const r = e.target.closest("[data-rv-artist]"); if(!r) return;
   e.preventDefault(); e.stopPropagation();

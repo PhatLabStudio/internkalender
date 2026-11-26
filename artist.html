@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Artistprofil · Phat Lab</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="assets/artist.css">
+<script src="assets/artist-common.js"></script>
+<style>
+.pform .f textarea{min-height:110px}
+.portalbox{display:flex;flex-direction:column;gap:12px}
+.pstate{display:flex;align-items:center;gap:12px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.dot{width:10px;height:10px;border-radius:50%;background:#64748B}
+.dot.on{background:var(--ok);box-shadow:0 0 0 4px rgba(61,220,151,.15)}
+.linkrow{display:flex;gap:6px}
+.linkrow input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 11px;font-size:13px;color:var(--muted);outline:none}
+.money{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:14px}
+.money .stat{min-width:0}
+table.pay{width:100%;border-collapse:collapse;font-size:14px}
+table.pay th{text-align:left;color:var(--muted);font-weight:500;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line)}
+table.pay td{padding:10px;border-bottom:1px solid var(--line)}
+table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:640px){table.pay th:nth-child(3),table.pay td:nth-child(3){display:none}}
+.vis{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);cursor:pointer}
+.vis input{accent-color:#D946EF}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="./">PHAT <span>LAB</span></a>
+  <span class="crumb">/ <a href="produksjon.html#mapper">Produksjon</a> / <span id="crumbName">Artist</span></span>
+  <span class="spacer"></span>
+  <span class="navlinks">
+    <a class="btn ghost sm" id="navProd" href="produksjon.html">Produksjonskalender</a>
+    <a class="btn ghost sm" id="navReview" href="review.html">Review</a>
+  </span>
+  <button class="btn ghost sm" id="logout" type="button">Logg ut</button>
+</header>
+
+<main class="wrap hidden" id="main">
+  <section class="hero" id="hero">
+    <div class="row1">
+      <div class="avatar" id="avatar"></div>
+      <div style="flex:1;min-width:0">
+        <h1 id="name"></h1>
+        <div class="sub" id="heroSub"></div>
+      </div>
+      <a class="btn sub" id="previewPortal" target="_blank" rel="noopener">Se portalen ↗</a>
+    </div>
+    <div class="stats" id="stats"></div>
+    <div class="links" id="links"></div>
+  </section>
+
+  <nav class="tabs" id="tabs">
+    <button type="button" data-t="laater" class="on">Låter <span class="n" id="nSongs"></span></button>
+    <button type="button" data-t="kalender">Kalender og planer</button>
+    <button type="button" data-t="dok">Dokumenter <span class="n" id="nDocs"></span></button>
+    <button type="button" data-t="profil">Profil</button>
+    <button type="button" data-t="okonomi">Økonomi</button>
+    <button type="button" data-t="portal">Artistportal</button>
+  </nav>
+
+  <!-- LÅTER -->
+  <section id="v-laater">
+    <div class="songs" id="songs"></div>
+  </section>
+
+  <!-- KALENDER -->
+  <section id="v-kalender" class="hidden">
+    <div class="ph" style="display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap"><h2>Produksjonskalender</h2><span class="spacer"></span><a class="btn sub sm" id="editInProd" href="produksjon.html">Rediger i produksjonskalenderen</a></div>
+    <div id="timeline"></div>
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel">
+        <div class="ph"><h2>Kommer</h2><span class="muted" style="font-size:13px">Steg, studiotid og milepæler</span></div>
+        <div id="agenda"></div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h2>Planer og milepæler</h2><span class="spacer"></span><button class="btn sub sm" id="newPlan" type="button">+ Ny</button></div>
+        <div id="plans"></div>
+        <div class="muted" style="font-size:12.5px;margin-top:10px">Bookinger hentes fra bookingkalenderen når navnet på bookingen matcher artisten. Flere navn kan legges inn under Profil.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- DOKUMENTER -->
+  <section id="v-dok" class="hidden">
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+      <div class="cats" id="cats" style="margin:0"></div><span class="spacer"></span>
+      <button class="btn primary sm" id="newDoc" type="button">+ Last opp dokument</button>
+    </div>
+    <div class="docs" id="docs" style="margin-top:10px"></div>
+  </section>
+
+  <!-- PROFIL -->
+  <section id="v-profil" class="hidden">
+    <form class="panel pform" id="profForm" autocomplete="off">
+      <div class="f"><label for="pf-bio">Om artisten</label><textarea id="pf-bio" maxlength="4000" placeholder="Kort bio, sjanger, hva dere jobber med …"></textarea></div>
+      <div class="f2">
+        <div class="f"><label for="pf-genre">Sjanger</label><input id="pf-genre" maxlength="120" placeholder="For eksempel synthpop"></div>
+        <div class="f"><label for="pf-contact">Kontaktperson</label><input id="pf-contact" maxlength="120" placeholder="Navn på artist eller manager"></div>
+      </div>
+      <div class="f2">
+        <div class="f"><label for="pf-email">E-post</label><input id="pf-email" type="email" maxlength="200"></div>
+        <div class="f"><label for="pf-phone">Telefon</label><input id="pf-phone" maxlength="40"></div>
+      </div>
+      <h3 class="sec" style="margin-top:6px">Lenker</h3>
+      <div class="f3">
+        <div class="f"><label for="pf-ig">Instagram</label><input id="pf-ig" maxlength="300" placeholder="@brukernavn"></div>
+        <div class="f"><label for="pf-tt">TikTok</label><input id="pf-tt" maxlength="300" placeholder="@brukernavn"></div>
+        <div class="f"><label for="pf-yt">YouTube</label><input id="pf-yt" maxlength="300" placeholder="@kanal eller lenke"></div>
+      </div>
+      <div class="f2">
+        <div class="f"><label for="pf-sp">Spotify</label><input id="pf-sp" maxlength="300" placeholder="Lenke til artistsiden"></div>
+        <div class="f"><label for="pf-web">Nettside</label><input id="pf-web" maxlength="300"></div>
+      </div>
+      <h3 class="sec" style="margin-top:6px">Bare for studioet</h3>
+      <div class="f"><label for="pf-alias">Navn i bookingkalenderen</label><input id="pf-alias" maxlength="300" placeholder="Artistnavn, kallenavn, bandnavn – skill med komma">
+        <span class="hint">Bookinger med disse navnene vises i artistens kalender. Står feltet tomt, brukes artistnavnet.</span></div>
+      <div class="f"><label for="pf-notes">Interne notater</label><textarea id="pf-notes" maxlength="8000" placeholder="Vises aldri for artisten"></textarea></div>
+      <div class="mfoot"><span class="muted" id="pfSaved" style="font-size:13px"></span><span class="spacer"></span><button class="btn primary" id="pfSave">Lagre profil</button></div>
+    </form>
+  </section>
+
+  <!-- ØKONOMI -->
+  <section id="v-okonomi" class="hidden">
+    <div class="panel hidden" id="finLock" style="max-width:420px">
+      <h2 style="margin-bottom:6px">Økonomi er låst</h2>
+      <p class="muted" style="margin:0 0 12px;font-size:14px">Betalinger og tilbud krever admin-PIN. Dette vises aldri i artistportalen.</p>
+      <form id="finForm" style="display:flex;gap:8px"><input type="password" inputmode="numeric" id="finPin" maxlength="8" placeholder="Admin-PIN" style="flex:1;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;outline:none"><button class="btn primary">Lås opp</button></form>
+      <div class="lockerr" id="finErr" style="margin-top:8px"></div>
+    </div>
+    <div id="finBody" class="hidden">
+      <div class="money" id="money"></div>
+      <div class="panel" style="margin-bottom:14px">
+        <div class="ph"><h2>Betalinger</h2><span class="spacer"></span><a class="btn sub sm" href="phatlab-admin/okonomi.html">Åpne økonomi</a></div>
+        <table class="pay"><thead><tr><th>Dato</th><th>Beskrivelse</th><th>Status</th><th class="n">Beløp</th></tr></thead><tbody id="payBody"></tbody></table>
+        <div class="empty hidden" id="payEmpty">Ingen betalinger registrert på denne artisten.</div>
+      </div>
+      <div class="panel">
+        <div class="ph"><h2>Tilbud</h2><span class="spacer"></span><a class="btn sub sm" href="phatlab-admin/avtaler.html">Åpne avtaler</a></div>
+        <table class="pay"><thead><tr><th>Nr.</th><th>Tittel</th><th>Status</th><th class="n">Beløp</th></tr></thead><tbody id="offBody"></tbody></table>
+        <div class="empty hidden" id="offEmpty">Ingen tilbud til denne artisten.</div>
+      </div>
+      <div class="muted" style="font-size:12.5px;margin-top:10px">Betalinger og tilbud kobles til artisten når kunden heter det samme som artisten, eller er valgt fra artistlisten.</div>
+    </div>
+  </section>
+
+  <!-- PORTAL -->
+  <section id="v-portal" class="hidden">
+    <div class="grid2">
+      <div class="panel portalbox">
+        <h2>Artistportal</h2>
+        <p class="muted" style="margin:0;font-size:14px">Artisten logger inn med en egen lenke og et passord. Der ser de profilen sin, produksjonskalenderen, låtene (med Review) og dokumentene du har merket som synlige. Økonomi og interne notater vises aldri.</p>
+        <div class="pstate"><span class="dot" id="pDot"></span><b id="pState"></b><span class="spacer"></span><button class="btn sm" id="pToggle" type="button"></button></div>
+        <form id="pwForm" autocomplete="off">
+          <div class="f" style="margin-bottom:8px"><label for="pw">Passord til portalen</label>
+            <div class="linkrow"><input id="pw" type="text" maxlength="100" placeholder="Minst 6 tegn" autocomplete="new-password" style="color:var(--ink)"><button type="button" class="btn sub sm" id="pwGen">Lag forslag</button><button class="btn primary sm" id="pwSave">Lagre</button></div>
+            <span class="hint" id="pwHint"></span></div>
+        </form>
+        <div class="f" style="margin:0"><label>Lenke til portalen</label>
+          <div class="linkrow"><input id="pLink" readonly><button type="button" class="btn sub sm" id="pCopy">Kopier</button></div></div>
+        <div class="mfoot">
+          <button type="button" class="btn primary sm" id="pMail">Send lenke på e-post</button>
+          <button type="button" class="btn sub sm" id="pNewLink">Lag ny lenke</button>
+          <span class="muted" id="pSess" style="font-size:12.5px"></span>
+        </div>
+        <div class="muted" style="font-size:12.5px">Tips: send passordet i en egen melding, for eksempel på SMS. «Lag ny lenke» og nytt passord logger ut alle som er innlogget.</div>
+      </div>
+      <div class="panel">
+        <h2 style="margin-bottom:8px">Hva artisten ser</h2>
+        <div id="pSummary" class="muted" style="font-size:14px"></div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Plan -->
+<div class="mback hidden" id="planModal">
+  <form class="modal" id="planForm" autocomplete="off">
+    <div class="mh"><h2 id="planTitle">Ny milepæl</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="pl-title">Tittel</label><input id="pl-title" required maxlength="200" placeholder="For eksempel «Release: Important Message»"></div>
+    <div class="f2">
+      <div class="f"><label for="pl-date">Dato</label><input id="pl-date" type="date"></div>
+      <div class="f"><label for="pl-kind">Type</label><select id="pl-kind"></select></div>
+    </div>
+    <div class="f"><label for="pl-note">Notat</label><textarea id="pl-note" maxlength="2000" style="min-height:70px"></textarea></div>
+    <div style="display:flex;gap:18px;flex-wrap:wrap;margin-bottom:10px">
+      <label class="check"><input type="checkbox" id="pl-vis" checked> Synlig for artisten</label>
+      <label class="check"><input type="checkbox" id="pl-done"> Ferdig</label>
+    </div>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="pl-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
+  </form>
+</div>
+
+<!-- Dokument -->
+<div class="mback hidden" id="docModal">
+  <form class="modal" id="docForm" autocomplete="off">
+    <div class="mh"><h2 id="docTitle">Nytt dokument</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div id="docSrc">
+      <div class="drop" id="drop"><b>Velg fil</b> eller dra den hit<br><span style="font-size:12.5px">PDF, Word, bilder, tekst … maks 50 MB</span></div>
+      <input type="file" id="docFile" class="hidden">
+      <div class="prog hidden" id="docProg"><i></i></div>
+      <div class="f" style="margin-top:12px"><label for="d-url">… eller lim inn en lenke</label><input id="d-url" maxlength="1000" placeholder="Dropbox, Google Drive, Canva …"></div>
+    </div>
+    <div class="f"><label for="d-title">Tittel</label><input id="d-title" maxlength="200" placeholder="For eksempel «Produksjonsavtale – Important Message»"></div>
+    <div class="f2">
+      <div class="f"><label for="d-cat">Kategori</label><select id="d-cat"></select></div>
+      <div class="f"><label for="d-song">Låt (valgfri)</label><select id="d-song"></select></div>
+    </div>
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" id="d-vis" checked> Synlig for artisten i portalen</label>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="d-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary" id="d-save">Lagre</button></div>
+  </form>
+</div>
+
+<div class="lock hidden" id="lock">
+  <form class="lockbox" id="lockForm" autocomplete="off">
+    <div class="logo" style="font-size:13px">PHAT <span>LAB</span></div>
+    <h2>Artist<em>profil</em></h2>
+    <p class="muted" style="margin:0;font-size:14px">Skriv inn studio-PIN (samme som produksjonskalenderen).</p>
+    <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode" style="letter-spacing:8px;font-size:22px">
+    <div class="lockerr" id="lockErr" role="alert"></div>
+    <button class="btn primary">Lås opp</button>
+    <a href="./" class="muted" style="font-size:13px">← Til startsiden</a>
+  </form>
+</div>
+
+<script>
+(() => {
+"use strict";
+const P = window.PLA, { el, esc, toast, store, dShort, parse, today, ymd } = P;
+const $ = (id) => document.getElementById(id);
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
+const FN_URL = SB_URL + "/functions/v1/review-files";
+const AID = new URLSearchParams(location.search).get("id") || "";
+let token = store.get("plk-token"), finToken = store.get("plk-fin-token");
+const mk = (h) => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: h } });
+let sb = mk(token ? { "x-prod-token": token } : {});
+let fsb = mk(finToken ? { "x-fin-token": finToken } : {});
+async function rpc(name, args) {
+  const { data, error } = await sb.rpc(name, args || {});
+  if (error) { if (/Ikke innlogget/.test(error.message)) { store.set("plk-token", null); token = null; lock(); } throw new Error(error.message); }
+  return data;
+}
+async function fn(action, payload) {
+  const r = await fetch(FN_URL, { method: "POST", headers: { "content-type": "application/json", apikey: SB_KEY, "x-prod-token": token || "" }, body: JSON.stringify({ action, ...payload }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(j.error || "Noe gikk galt (" + r.status + ")");
+  return j;
+}
+function lock(msg) { $("main").classList.add("hidden"); $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || ""; setTimeout(() => $("pin").focus(), 30); }
+$("lockForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const { data, error } = await mk({}).rpc("prod_login", { pin: $("pin").value });
+  if (error) { $("lockErr").textContent = error.message; return; }
+  if (!data) { $("lockErr").textContent = "Feil PIN"; $("pin").select(); return; }
+  token = data; store.set("plk-token", data); sb = mk({ "x-prod-token": data }); $("pin").value = ""; $("lock").classList.add("hidden"); load();
+});
+$("logout").onclick = async () => { try { await sb.rpc("prod_logout"); } catch {} store.set("plk-token", null); token = null; lock(); };
+
+/* ---------- Data ---------- */
+let D = null;
+const portalUrl = () => D.profile.portal_token ? new URL("portal.html?a=" + D.profile.portal_token, location.href).href : "";
+async function load() {
+  if (!AID) { location.replace("produksjon.html#mapper"); return; }
+  if (!token) { lock(); return; }
+  try {
+    D = await rpc("art_studio_get", { aid: AID });
+    $("lock").classList.add("hidden"); $("main").classList.remove("hidden");
+    render();
+  } catch (e) { if (token) toast(e.message, true); }
+}
+
+let tab = (location.hash.slice(1) || "laater");
+$("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; tab = b.dataset.t; history.replaceState(null, "", "#" + tab); renderTabs(); });
+function renderTabs() {
+  if (!$("v-" + tab)) tab = "laater";
+  $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
+  for (const t of ["laater", "kalender", "dok", "profil", "okonomi", "portal"]) $("v-" + t).classList.toggle("hidden", t !== tab);
+  if (tab === "okonomi") loadFin();
+}
+const hidden = () => new Set(D.profile.hidden_songs || []);
+
+function render() {
+  const a = D.artist, pr = D.profile;
+  document.title = a.name + " · Artistprofil · Phat Lab";
+  document.documentElement.style.setProperty("--ac", a.color || "#D946EF");
+  $("crumbName").textContent = a.name; $("name").textContent = a.name; $("avatar").textContent = P.initials(a.name);
+  $("heroSub").textContent = [pr.genre, pr.contact_name, pr.email, pr.phone].filter(Boolean).join(" · ") || "Legg inn kontaktinfo under Profil";
+  $("navProd").href = $("editInProd").href = "produksjon.html#artist-" + encodeURIComponent(a.id);
+  $("navReview").href = "review.html?a=" + encodeURIComponent(a.id);
+  const pu = portalUrl(); $("previewPortal").classList.toggle("hidden", !pr.portal_enabled || !pu); if (pu) $("previewPortal").href = pu;
+
+  const active = D.songs.filter(s => !P.songState(s).done).length;
+  const next = P.agendaItems(D.songs, D.plans, D.bookings).find(x => x.d && x.d >= today());
+  $("stats").replaceChildren(...[
+    [D.songs.length, D.songs.length === 1 ? "låt" : "låter", active + " i arbeid"],
+    [D.docs.length, "dokumenter", D.docs.filter(d => d.visible).length + " synlige for artisten"],
+    [next ? dShort(next.d) : "–", "neste i kalenderen", next ? next.title : "ingenting planlagt"],
+    [pr.portal_enabled ? "På" : "Av", "artistportal", pr.portal_enabled ? (D.sessions ? D.sessions + " innlogget" : "ingen innlogget ennå") : "ikke aktivert"],
+  ].map(([v, l, s]) => { const d = el("div", "stat"); d.append(el("b", null, v), el("span", null, l)); const x = el("div", "muted", s); x.style.cssText = "font-size:11.5px;margin-top:2px;max-width:220px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"; d.appendChild(x); return d; }));
+  const L = [["Instagram", P.social("instagram", pr.instagram)], ["Spotify", P.safeUrl(pr.spotify)], ["TikTok", P.social("tiktok", pr.tiktok)], ["YouTube", P.social("youtube", pr.youtube)], ["Nettside", P.safeUrl(pr.website)], ["Dropbox", P.safeUrl(a.dropbox)]].filter(x => x[1]);
+  $("links").replaceChildren(...L.map(([n, u]) => { const x = el("a", null, n + " ↗"); x.href = u; x.target = "_blank"; x.rel = "noopener noreferrer"; return x; }));
+  $("nSongs").textContent = D.songs.length || ""; $("nDocs").textContent = D.docs.length || "";
+  renderSongs(); renderCal(); renderDocs(); fillProfile(); renderPortal(); renderTabs();
+}
+
+/* ---------- Låter ---------- */
+function renderSongs() {
+  const box = $("songs"); box.replaceChildren(); const hid = hidden();
+  for (const s of D.songs) {
+    const c = el("div", "song" + (hid.has(s.id) ? " off" : ""));
+    const t = el("div", "t"); t.appendChild(el("b", null, s.title));
+    const vis = el("label", "vis"); const cb = el("input"); cb.type = "checkbox"; cb.checked = !hid.has(s.id); vis.append(cb, document.createTextNode("I portalen"));
+    cb.onchange = async () => { try { await rpc("art_studio_set_song_hidden", { aid: AID, sid: s.id, hide: !cb.checked }); toast(cb.checked ? "Synlig for artisten" : "Skjult for artisten"); load(); } catch (e) { toast(e.message, true); cb.checked = !cb.checked; } };
+    t.appendChild(vis); c.appendChild(t);
+    c.appendChild(P.nowText(s)); c.appendChild(P.pipeline(s));
+    const team = (s.team || []).filter(m => m.name); if (team.length) c.appendChild(el("div", "team", team.map(m => m.name + (m.role ? " (" + m.role.toLowerCase() + ")" : "")).join(" · ")));
+    const projs = D.review.filter(r => r.song_id === s.id);
+    const rv = el("div", "rv");
+    if (projs.length) {
+      const r = projs[0], g = el("div", "grow");
+      g.append(el("b", null, "Review"), document.createTextNode(" · " + (r.versions ? r.versions + (r.versions === 1 ? " versjon" : " versjoner") + (r.last ? ", siste " + r.last.label : "") : "ingen filer ennå") + (r.open_comments ? " · " + r.open_comments + " åpne kommentarer" : "")));
+      const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id);
+      rv.append(g, o);
+    } else {
+      rv.append(el("div", "grow muted", "Ingen Review-prosjekt for låten ennå"));
+      const b = el("button", "btn sub sm", "Lag Review-prosjekt"); b.type = "button";
+      b.onclick = async () => { b.disabled = true; try { const pid = await rpc("rv_create_project_for_song", { sid: s.id }); location.href = "review.html?p=" + encodeURIComponent(pid); } catch (e) { toast(e.message, true); b.disabled = false; } };
+      rv.appendChild(b);
+    }
+    c.appendChild(rv);
+    const docs = D.docs.filter(d => d.song_id === s.id);
+    if (docs.length) c.appendChild(el("div", "team", docs.length + (docs.length === 1 ? " dokument" : " dokumenter") + ": " + docs.map(d => d.title).join(", ")));
+    if (s.note) { const n = el("div", "team", s.note); n.style.whiteSpace = "pre-wrap"; c.appendChild(n); }
+    box.appendChild(c);
+  }
+  const loose = D.review.filter(r => !r.song_id);
+  if (loose.length) {
+    const c = el("div", "song"); c.appendChild(el("div", "t")).appendChild(el("b", null, "Andre Review-prosjekter"));
+    for (const r of loose) { const rv = el("div", "rv"); const g = el("div", "grow"); g.append(el("b", null, r.title), document.createTextNode(" · " + r.versions + " versjoner" + (r.archived ? " · arkivert" : ""))); const o = el("a", "btn sub sm", "Åpne ↗"); o.href = "review.html?p=" + encodeURIComponent(r.id); rv.append(g, o); c.appendChild(rv); }
+    box.appendChild(c);
+  }
+  if (!D.songs.length && !loose.length) { const e = el("div", "empty"); e.innerHTML = "Ingen låter ennå. Legg dem inn i <a href=\"produksjon.html#artist-" + esc(encodeURIComponent(AID)) + "\">produksjonskalenderen</a>."; box.appendChild(e); }
+}
+
+/* ---------- Kalender og planer ---------- */
+function renderCal() {
+  P.renderTimeline($("timeline"), D.songs);
+  P.renderAgenda($("agenda"), P.agendaItems(D.songs, D.plans, D.bookings).slice(0, 30), openPlan);
+  const box = $("plans"); box.replaceChildren();
+  if (!D.plans.length) box.appendChild(el("div", "empty", "Ingen milepæler ennå. Legg inn releasedatoer, frister og andre planer."));
+  else {
+    const items = D.plans.map(p => { const k = P.PLAN_KINDS.find(x => x[0] === p.kind) || P.PLAN_KINDS[0]; return { d: parse(p.date), c: k[2], title: p.title, sub: k[1] + (p.visible ? "" : " · skjult for artisten") + (p.note ? " · " + p.note : ""), plan: p, done: p.done }; });
+    P.renderAgenda(box, items, openPlan);
+  }
+}
+$("pl-kind").replaceChildren(...P.PLAN_KINDS.map(([v, n]) => { const o = el("option", null, n); o.value = v; return o; }));
+let editPlan = null;
+function openPlan(p) {
+  editPlan = p || null; $("planTitle").textContent = p ? "Endre milepæl" : "Ny milepæl";
+  $("pl-title").value = p ? p.title : ""; $("pl-date").value = p && p.date ? p.date.slice(0, 10) : ""; $("pl-kind").value = p ? p.kind : "milepael";
+  $("pl-note").value = p ? (p.note || "") : ""; $("pl-vis").checked = p ? !!p.visible : true; $("pl-done").checked = p ? !!p.done : false;
+  $("pl-del").classList.toggle("hidden", !p); openModal("planModal"); setTimeout(() => $("pl-title").focus(), 30);
+}
+$("newPlan").onclick = () => openPlan(null);
+$("planForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await rpc("art_studio_save_plan", { aid: AID, pl: { id: editPlan?.id || "", title: $("pl-title").value.trim(), date: $("pl-date").value, kind: $("pl-kind").value, note: $("pl-note").value.trim(), visible: $("pl-vis").checked, done: $("pl-done").checked } });
+    toast("Lagret"); closeModals(); load(); } catch (err) { toast(err.message, true); }
+});
+armDelete($("pl-del"), async () => { await rpc("art_studio_remove_plan", { plid: editPlan.id }); toast("Slettet"); closeModals(); load(); });
+
+/* ---------- Dokumenter ---------- */
+let cat = "alle";
+$("d-cat").replaceChildren(...P.DOC_CATS.map(([v, n]) => { const o = el("option", null, n); o.value = v; return o; }));
+function renderDocs() {
+  const counts = {}; D.docs.forEach(d => counts[d.category] = (counts[d.category] || 0) + 1);
+  const mkCat = (v, n) => { const b = el("button", "cat" + (cat === v ? " on" : ""), n + (v === "alle" ? (D.docs.length ? " " + D.docs.length : "") : counts[v] ? " " + counts[v] : "")); b.type = "button"; b.onclick = () => { cat = v; renderDocs(); }; return b; };
+  $("cats").replaceChildren(mkCat("alle", "Alle"), ...P.DOC_CATS.filter(([v]) => counts[v]).map(([v, n]) => mkCat(v, n)));
+  const list = D.docs.filter(d => cat === "alle" || d.category === cat);
+  const box = $("docs"); box.replaceChildren();
+  for (const d of list) {
+    const r = el("div", "doc"); r.appendChild(P.docIcon(d));
+    const m = el("div", "m"); m.appendChild(el("b", null, d.title));
+    const song = D.songs.find(s => s.id === d.song_id);
+    m.appendChild(el("span", null, [(P.DOC_CATS.find(x => x[0] === d.category) || [, "Annet"])[1], song ? song.title : "", d.has_file ? P.fmtSize(d.size_bytes) : "lenke", dShort(d.created_at)].filter(Boolean).join(" · ")));
+    r.appendChild(m);
+    const a = el("div", "a");
+    const vis = el("label", "vis"); const cb = el("input"); cb.type = "checkbox"; cb.checked = d.visible; vis.append(cb, document.createTextNode("Synlig"));
+    cb.onchange = async () => { try { await rpc("art_studio_update_doc", { did: d.id, d: { visible: cb.checked } }); d.visible = cb.checked; toast(cb.checked ? "Synlig for artisten" : "Skjult for artisten"); } catch (e) { toast(e.message, true); cb.checked = !cb.checked; } };
+    const open = el("button", "btn sub sm", d.has_file ? "Åpne" : "Åpne lenke ↗"); open.type = "button"; open.onclick = () => openDoc(d, false);
+    const ed = el("button", "btn ghost sm", "Endre"); ed.type = "button"; ed.onclick = () => openDocModal(d);
+    a.append(vis, open, ed); r.appendChild(a); box.appendChild(r);
+  }
+  if (!list.length) box.appendChild(el("div", "empty", D.docs.length ? "Ingen dokumenter i denne kategorien." : "Ingen dokumenter ennå. Last opp kontrakter, splitt-ark, lyrics, presseskriv og artwork."));
+}
+async function openDoc(d, download) {
+  if (!d.has_file) { const u = P.safeUrl(d.url); if (u) window.open(u, "_blank", "noopener"); return; }
+  const w = window.open("about:blank", "_blank");
+  try { const { url } = await fn("doc_url", { doc_id: d.id, download }); if (w) w.location = url; else location.href = url; } catch (e) { if (w) w.close(); toast(e.message, true); }
+}
+let editDoc = null, pickedFile = null;
+function openDocModal(d) {
+  editDoc = d || null; pickedFile = null;
+  $("docTitle").textContent = d ? "Endre dokument" : "Nytt dokument";
+  $("docSrc").classList.toggle("hidden", !!d); $("d-del").classList.toggle("hidden", !d);
+  $("drop").innerHTML = "<b>Velg fil</b> eller dra den hit<br><span style=\"font-size:12.5px\">PDF, Word, bilder, tekst … maks 50 MB</span>";
+  $("docFile").value = ""; $("d-url").value = ""; $("docProg").classList.add("hidden"); $("docProg").firstElementChild.style.width = "0";
+  $("d-title").value = d ? d.title : ""; $("d-cat").value = d ? d.category : (cat !== "alle" ? cat : "kontrakt"); $("d-vis").checked = d ? !!d.visible : true;
+  $("d-song").replaceChildren(el("option", null, "Ingen bestemt låt"), ...D.songs.map(s => { const o = el("option", null, s.title); o.value = s.id; return o; }));
+  $("d-song").firstElementChild.value = ""; $("d-song").value = d ? (d.song_id || "") : "";
+  openModal("docModal"); setTimeout(() => (d ? $("d-title") : $("drop")).focus?.(), 30);
+}
+$("newDoc").onclick = () => openDocModal(null);
+$("drop").onclick = () => $("docFile").click();
+const pick = (f) => { if (!f) return; if (f.size > 50 * 1024 * 1024) { toast("Filen er større enn 50 MB", true); return; } pickedFile = f; $("drop").innerHTML = "<b>" + esc(f.name) + "</b><br><span style=\"font-size:12.5px\">" + esc(P.fmtSize(f.size)) + " · klikk for å bytte</span>"; if (!$("d-title").value) $("d-title").value = f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " "); guessCat(f.name); };
+const guessCat = (n) => { n = n.toLowerCase(); const g = /kontrakt|avtale|contract|agreement/.test(n) ? "kontrakt" : /split|splitt/.test(n) ? "splitt" : /lyric|tekst/.test(n) ? "lyrics" : /press|bio|epk/.test(n) ? "presse" : /cover|artwork|\.(png|jpe?g|webp|psd)$/.test(n) ? "artwork" : null; if (g) $("d-cat").value = g; };
+$("docFile").onchange = () => pick($("docFile").files[0]);
+$("drop").addEventListener("dragover", (e) => { e.preventDefault(); $("drop").classList.add("over"); });
+$("drop").addEventListener("dragleave", () => $("drop").classList.remove("over"));
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); $("drop").classList.remove("over"); pick(e.dataTransfer.files[0]); });
+function putFile(url, file, onp) {
+  return new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open("PUT", url); x.setRequestHeader("content-type", file.type || "application/octet-stream"); x.setRequestHeader("x-upsert", "false");
+    x.upload.onprogress = (e) => e.lengthComputable && onp(e.loaded / e.total); x.onload = () => x.status < 300 ? res() : rej(new Error("Opplasting feilet (" + x.status + ")")); x.onerror = () => rej(new Error("Opplasting feilet")); x.send(file); });
+}
+$("docForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const b = $("d-save"); b.disabled = true;
+  try {
+    const meta = { title: $("d-title").value.trim(), category: $("d-cat").value, song_id: $("d-song").value, visible: $("d-vis").checked };
+    if (editDoc) { await rpc("art_studio_update_doc", { did: editDoc.id, d: meta }); toast("Lagret"); }
+    else if (pickedFile) {
+      const f = pickedFile; $("docProg").classList.remove("hidden");
+      const up = await fn("doc_upload_url", { artist_id: AID, file_name: f.name, size: f.size, mime: f.type });
+      await putFile(up.signedUrl, f, (p) => $("docProg").firstElementChild.style.width = Math.round(p * 100) + "%");
+      await rpc("art_studio_add_doc", { aid: AID, d: { ...meta, path: up.path, file_name: f.name, mime: f.type, size: f.size } });
+      toast("Dokument lastet opp");
+    } else if ($("d-url").value.trim()) {
+      await rpc("art_studio_add_doc", { aid: AID, d: { ...meta, url: P.safeUrl($("d-url").value) || $("d-url").value.trim(), title: meta.title || "Lenke" } });
+      toast("Lenke lagt til");
+    } else throw new Error("Velg en fil eller lim inn en lenke");
+    closeModals(); load();
+  } catch (err) { toast(err.message, true); }
+  b.disabled = false;
+});
+armDelete($("d-del"), async () => { await fn("doc_delete", { doc_id: editDoc.id }); toast("Dokument slettet"); closeModals(); load(); });
+
+/* ---------- Profil ---------- */
+const PF = { bio: "pf-bio", genre: "pf-genre", contact_name: "pf-contact", email: "pf-email", phone: "pf-phone", instagram: "pf-ig", tiktok: "pf-tt", youtube: "pf-yt", spotify: "pf-sp", website: "pf-web", booking_aliases: "pf-alias", internal_notes: "pf-notes" };
+function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; $("pf-alias").placeholder = D.artist.name + " (standard)"; $("pfSaved").textContent = D.profile.updated_at ? "Sist endret " + dShort(D.profile.updated_at) : ""; }
+$("profForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const p = {}; for (const [k, id] of Object.entries(PF)) p[k] = $(id).value.trim();
+  try { await rpc("art_studio_save_profile", { aid: AID, p }); toast("Profil lagret"); load(); } catch (err) { toast(err.message, true); }
+});
+
+/* ---------- Økonomi (admin-PIN) ---------- */
+let finLoaded = false;
+async function loadFin() {
+  if (!finToken) { $("finLock").classList.remove("hidden"); $("finBody").classList.add("hidden"); return; }
+  if (finLoaded) return;
+  try {
+    const [p, a] = await Promise.all([fsb.rpc("pay_list"), fsb.rpc("avt_list")]);
+    if (p.error || a.error) throw new Error((p.error || a.error).message);
+    finLoaded = true; renderFin(p.data, a.data);
+  } catch (e) { if (/Ikke innlogget/.test(e.message)) { finToken = null; store.set("plk-fin-token", null); loadFin(); } else toast(e.message, true); }
+}
+$("finForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); $("finErr").textContent = "";
+  const { data, error } = await mk({}).rpc("fin_login", { pin: $("finPin").value });
+  if (error) { $("finErr").textContent = error.message; return; }
+  if (!data) { $("finErr").textContent = "Feil PIN"; return; }
+  finToken = data; store.set("plk-fin-token", data); fsb = mk({ "x-fin-token": data }); $("finPin").value = ""; loadFin();
+});
+function renderFin(pay, avt) {
+  $("finLock").classList.add("hidden"); $("finBody").classList.remove("hidden");
+  const nm = D.artist.name.trim().toLowerCase();
+  const mine = (x) => x.artist_id === AID || String(x.customer || "").trim().toLowerCase() === nm;
+  const kr = (n) => "kr " + Math.round(+n || 0).toLocaleString("nb-NO");
+  const es = (pay.entries || []).filter(mine), os = (avt.offers || []).filter(mine);
+  const paid = es.filter(e => e.status === "betalt").reduce((s, e) => s + +e.amount, 0);
+  const open = es.filter(e => e.status !== "betalt").reduce((s, e) => s + +e.amount, 0);
+  const late = es.filter(e => e.status !== "betalt" && e.due_date && parse(e.due_date) < today()).reduce((s, e) => s + +e.amount, 0);
+  const tot = (ls) => Math.round((ls || []).reduce((s, l) => s + (+l.qty || 0) * (+l.price || 0) * (1 - (+l.discount || 0) / 100), 0));
+  $("money").replaceChildren(...[[kr(paid), "betalt totalt"], [kr(open), "utestående"], [kr(late), "forfalt"], [os.filter(o => o.status === "godtatt").length + " av " + os.length, "tilbud godtatt"]].map(([v, l], i) => { const d = el("div", "stat"); const b = el("b", null, v); if (i === 2 && late) b.style.color = "#FF8A8A"; d.append(b, el("span", null, l)); return d; }));
+  const ST = { forventet: "Forventet", fakturert: "Fakturert", betalt: "Betalt" };
+  $("payBody").replaceChildren(...es.map(e => { const tr = el("tr"); tr.append(el("td", null, e.status === "betalt" ? "Betalt " + dShort(e.paid_date) : e.due_date ? "Forfaller " + dShort(e.due_date) : "–"), el("td", null, e.description || "–"), el("td", null, ST[e.status] || e.status), el("td", "n", kr(e.amount))); return tr; }));
+  $("payEmpty").classList.toggle("hidden", !!es.length);
+  const OS = { utkast: "Utkast", sendt: "Sendt", godtatt: "Godtatt", "avslått": "Avslått" };
+  $("offBody").replaceChildren(...os.map(o => { const tr = el("tr"); const a = el("a", null, o.title || "Uten tittel"); a.href = "tilbud.html?t=" + o.share_token; a.target = "_blank"; const td = el("td"); td.appendChild(a); tr.append(el("td", null, "#" + o.number), td, el("td", null, OS[o.status] || o.status), el("td", "n", kr(tot(o.lines)))); return tr; }));
+  $("offEmpty").classList.toggle("hidden", !!os.length);
+}
+
+/* ---------- Portal ---------- */
+function renderPortal() {
+  const pr = D.profile, on = pr.portal_enabled;
+  $("pDot").classList.toggle("on", on); $("pState").textContent = on ? "Portalen er på" : "Portalen er av";
+  $("pToggle").textContent = on ? "Slå av" : "Slå på"; $("pToggle").className = "btn sm " + (on ? "" : "primary");
+  $("pwHint").textContent = pr.has_pw ? "Passord er satt. Skriv et nytt for å bytte (logger ut alle)." : "Sett et passord før du slår på portalen.";
+  const u = portalUrl(); $("pLink").value = u || "Lagres første gang du slår på portalen";
+  $("pCopy").disabled = $("pMail").disabled = $("pNewLink").disabled = !u;
+  $("pSess").textContent = D.sessions ? D.sessions + (D.sessions === 1 ? " innlogget enhet" : " innloggede enheter") : "";
+  const hid = hidden(), visSongs = D.songs.filter(s => !hid.has(s.id)).length;
+  const s = $("pSummary"); s.replaceChildren();
+  const ul = el("ul"); ul.style.cssText = "margin:0;padding-left:18px;line-height:1.9";
+  [[visSongs + " av " + D.songs.length + " låter", "med fremdrift og Review"], ["Produksjonskalenderen", "for de synlige låtene"],
+   [D.plans.filter(p => p.visible).length + " milepæler", "og kommende studiotid"], [D.docs.filter(d => d.visible).length + " av " + D.docs.length + " dokumenter", ""],
+   ["Profilen", "som artisten også kan oppdatere selv"]].forEach(([b, t]) => { const li = el("li"); li.append(el("b", null, b), document.createTextNode(t ? " " + t : "")); li.firstChild.style.color = "var(--ink)"; ul.appendChild(li); });
+  s.appendChild(ul);
+  const n = el("p", null, "Skjules for artisten: økonomi, tilbud, interne notater og alt du har slått av."); n.style.cssText = "margin:12px 0 0;font-size:13px"; s.appendChild(n);
+}
+async function setPortal(args, okMsg) {
+  try { const r = await rpc("art_studio_set_portal", { aid: AID, enabled: null, new_pw: null, new_link: false, ...args }); Object.assign(D.profile, r); toast(okMsg); load(); }
+  catch (e) { toast(e.message, true); }
+}
+$("pToggle").onclick = () => {
+  const on = !D.profile.portal_enabled;
+  if (on && !D.profile.has_pw && !$("pw").value.trim()) { toast("Sett et passord først", true); $("pw").focus(); return; }
+  setPortal({ enabled: on, new_pw: on && $("pw").value.trim() ? $("pw").value.trim() : null }, on ? "Portalen er slått på" : "Portalen er slått av");
+  $("pw").value = "";
+};
+const WORDS = ["bass", "beat", "groove", "synth", "tempo", "vokal", "riff", "hook", "studio", "miks", "master", "tone", "puls", "drøm", "lys", "natt", "takt", "ekko"];
+$("pwGen").onclick = () => { const r = (n) => crypto.getRandomValues(new Uint32Array(1))[0] % n; $("pw").value = WORDS[r(WORDS.length)] + "-" + WORDS[r(WORDS.length)] + "-" + (10 + r(90)); $("pw").select(); };
+$("pwForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("pw").value.trim(); if (v.length < 6) { toast("Passordet må ha minst 6 tegn", true); return; } setPortal({ new_pw: v }, "Passordet er lagret. Husk å gi det til artisten."); });
+async function copy(t) { try { await navigator.clipboard.writeText(t); toast("Kopiert"); } catch { prompt("Kopier:", t); } }
+$("pCopy").onclick = () => copy(portalUrl());
+$("pNewLink").onclick = () => { if (confirm("Lage ny lenke? Den gamle slutter å virke, og alle blir logget ut.")) setPortal({ new_link: true }, "Ny lenke laget"); };
+$("pMail").onclick = () => {
+  const a = D.artist, pr = D.profile, first = (pr.contact_name || a.name).split(" ")[0];
+  const body = "Hei " + first + "!\n\nNå har du fått din egen artistside hos Phat Lab. Der finner du låtene dine, produksjonsplanen, kommende studiotid og dokumentene våre samlet på ett sted, og du kan lytte og kommentere på miksene direkte.\n\n" +
+    portalUrl() + "\n\nPassordet sender jeg i en egen melding.\n\nHilsen\nPhat Lab Music\nNedre Storgate 1, 3015 Drammen";
+  location.href = "mailto:" + encodeURIComponent(pr.email || "") + "?subject=" + encodeURIComponent("Din artistside hos Phat Lab") + "&body=" + encodeURIComponent(body);
+};
+
+/* ---------- Felles ---------- */
+function openModal(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function closeModals() { document.querySelectorAll(".mback").forEach(m => m.classList.add("hidden")); document.body.style.overflow = ""; }
+function armDelete(b, fn_) { b.onclick = async () => { if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Sikker? Klikk igjen"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Slett"; }, 3000); return; } try { await fn_(); } catch (e) { toast(e.message, true); } }; }
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeModals);
+document.querySelectorAll(".mback").forEach(m => m.addEventListener("click", (e) => { if (e.target === m) closeModals(); }));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModals(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && token && !document.querySelector(".mback:not(.hidden)") && !document.activeElement?.closest?.("form")) load(); });
+load();
+})();
+</script>
+</body>
+</html>
