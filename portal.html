@@ -23,7 +23,7 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
 </head>
 <body>
 <header class="top">
-  <span class="logo">PHAT <span>LAB</span></span><span class="crumb">/ Artistside</span>
+  <a class="logo" href="./" style="text-decoration:none">PHAT <span>LAB</span></a><span class="crumb">/ Artistside</span>
   <span class="spacer"></span>
   <button class="btn ghost sm hidden" id="logout" type="button">Logg ut</button>
 </header>
@@ -101,10 +101,13 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   <form class="lockbox" id="lockForm" autocomplete="on">
     <div class="logo" style="font-size:13px">PHAT <span>LAB</span></div>
     <h2>Din <em>artistside</em></h2>
-    <p class="muted" style="margin:0;font-size:14px" id="lockTxt">Skriv inn passordet du har fått fra Phat Lab.</p>
+    <p class="muted" style="margin:0;font-size:14px" id="lockTxt">Logg inn med brukernavnet og passordet du har fått fra Phat Lab.</p>
+    <input type="text" id="user" autocomplete="username" autocapitalize="none" spellcheck="false" aria-label="Brukernavn" placeholder="Brukernavn">
     <input type="password" id="pw" autocomplete="current-password" aria-label="Passord" placeholder="Passord">
     <div class="lockerr" id="lockErr" role="alert"></div>
     <button class="btn primary" id="loginBtn">Logg inn</button>
+    <span class="muted" style="font-size:12.5px">Har du ikke fått innlogging? Ta kontakt med Phat Lab på sanders@phatlab.no.</span>
+    <a href="./" class="muted" style="font-size:13px">← Til startsiden</a>
   </form>
 </div>
 
@@ -115,9 +118,9 @@ const P = window.PLA, { el, toast, store, dShort, parse, today } = P;
 const $ = (id) => document.getElementById(id);
 const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
 const FN_URL = SB_URL + "/functions/v1/review-files";
-const LINK = new URLSearchParams(location.search).get("a") || "";
 const KEY = "plk-artist-token";   // brukes også av Review for å slippe passord på egne låter
 let token = store.get(KEY);
+const lastUser = store.get("plk-artist-user"); if (lastUser) document.getElementById("user").value = lastUser;
 const mk = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-artist-token": token } : {} } });
 let sb = mk();
 async function rpc(name, args) {
@@ -128,15 +131,15 @@ async function rpc(name, args) {
 function setToken(t) { token = t; store.set(KEY, t); sb = mk(); }
 function lock(msg) {
   $("main").classList.add("hidden"); $("logout").classList.add("hidden"); $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || "";
-  if (!LINK) { $("lockTxt").textContent = "Bruk lenken du har fått fra Phat Lab for å logge inn."; $("pw").classList.add("hidden"); $("loginBtn").classList.add("hidden"); }
-  else setTimeout(() => $("pw").focus(), 30);
+  setTimeout(() => ($("user").value ? $("pw") : $("user")).focus(), 30);
 }
 $("lockForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("lockErr").textContent = ""; $("loginBtn").disabled = true;
-  const { data, error } = await supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } }).rpc("art_portal_login", { tok: LINK, pw: $("pw").value });
+  const { data, error } = await supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } }).rpc("art_portal_login_user", { uname: $("user").value.trim(), pw: $("pw").value });
   $("loginBtn").disabled = false;
   if (error) { $("lockErr").textContent = error.message; return; }
-  if (!data) { $("lockErr").textContent = "Feil passord"; $("pw").select(); return; }
+  if (!data) { $("lockErr").textContent = "Feil brukernavn eller passord"; $("pw").select(); return; }
+  store.set("plk-artist-user", $("user").value.trim());
   setToken(data.session); $("pw").value = ""; load();
 });
 $("logout").onclick = async () => { try { await sb.rpc("art_portal_logout"); } catch {} setToken(null); lock(); };

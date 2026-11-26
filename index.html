@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="robots" content="noindex">
-<title>Phat Lab intern</title>
+<meta name="robots" content="noindex,nofollow">
+<title>Phat Lab</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
 <style>
-/* Startside: to store valg, booking (oransje) og produksjon (magenta), med et lite levende tall på hvert kort. */
+
 :root{
   --bg:#0A0A0F; --card:#15121F; --ink:#F5F3FF; --muted:#8B7FB8; --line:#2D2640;
   --orange:#E8682A; --grad:linear-gradient(135deg,#D946EF 0%,#7C3AED 100%);
@@ -57,13 +57,29 @@ h1 em{font-style:normal;background:var(--grad);-webkit-background-clip:text;back
 .card:hover .go i{transform:translateX(3px)}
 footer{color:var(--muted);font-size:13px}
 @media (prefers-reduced-motion: reduce){.card,.go i{transition:none}}
+.card.artist{--bar:var(--grad-hot);--hl:#EC4899}
+.card.admin{--bar:linear-gradient(135deg,#8B7FB8,#5B5280);--hl:#A99FD6}
+.card.deal{--bar:var(--grad);--hl:#D946EF}
+.card.money{--bar:linear-gradient(135deg,#3DDC97,#22D3EE);--hl:#3DDC97}
+.lockchip{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--muted);border:1px solid var(--line);border-radius:99px;padding:2px 9px;width:max-content}
+.lockchip svg{width:12px;height:12px}
+footer a{color:inherit}
+.mback{position:fixed;inset:0;z-index:50;background:rgba(5,4,10,.78);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;padding:20px}
+.pinbox{width:min(360px,100%);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:26px;display:flex;flex-direction:column;gap:12px;text-align:center}
+.pinbox h2{font:700 22px var(--f-display);margin:0}
+.pinbox input{background:#0F0C17;color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:center;font-size:22px;letter-spacing:8px;outline:none}
+.pinbox input:focus{border-color:#D946EF}
+.pinbox button{border:0;border-radius:12px;padding:12px;font:600 15px var(--f-body);color:#fff;background:var(--grad);cursor:pointer}
+.pinbox .cancel{background:none;color:var(--muted);font-weight:500;padding:4px}
+.err{color:#FF8A8A;font-size:14px;min-height:18px}
+.hidden{display:none!important}
 </style>
 </head>
 <body>
 <main>
   <div class="brand">
     <div class="logo">PHAT <span>LAB</span></div>
-    <h1>Hva skal vi <em>jobbe med</em> i dag?</h1>
+    <h1>Velkommen til <em>Phat Lab</em></h1>
     <div class="date" id="today"></div>
   </div>
 
@@ -71,7 +87,7 @@ footer{color:var(--muted);font-size:13px}
     <a class="card book" href="booking.html">
       <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="16" rx="3"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M8 14h3"/></svg></div>
       <h2>Bookingkalender</h2>
-      <p>Book Studio A og B, se hvem som er i studio og hvilken tekniker som er satt opp.</p>
+      <p>Se ledige tider og book Studio A og B.</p>
       <div class="live">
         <div><b id="bToday">–</b><span>bookinger i dag</span></div>
         <div><b id="bWeek">–</b><span>denne uken</span></div>
@@ -79,34 +95,16 @@ footer{color:var(--muted);font-size:13px}
       <div class="go">Åpne bookingkalenderen <i aria-hidden="true">&#8594;</i></div>
     </a>
 
-    <a class="card prod" href="produksjon.html">
-      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
-      <h2>Produksjonskalender</h2>
-      <p>Låter i produksjon per artist: demo, produksjon, vokal, mix og master, med team og kommentarer.</p>
-      <div class="live">
-        <div><b id="pSongs">–</b><span>låter i produksjon</span></div>
-        <div><b id="pRunning">–</b><span>steg pågår nå</span></div>
-      </div>
-      <div class="go">Åpne produksjonskalenderen <i aria-hidden="true">&#8594;</i></div>
-    </a>
-
-    <a class="card review" href="review.html">
-      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12h2M7 8v8M11 5v14M15 9v6M19 7v10M21 12h0"/></svg></div>
-      <h2>Review</h2>
-      <p>Last opp mikser og la kunder lytte og kommentere på tidslinjen – via en enkel lenke.</p>
-      <div class="go" style="margin-top:auto">Åpne review <i aria-hidden="true">&#8594;</i></div>
-    </a>
-    <a class="card admin" href="phatlab-admin/">
-      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg></div>
-      <h2>Admin</h2>
-      <p>Interne verktøy for drift av studioet.</p>
-      <div class="go"><span>Åpne admin</span> <i aria-hidden="true">&#8594;</i></div>
+    <a class="card artist" href="portal.html">
+      <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3.5M8.5 21.5h7"/></svg></div>
+      <h2>Artist</h2>
+      <p id="artistTxt">Logg inn på artistsiden din: låter, mikser, produksjonsplan og dokumenter samlet.</p>
+      <div class="go" style="margin-top:auto"><span id="artistGo">Logg inn</span> <i aria-hidden="true">&#8594;</i></div>
     </a>
   </div>
 
-  <footer>Phat Lab · Nedre Storgate 1, Drammen · Intern side</footer>
+  <footer>Phat Lab Music · Nedre Storgate 1, Drammen · <a href="phatlab-admin/">Admin</a></footer>
 </main>
-
 <script>
 "use strict";
 const SB = "https://vrjherdkzxerygrbfuhr.supabase.co/rest/v1/";
@@ -115,24 +113,18 @@ const H = {apikey: KEY, Authorization: "Bearer " + KEY};
 const pad = n => String(n).padStart(2, "0");
 const ymd = d => d.getFullYear() + "-" + pad(d.getMonth()+1) + "-" + pad(d.getDate());
 const now = new Date();
-const DAYS = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
-const MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
-document.getElementById("today").textContent = DAYS[now.getDay()][0].toUpperCase() + DAYS[now.getDay()].slice(1) + " " + now.getDate() + ". " + MONTHS[now.getMonth()];
-
-const today = ymd(now);
+const set = (id, v) => { const e = document.getElementById(id); if (e) e.textContent = v; };
 const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay()+6)%7));
 const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
-const set = (id, v) => { document.getElementById(id).textContent = v; };
-
 fetch(SB + "bookings?select=date&date=gte." + ymd(mon) + "&date=lte." + ymd(sun), {headers:H})
   .then(r => r.ok ? r.json() : Promise.reject())
-  .then(rows => { set("bToday", rows.filter(b => b.date === today).length); set("bWeek", rows.length); })
+  .then(rows => { set("bToday", rows.filter(b => b.date === ymd(now)).length); set("bWeek", rows.length); })
   .catch(() => {});
 
-fetch(SB + "rpc/prod_summary", {method:"POST", headers:{...H, "Content-Type":"application/json"}, body:"{}"})
-  .then(r => r.ok ? r.json() : Promise.reject())
-  .then(s => { set("pSongs", s.songs); set("pRunning", s.running); })
-  .catch(() => {});
+const DAYS = ["søndag","mandag","tirsdag","onsdag","torsdag","fredag","lørdag"];
+const MONTHS = ["januar","februar","mars","april","mai","juni","juli","august","september","oktober","november","desember"];
+set("today", DAYS[now.getDay()][0].toUpperCase() + DAYS[now.getDay()].slice(1) + " " + now.getDate() + ". " + MONTHS[now.getMonth()]);
+try { if (localStorage.getItem("plk-artist-token")) set("artistGo", "Gå til artistsiden din"); } catch {}
 </script>
 </body>
 </html>

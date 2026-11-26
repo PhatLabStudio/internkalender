@@ -426,7 +426,7 @@ const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSess
 const sb = client();
 async function rpc(name, args) {
   const { data, error } = await sb.rpc(name, args || {});
-  if (error) { if (/Ikke innlogget/.test(error.message)) location.replace("./"); throw new Error(error.message); }
+  if (error) { if (/Ikke innlogget/.test(error.message)) location.replace("./?pin"); throw new Error(error.message); }
   return data;
 }
 $("logout").onclick = async () => { try { await sb.rpc("fin_logout"); } catch {} try { localStorage.removeItem("plk-fin-token"); } catch {} location.replace("./"); };
@@ -434,7 +434,7 @@ $("logout").onclick = async () => { try { await sb.rpc("fin_logout"); } catch {}
 /* ---------- Data ---------- */
 let products = [], terms = [], offers = [], artists = [];
 async function load() {
-  if (!token) { location.replace("./"); return; }
+  if (!token) { location.replace("./?pin"); return; }
   try {
     const d = await rpc("avt_list");
     products = d.products || []; terms = d.terms || []; offers = d.offers || []; artists = d.artists || [];

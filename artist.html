@@ -32,8 +32,8 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
 </head>
 <body>
 <header class="top">
-  <a class="logo" href="./">PHAT <span>LAB</span></a>
-  <span class="crumb">/ <a href="produksjon.html#mapper">Produksjon</a> / <span id="crumbName">Artist</span></span>
+  <a class="logo" href="phatlab-admin/">PHAT <span>LAB</span></a>
+  <span class="crumb">/ <a href="phatlab-admin/">Admin</a> / <a href="produksjon.html#mapper">Produksjon</a> / <span id="crumbName">Artist</span></span>
   <span class="spacer"></span>
   <span class="navlinks">
     <a class="btn ghost sm" id="navProd" href="produksjon.html">Produksjonskalender</a>
@@ -155,21 +155,25 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     <div class="grid2">
       <div class="panel portalbox">
         <h2>Artistportal</h2>
-        <p class="muted" style="margin:0;font-size:14px">Artisten logger inn med en egen lenke og et passord. Der ser de profilen sin, produksjonskalenderen, låtene (med Review) og dokumentene du har merket som synlige. Økonomi og interne notater vises aldri.</p>
+        <p class="muted" style="margin:0;font-size:14px">Artisten logger inn fra startsiden («Artist») med sitt eget brukernavn og passord. Der ser de profilen sin, produksjonskalenderen, låtene (med Review) og dokumentene du har merket som synlige. Økonomi og interne notater vises aldri.</p>
         <div class="pstate"><span class="dot" id="pDot"></span><b id="pState"></b><span class="spacer"></span><button class="btn sm" id="pToggle" type="button"></button></div>
+        <form id="unForm" autocomplete="off">
+          <div class="f" style="margin-bottom:8px"><label for="un">Brukernavn</label>
+            <div class="linkrow"><input id="un" type="text" maxlength="40" autocapitalize="none" spellcheck="false" placeholder="for eksempel dogndrommer" style="color:var(--ink)"><button class="btn primary sm" id="unSave">Lagre</button></div>
+            <span class="hint" id="unHint">Unikt for hver artist. Bokstaver, tall, punktum og bindestrek.</span></div>
+        </form>
         <form id="pwForm" autocomplete="off">
           <div class="f" style="margin-bottom:8px"><label for="pw">Passord til portalen</label>
             <div class="linkrow"><input id="pw" type="text" maxlength="100" placeholder="Minst 6 tegn" autocomplete="new-password" style="color:var(--ink)"><button type="button" class="btn sub sm" id="pwGen">Lag forslag</button><button class="btn primary sm" id="pwSave">Lagre</button></div>
             <span class="hint" id="pwHint"></span></div>
         </form>
-        <div class="f" style="margin:0"><label>Lenke til portalen</label>
+        <div class="f" style="margin:0"><label>Innlogging</label>
           <div class="linkrow"><input id="pLink" readonly><button type="button" class="btn sub sm" id="pCopy">Kopier</button></div></div>
         <div class="mfoot">
-          <button type="button" class="btn primary sm" id="pMail">Send lenke på e-post</button>
-          <button type="button" class="btn sub sm" id="pNewLink">Lag ny lenke</button>
+          <button type="button" class="btn primary sm" id="pMail">Send innlogging på e-post</button>
           <span class="muted" id="pSess" style="font-size:12.5px"></span>
         </div>
-        <div class="muted" style="font-size:12.5px">Tips: send passordet i en egen melding, for eksempel på SMS. «Lag ny lenke» og nytt passord logger ut alle som er innlogget.</div>
+        <div class="muted" style="font-size:12.5px">Tips: send passordet i en egen melding, for eksempel på SMS. Nytt brukernavn eller passord logger ut alle som er innlogget.</div>
       </div>
       <div class="panel">
         <h2 style="margin-bottom:8px">Hva artisten ser</h2>
@@ -225,7 +229,7 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
     <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode" style="letter-spacing:8px;font-size:22px">
     <div class="lockerr" id="lockErr" role="alert"></div>
     <button class="btn primary">Lås opp</button>
-    <a href="./" class="muted" style="font-size:13px">← Til startsiden</a>
+    <a href="phatlab-admin/" class="muted" style="font-size:13px">← Til admin</a>
   </form>
 </div>
 
@@ -264,7 +268,7 @@ $("logout").onclick = async () => { try { await sb.rpc("prod_logout"); } catch {
 
 /* ---------- Data ---------- */
 let D = null;
-const portalUrl = () => D.profile.portal_token ? new URL("portal.html?a=" + D.profile.portal_token, location.href).href : "";
+const portalUrl = () => new URL("portal.html", location.href).href;
 async function load() {
   if (!AID) { location.replace("produksjon.html#mapper"); return; }
   if (!token) { lock(); return; }
@@ -293,7 +297,7 @@ function render() {
   $("heroSub").textContent = [pr.genre, pr.contact_name, pr.email, pr.phone].filter(Boolean).join(" · ") || "Legg inn kontaktinfo under Profil";
   $("navProd").href = $("editInProd").href = "produksjon.html#artist-" + encodeURIComponent(a.id);
   $("navReview").href = "review.html?a=" + encodeURIComponent(a.id);
-  const pu = portalUrl(); $("previewPortal").classList.toggle("hidden", !pr.portal_enabled || !pu); if (pu) $("previewPortal").href = pu;
+  $("previewPortal").classList.add("hidden");
 
   const active = D.songs.filter(s => !P.songState(s).done).length;
   const next = P.agendaItems(D.songs, D.plans, D.bookings).find(x => x.d && x.d >= today());
@@ -500,8 +504,11 @@ function renderPortal() {
   $("pDot").classList.toggle("on", on); $("pState").textContent = on ? "Portalen er på" : "Portalen er av";
   $("pToggle").textContent = on ? "Slå av" : "Slå på"; $("pToggle").className = "btn sm " + (on ? "" : "primary");
   $("pwHint").textContent = pr.has_pw ? "Passord er satt. Skriv et nytt for å bytte (logger ut alle)." : "Sett et passord før du slår på portalen.";
-  const u = portalUrl(); $("pLink").value = u || "Lagres første gang du slår på portalen";
-  $("pCopy").disabled = $("pMail").disabled = $("pNewLink").disabled = !u;
+  $("pLink").value = portalUrl();
+  if (document.activeElement !== $("un")) $("un").value = pr.portal_username || "";
+  if (!pr.portal_username) $("un").placeholder = slug(D.artist.name) || "brukernavn";
+  $("unHint").textContent = pr.portal_username ? "Artisten logger inn som «" + pr.portal_username + "». Unikt for hver artist." : "Velg et unikt brukernavn for artisten. Bokstaver, tall, punktum og bindestrek.";
+  $("pMail").disabled = !pr.portal_username;
   $("pSess").textContent = D.sessions ? D.sessions + (D.sessions === 1 ? " innlogget enhet" : " innloggede enheter") : "";
   const hid = hidden(), visSongs = D.songs.filter(s => !hid.has(s.id)).length;
   const s = $("pSummary"); s.replaceChildren();
@@ -518,6 +525,7 @@ async function setPortal(args, okMsg) {
 }
 $("pToggle").onclick = () => {
   const on = !D.profile.portal_enabled;
+  if (on && !D.profile.portal_username) { toast("Gi artisten et brukernavn først", true); $("un").focus(); return; }
   if (on && !D.profile.has_pw && !$("pw").value.trim()) { toast("Sett et passord først", true); $("pw").focus(); return; }
   setPortal({ enabled: on, new_pw: on && $("pw").value.trim() ? $("pw").value.trim() : null }, on ? "Portalen er slått på" : "Portalen er slått av");
   $("pw").value = "";
@@ -527,11 +535,16 @@ $("pwGen").onclick = () => { const r = (n) => crypto.getRandomValues(new Uint32A
 $("pwForm").addEventListener("submit", (e) => { e.preventDefault(); const v = $("pw").value.trim(); if (v.length < 6) { toast("Passordet må ha minst 6 tegn", true); return; } setPortal({ new_pw: v }, "Passordet er lagret. Husk å gi det til artisten."); });
 async function copy(t) { try { await navigator.clipboard.writeText(t); toast("Kopiert"); } catch { prompt("Kopier:", t); } }
 $("pCopy").onclick = () => copy(portalUrl());
-$("pNewLink").onclick = () => { if (confirm("Lage ny lenke? Den gamle slutter å virke, og alle blir logget ut.")) setPortal({ new_link: true }, "Ny lenke laget"); };
+const slug = (s) => String(s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/ø/g, "o").replace(/æ/g, "ae").replace(/å/g, "a").replace(/[^a-z0-9._-]+/g, "").slice(0, 40);
+$("unForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const v = $("un").value.trim() || $("un").placeholder;
+  if (D.profile.portal_username && v.toLowerCase() !== D.profile.portal_username && !confirm("Bytte brukernavn? Artisten blir logget ut og må bruke det nye.")) return;
+  try { await rpc("art_studio_set_username", { aid: AID, uname: v }); toast("Brukernavn lagret: " + v.toLowerCase()); load(); } catch (err) { toast(err.message, true); }
+});
 $("pMail").onclick = () => {
   const a = D.artist, pr = D.profile, first = (pr.contact_name || a.name).split(" ")[0];
   const body = "Hei " + first + "!\n\nNå har du fått din egen artistside hos Phat Lab. Der finner du låtene dine, produksjonsplanen, kommende studiotid og dokumentene våre samlet på ett sted, og du kan lytte og kommentere på miksene direkte.\n\n" +
-    portalUrl() + "\n\nPassordet sender jeg i en egen melding.\n\nHilsen\nPhat Lab Music\nNedre Storgate 1, 3015 Drammen";
+    "Logg inn her: " + portalUrl() + "\n(eller gå til startsiden og trykk «Artist»)\n\nBrukernavn: " + pr.portal_username + "\nPassordet sender jeg i en egen melding.\n\nHilsen\nPhat Lab Music\nNedre Storgate 1, 3015 Drammen";
   location.href = "mailto:" + encodeURIComponent(pr.email || "") + "?subject=" + encodeURIComponent("Din artistside hos Phat Lab") + "&body=" + encodeURIComponent(body);
 };
 
