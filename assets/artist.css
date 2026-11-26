@@ -86,7 +86,7 @@ h3.sec{font:600 12.5px var(--f-body);text-transform:uppercase;letter-spacing:.07
 .pipe i.pagar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.35),transparent);animation:shim 2.2s infinite}
 @keyframes shim{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 @media (prefers-reduced-motion:reduce){.pipe i.pagar::after{animation:none}}
-.pipelbl{display:flex;gap:4px;font-size:10.5px;color:var(--muted);margin-top:-6px}
+.pipelbl{display:flex;gap:4px;font-size:10.5px;color:var(--muted);margin-top:5px}
 .pipelbl span{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .team{font-size:12.5px;color:var(--muted)}
 .rv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-radius:11px;padding:9px 11px;font-size:13px}
@@ -107,7 +107,7 @@ h3.sec{font:600 12.5px var(--f-body);text-transform:uppercase;letter-spacing:.07
 .tl-bar.planlagt{background:color-mix(in srgb,var(--c) 30%,transparent);color:var(--ink);box-shadow:inset 0 0 0 1px var(--c)}
 .tl-bar.ferdig{opacity:.55}
 .tl-today{position:absolute;top:0;bottom:0;width:2px;background:rgba(245,243,255,.55);z-index:2;pointer-events:none}
-.tl-today::after{content:"I dag";position:absolute;top:2px;left:5px;font-size:10.5px;color:var(--ink);font-weight:600}
+.tl-today::after{content:"I dag";position:absolute;top:9px;left:4px;font-size:10.5px;color:var(--ink);font-weight:700;white-space:nowrap;background:var(--card);padding:0 4px;border-radius:4px}
 .tl-grid{position:absolute;top:34px;bottom:0;width:1px;background:rgba(139,127,184,.12)}
 .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:10px}
 .legend span{display:inline-flex;align-items:center;gap:6px}

@@ -124,7 +124,7 @@ function agendaItems(songs, plans, bookings, opts = {}) {
   const t = today(), from = opts.from || new Date(t.getFullYear(), t.getMonth(), t.getDate() - (opts.pastDays || 0));
   const items = [];
   for (const s of songs) for (const x of s.steps || []) {
-    const d = parse(x.start), e = parse(x.end) || d; if (!d || e < from || x.status === "ferdig" && e < t) continue;
+    const d = parse(x.start), e = parse(x.end) || d; if (!d || e < from || x.status === "ferdig") continue;
     const g = stage(x.type);
     items.push({ d: d < t && e >= t ? t : d, c: g.c, title: (x.label || g.n) + " – " + s.title, sub: (x.status === "pagar" ? "Pågår" : "Planlagt") + " · " + dShort(x.start) + (x.end && x.end !== x.start ? " – " + dShort(x.end) : ""), kind: "steg" });
   }
