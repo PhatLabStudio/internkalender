@@ -76,7 +76,7 @@ footer a{color:inherit}
 </style>
 </head>
 <body>
-<main>
+<main id="main" class="hidden">
   <div class="brand">
     <div class="logo"><a href="../" style="color:inherit;text-decoration:none">PHAT <span>LAB</span></a> <span style="color:var(--muted);font-weight:500">/ Admin</span></div>
     <h1>Phat Lab <em>admin</em></h1>
@@ -110,33 +110,32 @@ footer a{color:inherit}
       </div>
       <div class="go">Åpne bookingkalenderen <i aria-hidden="true">&#8594;</i></div>
     </a>
-    <a class="card money" href="okonomi.html" data-locked>
+    <a class="card money" href="okonomi.html">
       <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l5-5 4 4 8-8"/><path d="M15 8h5v5"/></svg></div>
       <h2>Økonomi</h2>
       <p>Innkommende betalinger, faste inntekter og hva som er forfalt, med prognose.</p>
-      <span class="lockchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg><span class="lk">Admin-PIN</span></span>
       <div class="go" style="margin-top:auto">Åpne økonomi <i aria-hidden="true">&#8594;</i></div>
     </a>
-    <a class="card deal" href="avtaler.html" data-locked>
+    <a class="card deal" href="avtaler.html">
       <div class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/><path d="M9 13h6M9 17h4"/></svg></div>
       <h2>Avtaler og tilbud</h2>
       <p>Prisliste, vilkårsmaler og tilbud som kunden kan godta digitalt.</p>
-      <span class="lockchip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg><span class="lk">Admin-PIN</span></span>
       <div class="go" style="margin-top:auto">Åpne avtaler <i aria-hidden="true">&#8594;</i></div>
     </a>
   </div>
 
-  <footer><a href="../">← Til startsiden</a><span id="outWrap" class="hidden"> · <a href="#" id="logout">Logg ut av admin-PIN</a></span></footer>
+  <footer><a href="../">← Til startsiden</a> · <a href="#" id="logout">Logg ut</a></footer>
 </main>
 
-<div class="mback hidden" id="pinModal">
+<div class="mback" id="pinModal">
   <form class="pinbox" id="pinForm" autocomplete="off">
-    <h2>Admin-PIN</h2>
-    <p style="margin:0;color:var(--muted);font-size:14px">Økonomi og avtaler krever egen PIN-kode.</p>
+    <div style="font:700 13px var(--f-display);letter-spacing:.06em">PHAT <span style="background:var(--grad-hot);-webkit-background-clip:text;background-clip:text;color:transparent">LAB</span></div>
+    <h2>Admin</h2>
+    <p style="margin:0;color:var(--muted);font-size:14px">Én PIN-kode åpner alt: produksjon, Review, økonomi og avtaler.</p>
     <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode">
     <div class="err" id="err" role="alert"></div>
     <button>Lås opp</button>
-    <button type="button" class="cancel" id="cancel">Avbryt</button>
+    <a href="../" style="color:var(--muted);font-size:13px">← Til startsiden</a>
   </form>
 </div>
 
@@ -164,36 +163,32 @@ fetch(SB + "rpc/prod_summary", {method:"POST", headers:{...H, "Content-Type":"ap
 
 const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
 const $ = id => document.getElementById(id);
-let token = (() => { try { return localStorage.getItem("plk-fin-token"); } catch { return null; } })();
-const client = () => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: token ? { "x-fin-token": token } : {} } });
-function setToken(t) { token = t; try { t ? localStorage.setItem("plk-fin-token", t) : localStorage.removeItem("plk-fin-token"); } catch {} }
-let unlocked = false, target = null;
-function showState() {
-  document.querySelectorAll(".lk").forEach(x => x.textContent = unlocked ? "Låst opp" : "Admin-PIN");
-  $("outWrap").classList.toggle("hidden", !unlocked);
-}
+const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
+const cl = (h) => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: h || {} } });
+function open_() { $("pinModal").classList.add("hidden"); $("main").classList.remove("hidden"); }
+function lock() { $("main").classList.add("hidden"); $("pinModal").classList.remove("hidden"); $("err").textContent = ""; setTimeout(() => $("pin").focus(), 30); }
 (async () => {
-  if (!token) return showState();
-  const { data } = await client().rpc("fin_check");
-  unlocked = !!data; if (!unlocked) setToken(null); showState();
+  const pt = ls.get("plk-token"), ft = ls.get("plk-fin-token");
+  if (!pt || !ft) return lock();
+  try {
+    const [a, b] = await Promise.all([cl({ "x-prod-token": pt }).rpc("prod_token_ok"), cl({ "x-fin-token": ft }).rpc("fin_check")]);
+    if (a.data && b.data) open_(); else lock();
+  } catch { lock(); }
 })();
-document.querySelectorAll("[data-locked]").forEach(a => a.addEventListener("click", (e) => {
-  if (unlocked) return;
-  e.preventDefault(); target = a.getAttribute("href");
-  $("pinModal").classList.remove("hidden"); $("err").textContent = ""; setTimeout(() => $("pin").focus(), 30);
-}));
-$("cancel").onclick = () => $("pinModal").classList.add("hidden");
-$("pinModal").addEventListener("click", (e) => { if (e.target === $("pinModal")) $("pinModal").classList.add("hidden"); });
 $("pinForm").addEventListener("submit", async (e) => {
   e.preventDefault(); $("err").textContent = "";
-  const { data, error } = await supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false } }).rpc("fin_login", { pin: $("pin").value });
-  if (error) { $("err").textContent = error.message; return; }
-  if (!data) { $("err").textContent = "Feil PIN"; $("pin").select(); return; }
-  setToken(data); unlocked = true; showState();
-  if (target) location.href = target; else $("pinModal").classList.add("hidden");
+  const pin = $("pin").value;
+  const [p, f] = await Promise.all([cl().rpc("prod_login", { pin }), cl().rpc("fin_login", { pin })]);
+  if (p.data) ls.set("plk-token", p.data);
+  if (f.data) ls.set("plk-fin-token", f.data);
+  if (!p.data && !f.data) { $("err").textContent = (p.error || f.error)?.message || "Feil PIN"; $("pin").select(); return; }
+  $("pin").value = ""; open_();
 });
-$("logout").onclick = async (e) => { e.preventDefault(); try { await client().rpc("fin_logout"); } catch {} setToken(null); unlocked = false; showState(); };
-if (new URLSearchParams(location.search).has("pin")) { $("pinModal").classList.remove("hidden"); setTimeout(() => $("pin").focus(), 30); }
+$("logout").onclick = async (e) => {
+  e.preventDefault();
+  try { await Promise.all([cl({ "x-prod-token": ls.get("plk-token") || "" }).rpc("prod_logout"), cl({ "x-fin-token": ls.get("plk-fin-token") || "" }).rpc("fin_logout")]); } catch {}
+  ls.set("plk-token", null); ls.set("plk-fin-token", null); lock();
+};
 </script>
 </body>
 </html>

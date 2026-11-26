@@ -73,9 +73,13 @@ footer a{color:inherit}
 .pinbox .cancel{background:none;color:var(--muted);font-weight:500;padding:4px}
 .err{color:#FF8A8A;font-size:14px;min-height:18px}
 .hidden{display:none!important}
+.adminbtn{position:fixed;top:18px;right:20px;display:inline-flex;align-items:center;gap:7px;padding:8px 14px;border-radius:10px;border:1px solid var(--line);background:rgba(21,18,31,.8);color:var(--ink);text-decoration:none;font-size:14px;font-weight:600;backdrop-filter:blur(6px);transition:border-color .15s}
+.adminbtn:hover{border-color:#A99FD6}
+.adminbtn svg{width:15px;height:15px;color:#A99FD6}
 </style>
 </head>
 <body>
+<a class="adminbtn" href="phatlab-admin/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="10.5" width="16" height="10" rx="2.5"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></svg>Admin</a>
 <main>
   <div class="brand">
     <div class="logo">PHAT <span>LAB</span></div>
@@ -103,7 +107,7 @@ footer a{color:inherit}
     </a>
   </div>
 
-  <footer>Phat Lab Music · Nedre Storgate 1, Drammen · <a href="phatlab-admin/">Admin</a></footer>
+  <footer>Phat Lab Music · Nedre Storgate 1, Drammen</footer>
 </main>
 <script>
 "use strict";
