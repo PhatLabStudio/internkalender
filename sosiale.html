@@ -28,7 +28,6 @@ select.flt{background:var(--card);border:1px solid var(--line);border-radius:10p
 .chs input{accent-color:#D946EF}
 .ch-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .ch-head .big{font:700 clamp(22px,3.4vw,30px)/1.1 var(--f-display)}
-main.wide{max-width:1560px}
 #taskModal .modal{width:min(760px,100%)}
 .modal textarea.big{min-height:180px;font-family:inherit}
 @media (max-width:640px){.ch-head>div:nth-child(2){flex:1 1 calc(100% - 70px)!important}.ch-head .btn{flex:1}}
@@ -217,7 +216,7 @@ async function load() {
 function route() {
   const m = location.hash.match(/^#c-(.+)$/);
   cur = m ? D.campaigns.find(c => c.id === m[1]) || null : null;
-  $("main").classList.toggle("wide", !!cur); $("vHome").classList.toggle("hidden", !!cur); $("vCamp").classList.toggle("hidden", !cur);
+  $("vHome").classList.toggle("hidden", !!cur); $("vCamp").classList.toggle("hidden", !cur);
   $("crumbC").textContent = cur ? " / " + cur.title : "";
   if (cur) renderCamp(); else renderHome();
   window.scrollTo(0, 0);
