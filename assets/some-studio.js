@@ -231,7 +231,14 @@ function mount(root, cfg) {
     const ht = el("button", "btn sub", "# Hashtags"); ht.type = "button"; ht.onclick = () => openTags(c.artist_id);
     const ed = el("button", "btn sub", "Endre plan"); ed.type = "button"; ed.onclick = () => openPlan(c);
     const ad = el("button", "btn", "+ Oppgave"); ad.type = "button"; ad.onclick = () => openTask(null, c);
-    head.append(hl, ht, ed, ad); root.appendChild(head);
+    const del = el("button", "btn danger", "Slett plan"); del.type = "button"; del.title = "Sletter planen og alle oppgavene i den";
+    del.onclick = async () => {
+      if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = "Sikker? Klikk igjen"; setTimeout(() => { if (del.isConnected) { delete del.dataset.armed; del.textContent = "Slett plan"; } }, 3500); return; }
+      del.disabled = true;
+      try { await rpc("som_delete_campaign", { cid: c.id }); toast("Planen for " + (c.song || c.title) + " er slettet"); cur = null; await load(); }
+      catch (e) { toast(e.message, true); del.disabled = false; }
+    };
+    head.append(hl, ht, ed, del, ad); root.appendChild(head);
     const pr = S.progress(c), late = c.tasks.filter(t => S.taskState(c, t) === "late").length, now = c.tasks.filter(t => S.taskState(c, t) === "now").length;
     const stats = el("div", "stats");
     stats.append(...[[pr.pct + " %", "ferdig", pr.d + " av " + pr.n], [now, "i dag", "oppgaver å gjøre"], [late, "forsinket", late ? "bør tas igjen" : "alt i rute"], [c.tasks.filter(t => t.owner === "artist" && !t.done).length, "åpne for artisten", "ser dem på artistsiden"]]
