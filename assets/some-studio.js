@@ -155,16 +155,14 @@ function mount(root, cfg) {
     bar.lastChild.style.flex = "1";
     const nb = el("button", "btn primary sm", "+ Ny plan"); nb.type = "button"; nb.onclick = () => openPlan(null); bar.appendChild(nb);
     root.appendChild(bar);
-    const grid = el("div", "grid2");
-    const wkP = el("div", "panel"); const wh = el("div", "ph"); wh.append(el("h2", null, "Denne uken"), el("span", "spacer"), seg([["", "Alle"], ["artist", "Artist"], ["studio", "Studio"], ["label", "Label"]], ui.wkOwner, (v) => { ui.wkOwner = v; render(); })); wkP.appendChild(wh);
-    const wk = el("div"); wkP.appendChild(wk);
-    const pl = el("div", "panel"); const ph = el("div", "ph"); ph.append(el("h2", null, "Planer"), el("span", "spacer"));
-    const al = el("label", "check"); al.style.fontSize = "13px"; const ac = el("input"); ac.type = "checkbox"; ac.checked = ui.showArch; ac.onchange = () => { ui.showArch = ac.checked; render(); }; al.append(ac, document.createTextNode(" Vis arkiverte")); ph.appendChild(al); pl.appendChild(ph);
-    const box = el("div", "camps"); box.style.gridTemplateColumns = "1fr"; pl.appendChild(box);
-    grid.append(wkP, pl); root.appendChild(grid);
     const list = camps().filter(c => ui.showArch || !c.archived);
-    for (const c of list) box.appendChild(campCard(c, () => openCamp(c.id)));
-    if (!list.length) box.appendChild(el("div", "empty", "Ingen planer ennå. Trykk «+ Ny plan», eller «+ SoMe-plan» på en låt."));
+    const lh = el("div", "ph"); lh.style.cssText = "display:flex;align-items:center;gap:10px;margin:4px 0 10px"; lh.append(el("h2", null, "Låter med plan"), el("span", "spacer"));
+    const al = el("label", "check"); al.style.fontSize = "13px"; const ac = el("input"); ac.type = "checkbox"; ac.checked = ui.showArch; ac.onchange = () => { ui.showArch = ac.checked; render(); }; al.append(ac, document.createTextNode(" Vis arkiverte")); lh.appendChild(al);
+    root.appendChild(lh);
+    if (list.length) { const pk = planPicker(list, null, (id) => openCamp(id)); pk.classList.add("grid"); root.appendChild(pk); }
+    else root.appendChild(el("div", "empty", "Ingen planer ennå. Trykk «+ Ny plan», eller «+ SoMe-plan» på en låt."));
+    const wkP = el("div", "panel"); wkP.style.marginTop = "6px"; const wh = el("div", "ph"); wh.append(el("h2", null, "Denne uken"), el("span", "spacer"), seg([["", "Alle"], ["artist", "Artist"], ["studio", "Studio"], ["label", "Label"]], ui.wkOwner, (v) => { ui.wkOwner = v; render(); })); wkP.appendChild(wh);
+    const wk = el("div"); wkP.appendChild(wk); root.appendChild(wkP);
     const td = S.today(), items = [];
     for (const c of camps().filter(c => !c.archived)) for (const t of c.tasks) {
       if (t.done || (ui.wkOwner && t.owner !== ui.wkOwner)) continue;
@@ -177,7 +175,7 @@ function mount(root, cfg) {
     for (const it of items) {
       const k = S.ymd(it.kd); if (k !== last) { last = k; const h = el("div", "sday" + (k === S.ymd(td) ? " today" : it.kd < td ? " past" : "")); h.append(el("b", null, (k === S.ymd(td) ? "I dag · " : it.kd < td ? "Forsinket · " : "") + S.dShort(it.kd)), el("span")); wk.appendChild(h); }
       const r = S.taskRow(it.c, it.t, { onToggle: toggle, onTask: (t) => openTask(t, it.c) });
-      r.querySelector(".m").appendChild(el("div", "ss-tag", it.c.title)); wk.appendChild(r);
+      r.querySelector(".m").appendChild(el("div", "ss-tag", "♪ " + (it.c.song || it.c.title))); wk.appendChild(r);
     }
     if (!items.length) wk.appendChild(el("div", "empty", "Ingen åpne oppgaver denne uken."));
   }
