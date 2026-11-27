@@ -73,6 +73,22 @@ footer a{color:inherit}
 .pinbox .cancel{background:none;color:var(--muted);font-weight:500;padding:4px}
 .err{color:#FF8A8A;font-size:14px;min-height:18px}
 .hidden{display:none!important}
+.today{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:14px;margin:0 0 22px}
+@media (max-width:820px){.today{grid-template-columns:1fr}}
+.tp{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 16px 12px}
+.tp h3{font:700 16px var(--f-display);margin:0 0 10px;display:flex;align-items:center;gap:8px}
+.tp h3 .n{font:600 12px var(--f-body);background:#2A2440;border-radius:99px;padding:1px 8px;color:var(--muted)}
+.tp h3 .n.hot{background:#D946EF;color:#fff}
+.tl2{display:flex;flex-direction:column;gap:6px}
+.ti{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:10px;align-items:center;background:#15121F;border:1px solid transparent;border-radius:11px;padding:8px 11px;text-decoration:none;color:var(--ink);font-size:14px}
+a.ti:hover{border-color:var(--line)}
+.ti .dot{width:9px;height:9px;border-radius:3px;background:var(--c,#8B7FB8)}
+.ti .m{min-width:0}.ti .m b{font-weight:600}
+.ti .m div{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ti .r{font-size:12px;color:var(--muted);white-space:nowrap}
+.ti.warn .r{color:#FFB547}.ti.bad .r{color:#FF8A8A}
+.tsub{font:600 11.5px var(--f-body);text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin:12px 0 6px}
+.tempty{color:var(--muted);font-size:14px;padding:6px 2px}
 </style>
 </head>
 <body>
@@ -82,6 +98,21 @@ footer a{color:inherit}
     <h1>Phat Lab <em>admin</em></h1>
     <div class="date">Interne verktøy for drift av studioet.</div>
   </div>
+
+  <section class="today" id="today">
+    <div class="tp">
+      <h3>Studio i dag <span class="n" id="nToday"></span></h3>
+      <div class="tl2" id="tToday"><div class="tempty">Henter …</div></div>
+      <div class="tsub">I morgen</div>
+      <div class="tl2" id="tTomorrow"></div>
+      <div class="tsub hidden" id="relHead">Releaser fremover</div>
+      <div class="tl2" id="tRel"></div>
+    </div>
+    <div class="tp">
+      <h3>Trenger oppfølging <span class="n" id="nFollow"></span></h3>
+      <div class="tl2" id="tFollow"><div class="tempty">Henter …</div></div>
+    </div>
+  </section>
 
   <div class="cards">
     <a class="card prod" href="../produksjon.html">
@@ -165,7 +196,43 @@ const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publisha
 const $ = id => document.getElementById(id);
 const ls = { get(k) { try { return localStorage.getItem(k); } catch { return null; } }, set(k, v) { try { v ? localStorage.setItem(k, v) : localStorage.removeItem(k); } catch {} } };
 const cl = (h) => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: h || {} } });
-function open_() { $("pinModal").classList.add("hidden"); $("main").classList.remove("hidden"); }
+function open_() { $("pinModal").classList.add("hidden"); $("main").classList.remove("hidden"); loadToday(); }
+/* ---------- I dag og påminnelser ---------- */
+const ROOMS = { a: "Studio A", b: "Studio B", c: "Studio C" };
+const MON = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
+const STEPN = { demo: "Demo", produksjon: "Produksjon", vokal: "Vokalinnspilling", mix: "Mix", master: "Master", annet: "Annet", skisse: "Demo", miks: "Mix" };
+const pd = (s) => { const m = String(s || "").match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : null; };
+const ds = (s) => { const d = pd(s) || new Date(s); return isNaN(d) ? "" : d.getDate() + ". " + MON[d.getMonth()]; };
+const kr = (n) => "kr " + Math.round(+n || 0).toLocaleString("nb-NO");
+const ago = (s) => { const n = Math.round((Date.now() - new Date(s)) / 86400000); return n <= 0 ? "i dag" : n === 1 ? "i går" : n + " dager siden"; };
+const mk = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
+function item({ href, color, title, sub, right, level }) {
+  const a = mk(href ? "a" : "div", "ti" + (level ? " " + level : "")); if (href) a.href = href;
+  const d = mk("span", "dot"); d.style.setProperty("--c", color || "#8B7FB8");
+  const m = mk("div", "m"); m.append(mk("b", null, title)); if (sub) m.appendChild(mk("div", null, sub));
+  a.append(d, m, mk("span", "r", right || "")); return a;
+}
+const fill = (id, items, empty) => { const b = $(id); b.replaceChildren(...items); if (!items.length && empty) b.appendChild(mk("div", "tempty", empty)); };
+async function loadToday() {
+  try {
+    const c = cl({ "x-prod-token": ls.get("plk-token") || "", "x-fin-token": ls.get("plk-fin-token") || "" });
+    const { data: T, error } = await c.rpc("admin_today"); if (error) throw error;
+    fill("tToday", T.today.map(b => item({ href: "../booking.html?from=admin", color: b.room === "b" ? "#38BDF8" : "#7C3AED", title: b.name || "Booking", sub: [ROOMS[b.room] || "Studio", b.tech ? "tekniker " + b.tech : "", b.note].filter(Boolean).join(" · "), right: (b.start || "") + (b.end ? "–" + b.end : "") })), "Ingen økter i dag.");
+    $("nToday").textContent = T.today.length || "";
+    fill("tTomorrow", T.tomorrow.map(b => item({ href: "../booking.html?from=admin", color: b.room === "b" ? "#38BDF8" : "#7C3AED", title: b.name || "Booking", sub: ROOMS[b.room] || "Studio", right: (b.start || "") + (b.end ? "–" + b.end : "") })), "Ingen økter i morgen.");
+    $("relHead").classList.toggle("hidden", !T.releases.length);
+    fill("tRel", T.releases.map(r => item({ href: "../artist.html?id=" + encodeURIComponent(r.artist_id) + "#laater", color: r.color, title: r.title.replace(/^Release:\s*/, ""), sub: r.artist + (r.status === "levert" ? " · levert til distributør" : r.status === "ute" ? " · ute" : ""), right: ds(r.date), level: r.status === "planlagt" && pd(r.date) - new Date() < 14 * 864e5 ? "warn" : "" })));
+    const F = [];
+    for (const o of T.offers || []) F.push(item({ href: "avtaler.html", color: "#D946EF", title: "Tilbud #" + o.number + " ikke besvart", sub: o.customer + (o.title ? " · " + o.title : "") + (o.viewed_at ? " · åpnet " + ds(o.viewed_at) : " · ikke åpnet"), right: "sendt " + ago(o.sent_at), level: "warn" }));
+    for (const e of T.payments || []) F.push(item({ href: "okonomi.html", color: "#3DDC97", title: (e.overdue ? "Forfalt: " : "Forfaller snart: ") + kr(e.amount), sub: e.customer + (e.description ? " · " + e.description : ""), right: ds(e.due_date), level: e.overdue ? "bad" : "warn" }));
+    for (const c2 of T.comments) F.push(item({ href: "../review.html?p=" + encodeURIComponent(c2.project_id), color: c2.color, title: c2.n + (c2.n === 1 ? " ubesvart kommentar" : " ubesvarte kommentarer"), sub: (c2.artist ? c2.artist + " · " : "") + c2.title, right: ago(c2.latest) }));
+    for (const u of T.uploads) F.push(item({ href: "../artist.html?id=" + encodeURIComponent(u.artist_id) + "#dok", color: u.color, title: "Ny fil fra " + u.artist, sub: u.title, right: ago(u.created_at) }));
+    for (const s of T.steps) F.push(item({ href: "../artist.html?id=" + encodeURIComponent(s.artist_id) + "#kalender", color: s.color, title: (s.label || STEPN[s.type] || "Steg") + " – " + s.title, sub: s.artist + " · " + (s.kind === "forsinket" ? "skulle vært ferdig " + ds(s.end) : s.kind === "starter" ? "starter i dag" : "skal bli ferdig i dag"), right: s.kind === "forsinket" ? "forsinket" : "i dag", level: s.kind === "forsinket" ? "bad" : "" }));
+    fill("tFollow", F, "Alt er i rute. Ingenting å følge opp akkurat nå.");
+    $("nFollow").textContent = F.length || ""; $("nFollow").classList.toggle("hot", F.length > 0);
+  } catch (e) { $("tToday").replaceChildren(mk("div", "tempty", "Kunne ikke hente oversikten: " + (e.message || e))); $("tFollow").replaceChildren(); }
+}
+document.addEventListener("visibilitychange", () => { if (!document.hidden && !$("main").classList.contains("hidden")) loadToday(); });
 function lock() { $("main").classList.add("hidden"); $("pinModal").classList.remove("hidden"); $("err").textContent = ""; setTimeout(() => $("pin").focus(), 30); }
 (async () => {
   const pt = ls.get("plk-token"), ft = ls.get("plk-fin-token");

@@ -308,7 +308,7 @@ function render() {
   const dbx = P.safeUrl(a.dropbox); $("dbxBtn").classList.toggle("hidden", !dbx); $("dbxAdd").classList.toggle("hidden", !!dbx); if (dbx) $("dbxBtn").href = dbx;
 
   const active = D.songs.filter(s => !P.songState(s).done).length;
-  const next = P.agendaItems(D.songs, D.plans, D.bookings).find(x => x.d && x.d >= today());
+  const next = P.agendaItems(D.songs, [...D.plans, ...P.releasePlans(D.songs, D.releases)], D.bookings).find(x => x.d && x.d >= today());
   $("stats").replaceChildren(...[
     [D.songs.length, D.songs.length === 1 ? "låt" : "låter", active + " i arbeid"],
     [D.docs.length, "dokumenter", D.docs.filter(d => d.visible).length + " synlige for artisten"],
@@ -346,6 +346,10 @@ function renderSongs() {
       rv.appendChild(b);
     }
     c.appendChild(rv);
+    const rel = (D.releases || {})[s.id]; const rl = P.releaseLine(s, rel);
+    const rb = el("button", "btn sub sm", rel ? "Release-info" : "+ Release-info"); rb.type = "button"; rb.style.marginLeft = "auto";
+    rb.onclick = () => P.openRelease(s, rel, async (data) => { await rpc("art_studio_save_release", { sid: s.id, r: data }); toast("Release-info lagret"); load(); });
+    rl.appendChild(rb); c.appendChild(rl);
     const docs = D.docs.filter(d => d.song_id === s.id);
     if (docs.length) c.appendChild(el("div", "team", docs.length + (docs.length === 1 ? " dokument" : " dokumenter") + ": " + docs.map(d => d.title).join(", ")));
     if (s.note) { const n = el("div", "team", s.note); n.style.whiteSpace = "pre-wrap"; c.appendChild(n); }
@@ -363,7 +367,7 @@ function renderSongs() {
 /* ---------- Kalender og planer ---------- */
 function renderCal() {
   P.renderTimeline($("timeline"), D.songs);
-  P.renderAgenda($("agenda"), P.agendaItems(D.songs, D.plans, D.bookings).slice(0, 30), openPlan);
+  P.renderAgenda($("agenda"), P.agendaItems(D.songs, [...D.plans, ...P.releasePlans(D.songs, D.releases)], D.bookings).slice(0, 30), (p) => { if (!p._release) openPlan(p); });
   const box = $("plans"); box.replaceChildren();
   if (!D.plans.length) box.appendChild(el("div", "empty", "Ingen milepæler ennå. Legg inn releasedatoer, frister og andre planer."));
   else {
@@ -399,6 +403,7 @@ function renderDocs() {
   for (const d of list) {
     const r = el("div", "doc"); r.appendChild(P.docIcon(d));
     const m = el("div", "m"); m.appendChild(el("b", null, d.title));
+    if (d.uploaded_by === "artist") { const t = el("span", "tag art", "Fra artisten"); t.style.marginLeft = "6px"; m.firstChild.appendChild(t); }
     const song = D.songs.find(s => s.id === d.song_id);
     m.appendChild(el("span", null, [(P.DOC_CATS.find(x => x[0] === d.category) || [, "Annet"])[1], song ? song.title : "", d.has_file ? P.fmtSize(d.size_bytes) : "lenke", dShort(d.created_at)].filter(Boolean).join(" · ")));
     r.appendChild(m);

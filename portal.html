@@ -56,7 +56,10 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   </section>
 
   <section id="v-dok" class="hidden">
-    <div class="cats" id="cats"></div>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+      <div class="cats" id="cats" style="margin:0"></div><span class="spacer"></span>
+      <button class="btn primary sm" id="upBtn" type="button">+ Last opp fil</button>
+    </div>
     <div class="docs" id="docs"></div>
   </section>
 
@@ -87,6 +90,21 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
 
   <footer>Phat Lab Music · Nedre Storgate 1, 3015 Drammen · sanders@phatlab.no</footer>
 </main>
+
+<div class="mback hidden" id="upModal">
+  <form class="modal" id="upForm" autocomplete="off">
+    <div class="mh"><h2>Last opp til Phat Lab</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="drop" id="drop"><b>Velg fil</b> eller dra den hit<br><span style="font-size:12.5px">Lyrics, splitt-ark, demoer, artwork … maks 50 MB</span></div>
+    <input type="file" id="upFile" class="hidden">
+    <div class="prog hidden" id="upProg"><i></i></div>
+    <div class="f" style="margin-top:12px"><label for="u-title">Tittel</label><input id="u-title" maxlength="200"></div>
+    <div class="f2">
+      <div class="f"><label for="u-cat">Hva er det?</label><select id="u-cat"></select></div>
+      <div class="f"><label for="u-song">Hvilken låt? (valgfritt)</label><select id="u-song"></select></div>
+    </div>
+    <div class="mfoot"><span class="muted" style="font-size:12.5px">Phat Lab ser filen med en gang.</span><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary" id="u-save">Last opp</button></div>
+  </form>
+</div>
 
 <div class="lock hidden" id="lock">
   <form class="lockbox" id="lockForm" autocomplete="on">
@@ -161,7 +179,7 @@ function render() {
   $("name").textContent = a.name; $("avatar").textContent = P.initials(a.name);
   const h = new Date().getHours();
   $("welcome").textContent = (h < 10 ? "God morgen" : h < 18 ? "Hei" : "God kveld") + "! Her har du alt om låtene dine hos Phat Lab samlet.";
-  const items = P.agendaItems(D.songs, D.plans, D.bookings);
+  const items = P.agendaItems(D.songs, [...D.plans, ...P.releasePlans(D.songs, D.releases)], D.bookings);
   const next = items.find(x => x.d && x.d >= today());
   const active = D.songs.filter(s => !P.songState(s).done).length;
   $("stats").replaceChildren(...[[D.songs.length, D.songs.length === 1 ? "låt" : "låter", active + " i arbeid"], [next ? dShort(next.d) : "–", "neste", next ? next.title : "ingenting planlagt ennå"], [D.docs.length, "dokumenter", ""]]
@@ -191,6 +209,10 @@ function renderSongs() {
     const team = (s.team || []).filter(m => m.name); if (team.length) c.appendChild(el("div", "team", team.map(m => m.name + (m.role ? " (" + m.role.toLowerCase() + ")" : "")).join(" · ")));
     const r = D.review.find(x => x.song_id === s.id);
     if (r) c.appendChild(rvRow(r, false)); else c.appendChild(el("div", "rv muted", "Mikser kommer her når de er klare"));
+    const rel = (D.releases || {})[s.id]; const rl = P.releaseLine(s, rel);
+    const rb = el("button", "btn sub sm", rel ? "Release-info" : "+ Legg inn release-info"); rb.type = "button"; rb.style.marginLeft = "auto";
+    rb.onclick = () => P.openRelease(s, rel, async (data) => { await rpc("art_portal_save_release", { sid: s.id, r: data }); toast("Release-info lagret"); load(); });
+    rl.appendChild(rb); c.appendChild(rl);
     const docs = D.docs.filter(d => d.song_id === s.id);
     if (docs.length) { const f = el("div", "foot"); docs.forEach(d => { const b = el("button", "btn sub sm", d.title); b.type = "button"; b.onclick = () => openDoc(d); f.appendChild(b); }); c.appendChild(f); }
     box.appendChild(c);
@@ -212,9 +234,16 @@ function renderDocs() {
     const a = el("div", "a");
     const o = el("button", "btn sub sm", d.has_file ? "Åpne" : "Åpne lenke ↗"); o.type = "button"; o.onclick = () => openDoc(d, false); a.appendChild(o);
     if (d.has_file) { const dl = el("button", "btn sub sm", "Last ned"); dl.type = "button"; dl.onclick = () => openDoc(d, true); a.appendChild(dl); }
+    if (d.uploaded_by === "artist") {
+      m.firstChild.appendChild(Object.assign(el("span", "tag art", "Lastet opp av deg"), { style: "margin-left:6px" }));
+      const del = el("button", "btn ghost sm", "Slett"); del.type = "button";
+      del.onclick = async () => { if (!del.dataset.armed) { del.dataset.armed = "1"; del.textContent = "Sikker?"; setTimeout(() => { delete del.dataset.armed; del.textContent = "Slett"; }, 3000); return; }
+        try { await fnA("doc_delete", { doc_id: d.id }); toast("Filen er slettet"); load(); } catch (e) { toast(e.message, true); } };
+      a.appendChild(del);
+    }
     r.append(m, a); box.appendChild(r);
   }
-  if (!D.docs.length) box.appendChild(el("div", "empty", "Ingen dokumenter ennå. Kontrakter, splitt-ark og annet dukker opp her."));
+  if (!D.docs.length) box.appendChild(el("div", "empty", "Ingen dokumenter ennå. Kontrakter og filer fra Phat Lab dukker opp her – og du kan laste opp lyrics, splitt-ark og demoer selv."));
 }
 async function openDoc(d, download) {
   if (!d.has_file) { const u = P.safeUrl(d.url); if (u) window.open(u, "_blank", "noopener"); return; }
@@ -225,6 +254,46 @@ async function openDoc(d, download) {
     if (w) w.location = j.url; else location.href = j.url;
   } catch (e) { if (w) w.close(); toast(e.message, true); }
 }
+async function fnA(action, payload) {
+  const r = await fetch(FN_URL, { method: "POST", headers: { "content-type": "application/json", apikey: SB_KEY, "x-artist-token": token || "" }, body: JSON.stringify({ action, ...payload }) });
+  const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || "Noe gikk galt (" + r.status + ")"); return j;
+}
+const UP_CATS = [["lyrics", "Lyrics"], ["splitt", "Splitt-ark"], ["demo", "Demo / lyd"], ["artwork", "Artwork / bilder"], ["presse", "Presse / bio"], ["annet", "Annet"]];
+$("u-cat").replaceChildren(...UP_CATS.map(([v, n]) => { const o = el("option", null, n); o.value = v; return o; }));
+let upFile = null;
+function openUp() {
+  upFile = null; $("upFile").value = ""; $("u-title").value = ""; $("upProg").classList.add("hidden"); $("upProg").firstElementChild.style.width = "0";
+  $("drop").innerHTML = "<b>Velg fil</b> eller dra den hit<br><span style=\"font-size:12.5px\">Lyrics, splitt-ark, demoer, artwork … maks 50 MB</span>";
+  $("u-song").replaceChildren(Object.assign(el("option", null, "Ingen bestemt låt"), { value: "" }), ...D.songs.map(s => Object.assign(el("option", null, s.title), { value: s.id })));
+  $("u-cat").value = cat !== "alle" && UP_CATS.some(c => c[0] === cat) ? cat : "lyrics";
+  $("upModal").classList.remove("hidden"); document.body.style.overflow = "hidden";
+}
+function closeUp() { $("upModal").classList.add("hidden"); document.body.style.overflow = ""; }
+$("upBtn").onclick = openUp;
+document.querySelectorAll("#upModal [data-close]").forEach(b => b.onclick = closeUp);
+$("upModal").addEventListener("click", (e) => { if (e.target === $("upModal")) closeUp(); });
+$("drop").onclick = () => $("upFile").click();
+const pickUp = (f) => { if (!f) return; if (f.size > 50 * 1024 * 1024) { toast("Filen er større enn 50 MB", true); return; } upFile = f;
+  $("drop").innerHTML = "<b>" + P.esc(f.name) + "</b><br><span style=\"font-size:12.5px\">" + P.esc(P.fmtSize(f.size)) + " · klikk for å bytte</span>";
+  if (!$("u-title").value) $("u-title").value = f.name.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ");
+  const n = f.name.toLowerCase(); const g = /split/.test(n) ? "splitt" : /lyric|tekst/.test(n) ? "lyrics" : /\.(mp3|wav|aiff?|m4a|flac)$/.test(n) ? "demo" : /\.(png|jpe?g|webp|psd|tiff?)$/.test(n) ? "artwork" : null; if (g) $("u-cat").value = g; };
+$("upFile").onchange = () => pickUp($("upFile").files[0]);
+$("drop").addEventListener("dragover", (e) => { e.preventDefault(); $("drop").classList.add("over"); });
+$("drop").addEventListener("dragleave", () => $("drop").classList.remove("over"));
+$("drop").addEventListener("drop", (e) => { e.preventDefault(); $("drop").classList.remove("over"); pickUp(e.dataTransfer.files[0]); });
+$("upForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); if (!upFile) { toast("Velg en fil først", true); return; }
+  const b = $("u-save"); b.disabled = true; $("upProg").classList.remove("hidden");
+  try {
+    const f = upFile, up = await fnA("doc_upload_url", { file_name: f.name, size: f.size, mime: f.type });
+    await new Promise((res, rej) => { const x = new XMLHttpRequest(); x.open("PUT", up.signedUrl); x.setRequestHeader("content-type", f.type || "application/octet-stream"); x.setRequestHeader("x-upsert", "false");
+      x.upload.onprogress = (ev) => ev.lengthComputable && ($("upProg").firstElementChild.style.width = Math.round(ev.loaded / ev.total * 100) + "%");
+      x.onload = () => x.status < 300 ? res() : rej(new Error("Opplasting feilet (" + x.status + ")")); x.onerror = () => rej(new Error("Opplasting feilet")); x.send(f); });
+    await rpc("art_portal_add_doc", { d: { path: up.path, file_name: f.name, mime: f.type, size: f.size, title: $("u-title").value.trim(), category: $("u-cat").value, song_id: $("u-song").value } });
+    toast("Filen er lastet opp – Phat Lab ser den nå"); closeUp(); load();
+  } catch (err) { toast(err.message, true); }
+  b.disabled = false;
+});
 const PF = { bio: "pf-bio", genre: "pf-genre", contact_name: "pf-contact", email: "pf-email", phone: "pf-phone", instagram: "pf-ig", tiktok: "pf-tt", youtube: "pf-yt", spotify: "pf-sp", website: "pf-web" };
 function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; }
 $("profForm").addEventListener("submit", async (e) => {

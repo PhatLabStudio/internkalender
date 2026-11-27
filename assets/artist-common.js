@@ -12,7 +12,7 @@ const STAGES = [
 const LEGACY = { skisse: "demo", preprod: "produksjon", innspilling: "produksjon", miks: "mix", release: "annet" };
 const stage = (k) => STAGES.find(s => s.k === (LEGACY[k] || k)) || STAGES[STAGES.length - 1];
 const STATUS_TXT = { planlagt: "Planlagt", pagar: "Pågår", ferdig: "Ferdig" };
-const DOC_CATS = [["kontrakt", "Kontrakter", "#D946EF"], ["splitt", "Splitt-ark", "#F97316"], ["lyrics", "Lyrics", "#38BDF8"], ["presse", "Presse", "#22C55E"], ["artwork", "Artwork", "#FACC15"], ["annet", "Annet", "#8B7FB8"]];
+const DOC_CATS = [["kontrakt", "Kontrakter", "#D946EF"], ["splitt", "Splitt-ark", "#F97316"], ["lyrics", "Lyrics", "#38BDF8"], ["presse", "Presse", "#22C55E"], ["artwork", "Artwork", "#FACC15"], ["demo", "Demo / lyd", "#A78BFA"], ["annet", "Annet", "#8B7FB8"]];
 const PLAN_KINDS = [["milepael", "Milepæl", "#A78BFA"], ["release", "Release", "#EC4899"], ["frist", "Frist", "#FFB547"], ["annet", "Annet", "#64748B"]];
 const ROOMS = { a: "Studio A", b: "Studio B", c: "Studio C" };
 const MONTHS = ["jan", "feb", "mar", "apr", "mai", "jun", "jul", "aug", "sep", "okt", "nov", "des"];
@@ -161,10 +161,72 @@ function renderAgenda(box, items, onPlan) {
 /* Dokumentikon */
 function docIcon(d) {
   const ext = (String(d.file_name || "").match(/\.([A-Za-z0-9]{2,5})$/) || [, d.url ? "LINK" : "FIL"])[1].toUpperCase();
-  const c = (DOC_CATS.find(x => x[0] === d.category) || DOC_CATS[5])[2];
+  const c = (DOC_CATS.find(x => x[0] === d.category) || DOC_CATS[DOC_CATS.length - 1])[2];
   const ic = el("div", "ic", ext.slice(0, 4)); ic.style.setProperty("--c", c); return ic;
 }
 
-window.PLA = { STAGES, stage, STATUS_TXT, DOC_CATS, PLAN_KINDS, ROOMS, MONTHS, MONTHS_L, el, esc, ymd, parse, today, dShort, dLong, rel, fmtSize, safeUrl, social, initials, toast, store,
+
+/* Release-info per låt */
+const REL_STATUS = { planlagt: ["Planlagt", "#A78BFA"], levert: ["Levert til distributør", "#FFB547"], ute: ["Ute", "#3DDC97"] };
+function releasePlans(songs, releases) {
+  const out = [];
+  for (const s of songs || []) { const r = (releases || {})[s.id]; if (!r || !r.release_date) continue;
+    out.push({ id: "rel-" + s.id, kind: "release", title: "Release: " + s.title, date: r.release_date, note: [REL_STATUS[r.status]?.[0], r.distributor].filter(Boolean).join(" · "), visible: true, done: r.status === "ute", _release: true }); }
+  return out;
+}
+function releaseLine(s, r) {
+  const box = el("div", "relline");
+  if (!r || (!r.release_date && !r.distributor && !r.isrc && !(r.splits || []).length && !r.credits)) { box.appendChild(el("span", "muted", "Ingen release-info ennå")); return box; }
+  const st = REL_STATUS[r.status] || REL_STATUS.planlagt;
+  const tag = el("span", "tag", st[0]); tag.style.cssText = "color:" + st[1] + ";border-color:" + st[1] + "66"; box.appendChild(tag);
+  const bits = [r.release_date ? "Release " + dShort(r.release_date) : "", r.distributor, r.isrc ? "ISRC " + r.isrc : ""].filter(Boolean);
+  if (bits.length) box.appendChild(el("span", null, bits.join(" · ")));
+  const sp = (r.splits || []).filter(x => x.name); if (sp.length) box.appendChild(el("span", "muted", sp.length + (sp.length === 1 ? " i splitt" : " i splitten")));
+  return box;
+}
+// Skjema for release-info (brukes både av studio og artist). onSave(data) må returnere et Promise.
+function openRelease(song, r, onSave, opts = {}) {
+  r = r || {}; const back = el("div", "mback"); const f = el("form", "modal"); f.style.width = "min(640px,100%)"; f.autocomplete = "off"; back.appendChild(f);
+  const mh = el("div", "mh"); mh.append(el("h2", null, "Release-info: " + song.title), el("span", "spacer")); const x = el("button", "btn ghost sm", "✕"); x.type = "button"; mh.appendChild(x); f.appendChild(mh);
+  const field = (label, input, hint) => { const d = el("div", "f"); const l = el("label", null, label); d.append(l, input); if (hint) d.appendChild(el("span", "hint", hint)); return d; };
+  const inp = (v, ph, max) => { const i = el("input"); i.value = v || ""; if (ph) i.placeholder = ph; i.maxLength = max || 200; return i; };
+  const sel = el("select"); for (const [k, [n]] of Object.entries(REL_STATUS)) { const o = el("option", null, n); o.value = k; sel.appendChild(o); } sel.value = r.status || "planlagt";
+  const date = el("input"); date.type = "date"; date.value = r.release_date ? String(r.release_date).slice(0, 10) : "";
+  const dist = inp(r.distributor, "DistroKid, TuneCore, Spinnup, Believe …", 120), lab = inp(r.label, "Eget label eller plateselskap", 120);
+  const isrc = inp(r.isrc, "NOXXX2600001", 15), upc = inp(r.upc, "13 siffer", 14), link = inp(r.link, "Pre-save- eller Spotify-lenke", 500);
+  const credits = el("textarea"); credits.value = r.credits || ""; credits.placeholder = "Vokal: …\nProdusent: …\nMix: Phat Lab\nMaster: …"; credits.maxLength = 4000; credits.style.minHeight = "96px";
+  const notes = el("textarea"); notes.value = r.notes || ""; notes.maxLength = 2000; notes.style.minHeight = "60px";
+  const g1 = el("div", "f2"); g1.append(field("Status", sel), field("Releasedato", date)); f.appendChild(g1);
+  const g2 = el("div", "f2"); g2.append(field("Distributør", dist), field("Label", lab)); f.appendChild(g2);
+  const g3 = el("div", "f3"); g3.append(field("ISRC", isrc), field("UPC/EAN", upc), field("Lenke", link)); f.appendChild(g3);
+  // Splitt
+  const sw = el("div", "f"); sw.appendChild(el("label", null, "Splitt (låtskriving/eierskap)"));
+  const rows = el("div"); rows.style.cssText = "display:flex;flex-direction:column;gap:6px"; sw.appendChild(rows);
+  const sum = el("span", "hint");
+  const addRow = (s) => { const rw = el("div"); rw.style.cssText = "display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) 80px 30px;gap:6px";
+    const n = inp(s?.name, "Navn", 120), ro = inp(s?.role, "Rolle (tekst, melodi …)", 60), pc = el("input"); pc.type = "number"; pc.min = 0; pc.max = 100; pc.step = "0.5"; pc.placeholder = "%"; pc.value = s?.pct ?? "";
+    const xb = el("button", "btn ghost sm", "✕"); xb.type = "button"; xb.onclick = () => { rw.remove(); upd(); };
+    [n, ro, pc].forEach(i => { i.style.cssText = "background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:9px 10px;outline:none;min-width:0"; i.oninput = upd; });
+    rw.append(n, ro, pc, xb); rows.appendChild(rw); };
+  const upd = () => { const t = [...rows.children].reduce((a, rw) => a + (+rw.children[2].value || 0), 0); sum.textContent = rows.children.length ? "Totalt " + String(Math.round(t * 10) / 10).replace(".", ",") + " %" + (Math.abs(t - 100) > 0.01 ? " – bør bli 100 %" : " ✓") : ""; sum.style.color = rows.children.length && Math.abs(t - 100) > 0.01 ? "#FFB547" : ""; };
+  (r.splits || []).forEach(addRow); if (!(r.splits || []).length) addRow();
+  const ab = el("button", "btn sub sm", "+ Person"); ab.type = "button"; ab.onclick = () => { addRow(); upd(); }; ab.style.marginTop = "6px";
+  const sl = el("div"); sl.style.cssText = "display:flex;gap:10px;align-items:center"; sl.append(ab, sum); sw.appendChild(sl); f.appendChild(sw); upd();
+  f.appendChild(field("Kreditering", credits, "Én rolle per linje. Brukes til metadata og presse."));
+  f.appendChild(field("Notater", notes));
+  if (r.updated_at) f.appendChild(el("div", "muted", "Sist endret " + dShort(r.updated_at) + (r.updated_by ? " av " + (r.updated_by === "artist" ? "artisten" : "studioet") : ""))).style.cssText = "font-size:12px;margin-bottom:8px";
+  const foot = el("div", "mfoot"); foot.appendChild(el("span", "spacer")); const cancel = el("button", "btn ghost", "Avbryt"); cancel.type = "button"; const save = el("button", "btn primary", "Lagre"); foot.append(cancel, save); f.appendChild(foot);
+  const close = () => { back.remove(); document.body.style.overflow = ""; };
+  x.onclick = cancel.onclick = close; back.addEventListener("click", (e) => { if (e.target === back) close(); });
+  f.addEventListener("submit", async (e) => {
+    e.preventDefault(); save.disabled = true;
+    const data = { status: sel.value, release_date: date.value, distributor: dist.value.trim(), label: lab.value.trim(), isrc: isrc.value.trim(), upc: upc.value.trim(), link: link.value.trim(), credits: credits.value.trim(), notes: notes.value.trim(),
+      splits: [...rows.children].map(rw => ({ name: rw.children[0].value.trim(), role: rw.children[1].value.trim(), pct: rw.children[2].value })).filter(s => s.name) };
+    try { await onSave(data); close(); } catch (err) { toast(err.message, true); save.disabled = false; }
+  });
+  document.body.appendChild(back); document.body.style.overflow = "hidden"; setTimeout(() => sel.focus(), 30);
+}
+
+window.PLA = { REL_STATUS, releasePlans, releaseLine, openRelease,  STAGES, stage, STATUS_TXT, DOC_CATS, PLAN_KINDS, ROOMS, MONTHS, MONTHS_L, el, esc, ymd, parse, today, dShort, dLong, rel, fmtSize, safeUrl, social, initials, toast, store,
   sortedSteps, songState, pipeline, nowText, renderTimeline, agendaItems, renderAgenda, docIcon };
 })();
