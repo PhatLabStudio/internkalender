@@ -222,6 +222,8 @@ function mount(root, cfg) {
   function renderCamp() {
     const c = cur;
     const back = el("button", "btn ghost sm", "← Alle planer"); back.type = "button"; back.onclick = () => { cur = null; render(); }; back.style.marginBottom = "10px"; root.appendChild(back);
+    const others = camps().filter(x => !x.archived || x.id === c.id);
+    if (others.length > 1) root.appendChild(planPicker(others, c.id, (id) => openCamp(id)));
     const head = el("div", "ss-head"); const hl = el("div", "ss-hl");
     const rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
     hl.append(el("div", "big", c.song || c.title), el("div", "muted", [c.song && c.title !== c.song ? c.title : "", "release " + S.dShort(rel) + " " + rel.getFullYear(), d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1)].filter(Boolean).join(" · ")));
