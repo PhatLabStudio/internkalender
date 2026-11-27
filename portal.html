@@ -9,10 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css?v=202611271540">
-<script src="assets/artist-common.js?v=202611271540"></script>
-<script src="assets/some-common.js?v=202611271540"></script>
-<script src="assets/some-studio.js?v=202611271540"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611271600">
+<script src="assets/artist-common.js?v=202611271600"></script>
+<script src="assets/some-common.js?v=202611271600"></script>
+<script src="assets/some-studio.js?v=202611271600"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
 .mini{display:flex;flex-direction:column;gap:8px}
@@ -347,8 +347,10 @@ async function loadSome() {
 function renderSome() {
   const box = $("someBox"); box.replaceChildren();
   if (!SC.length) { const e = el("div", "empty"); e.append(document.createTextNode("Du har ingen SoMe-plan ennå. "), Object.assign(el("button", "btn primary sm", "Lag din første plan"), { type: "button", onclick: () => newSomePlan(null) })); box.appendChild(e); }
-  if (SC.length && !SC.some(c => c.id === someSel)) someSel = SC[0].id;
-  if (SC.length > 1) box.appendChild(window.SOMESTUDIO.planPicker(SC, someSel, (id) => { someSel = id; renderSome(); }, { owner: "artist" }));
+  if (!SC.some(c => c.id === someSel)) someSel = null;
+  if (SC.length === 1) someSel = SC[0].id;
+  if (!someSel && SC.length) { const pk = window.SOMESTUDIO.planPicker(SC, null, (id) => { someSel = id; renderSome(); box.scrollIntoView({ behavior: "smooth", block: "start" }); }, { owner: "artist" }); pk.classList.add("grid"); box.appendChild(pk); return; }
+  if (someSel && SC.length > 1) { const bk = el("button", "btn ghost sm", "← Alle planer"); bk.type = "button"; bk.style.marginBottom = "10px"; bk.onclick = () => { someSel = null; renderSome(); }; box.appendChild(bk); }
   for (const c of SC.filter(x => x.id === someSel)) {
     const v = someView[c.id] || "kal";
     const p = el("div", "panel"); p.style.marginBottom = "16px"; p.dataset.camp = c.id;
@@ -405,7 +407,7 @@ function newSomePlan(songId) {
 }
 function openSomePlan(cid) {
   someSel = cid;
-  tab = "some"; history.replaceState(null, "", location.search + "#some"); renderTabs(); someTab = "plan"; renderSomeTabs();
+  tab = "some"; history.replaceState(null, "", location.search + "#some"); renderTabs(); someTab = "plan"; renderSomeTabs(); renderSome();
   requestAnimationFrame(() => { const p = document.querySelector('[data-camp="' + cid + '"]'); if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); });
 }
 $("newSomeBtn").onclick = () => newSomePlan(null);
