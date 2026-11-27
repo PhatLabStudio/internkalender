@@ -98,9 +98,10 @@ const CSS = `
 .ss-seg button+button{border-left:1px solid var(--line)}
 select.ss-flt{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--ink);font-size:13px}
 .ss-head{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.ss-hl{flex:1;min-width:0}
 .ss-head .big{font:700 clamp(20px,3vw,26px)/1.15 var(--f-display)}
 .ss-tag{font-size:11px;color:var(--muted)}
-@media (max-width:640px){.ss-head>div{flex:1 1 100%}.ss-head .btn{flex:1}}
+@media (max-width:640px){.ss-head .ss-hl{flex:1 1 100%}.ss-head .btn{flex:1}}
 `;
 
 let injected = false;
@@ -223,9 +224,11 @@ function mount(root, cfg) {
   function renderCamp() {
     const c = cur;
     const back = el("button", "btn ghost sm", "← Alle planer"); back.type = "button"; back.onclick = () => { cur = null; render(); }; back.style.marginBottom = "10px"; root.appendChild(back);
-    const head = el("div", "ss-head"); const hl = el("div"); hl.style.cssText = "flex:1;min-width:0";
+    const others = camps().filter(x => !x.archived || x.id === c.id);
+    if (others.length > 1) root.appendChild(planPicker(others, c.id, (id) => openCamp(id)));
+    const head = el("div", "ss-head"); const hl = el("div", "ss-hl");
     const rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
-    hl.append(el("div", "big", c.title), el("div", "muted", [c.song ? "låt: " + c.song : "", "release " + S.dShort(rel) + " " + rel.getFullYear(), d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1)].filter(Boolean).join(" · ")));
+    hl.append(el("div", "big", c.song || c.title), el("div", "muted", [c.song && c.title !== c.song ? c.title : "", "release " + S.dShort(rel) + " " + rel.getFullYear(), d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1)].filter(Boolean).join(" · ")));
     hl.lastChild.style.cssText = "font-size:14px;margin-top:2px";
     const ht = el("button", "btn sub", "# Hashtags"); ht.type = "button"; ht.onclick = () => openTags(c.artist_id);
     const ed = el("button", "btn sub", "Endre plan"); ed.type = "button"; ed.onclick = () => openPlan(c);
@@ -400,5 +403,30 @@ function songLine(c, opts = {}) {
   return box;
 }
 
-window.SOMESTUDIO = { mount, songLine };
+/* Velg hvilken låt/plan som vises */
+function planPicker(list, curId, onPick, opts = {}) {
+  const row = el("div", "ppick"), td = S.today();
+  for (const c of list) {
+    const pr = S.progress(c), rel = S.parse(c.release_date), d = S.dayOff(c, td);
+    const open = c.tasks.filter(t => !t.done && (!opts.owner || t.owner === opts.owner));
+    const late = open.filter(t => S.taskEnd(c, t) < td).length, now = open.filter(t => S.taskState(c, t) === "now").length;
+    const next = open.filter(t => S.taskEnd(c, t) >= td).sort((a, b) => S.taskStart(c, a) - S.taskStart(c, b))[0];
+    const b = el("button", "ppick-b" + (c.id === curId ? " on" : "")); b.type = "button";
+    b.append(el("b", null, c.song || c.title));
+    b.appendChild(el("span", null, "Release " + S.dShort(rel) + " " + rel.getFullYear() + " · " + (d < 0 ? (-d) + " dager igjen" : d === 0 ? "i dag!" : "dag " + (d + 1) + " etter")));
+    const st = el("div", "pp-st");
+    st.append(el("em", null, pr.pct + " % ferdig"), el("em", null, pr.d + "/" + pr.n));
+    if (now) st.appendChild(el("em", "now", now + " nå"));
+    if (late) st.appendChild(el("em", "late", late + " forsinket"));
+    b.appendChild(st);
+    if (next) { const k = S.ch(next.channel), s0 = S.taskStart(c, next); const nx = el("div", "pp-nx"); const chip = el("span", "chip", k.n); chip.style.setProperty("--c", k.c); nx.append(el("small", null, (s0 <= td ? "Nå" : S.dShort(s0)) + ":"), chip, el("span", null, next.title)); b.appendChild(nx); }
+    else b.appendChild(el("div", "pp-nx", open.length ? "" : "Alt er gjort 🎉"));
+    const bar = el("i"); bar.style.width = pr.pct + "%"; b.appendChild(bar);
+    b.onclick = () => onPick(c.id); row.appendChild(b);
+  }
+  requestAnimationFrame(() => { const on = row.querySelector(".on"); if (on && row.scrollWidth > row.clientWidth) row.scrollLeft = on.offsetLeft - row.offsetLeft - 8; });
+  return row;
+}
+
+window.SOMESTUDIO = { mount, songLine, planPicker };
 })();
