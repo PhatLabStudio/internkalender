@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css?v=202611270242">
-<script src="assets/artist-common.js?v=202611270242"></script>
-<script src="assets/some-common.js?v=202611270242"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611271200">
+<script src="assets/artist-common.js?v=202611271200"></script>
+<script src="assets/some-common.js?v=202611271200"></script>
 <style>
 h1.pt{font:700 clamp(26px,4vw,36px)/1.1 var(--f-display);margin:0;letter-spacing:-.02em}
 h1.pt em{font-style:normal;background:linear-gradient(135deg,#E1306C,#7C3AED);-webkit-background-clip:text;background-clip:text;color:transparent}
@@ -28,6 +28,9 @@ select.flt{background:var(--card);border:1px solid var(--line);border-radius:10p
 .chs input{accent-color:#D946EF}
 .ch-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 .ch-head .big{font:700 clamp(22px,3.4vw,30px)/1.1 var(--f-display)}
+main.wide{max-width:1560px}
+#taskModal .modal{width:min(760px,100%)}
+.modal textarea.big{min-height:180px;font-family:inherit}
 @media (max-width:640px){.ch-head>div:nth-child(2){flex:1 1 calc(100% - 70px)!important}.ch-head .btn{flex:1}}
 </style>
 </head>
@@ -44,8 +47,18 @@ select.flt{background:var(--card);border:1px solid var(--line);border-radius:10p
   <!-- OVERSIKT -->
   <section id="vHome">
     <h1 class="pt">Sosiale <em>medier</em></h1>
-    <p class="muted" style="margin:6px 0 0">90-dagers release-plan per låt: hva som skal postes hvor og når, fra 30 dager før release til 8 uker etter.</p>
-    <div class="grid2" style="margin-top:18px">
+    <p class="muted" style="margin:6px 0 0">90-dagers release-plan per låt, tekstmaler til postene og en idébank med trender og grep. Artistene ser maler og idébank på sin artistside.</p>
+    <div class="tabs2" id="homeTabs"><button data-h="plan" class="on">Planer</button><button data-h="tpl">Tekstmaler</button><button data-h="idea">Idébank</button></div>
+    <div id="hTpl" class="hidden">
+      <div class="toolbar" style="margin-top:0"><select class="flt" id="tplChan"><option value="">Alle kanaler</option></select><span class="spacer" style="flex:1"></span><button class="btn primary sm" id="tplNew" type="button">+ Ny mal</button></div>
+      <p class="muted" style="font-size:13px;margin:0 0 12px">Felt i klammer fylles inn automatisk fra planen: [LÅTTITTEL], [ARTIST], [DATO] og [LENKE] (lenke fra release-info). Andre felt, som [BY] eller [ANTALL], fyller du inn selv.</p>
+      <div class="tpl-list" id="tplList"></div>
+    </div>
+    <div id="hIdea" class="hidden">
+      <div class="toolbar" style="margin-top:0"><span class="muted" style="font-size:13px">Felles for alle artister. Arkiverte idéer vises bare her.</span><span class="spacer" style="flex:1"></span><button class="btn primary sm" id="ideaNew" type="button">+ Ny idé</button></div>
+      <div id="ideaBox"></div>
+    </div>
+    <div class="grid2" id="hPlan" style="margin-top:18px">
       <div class="panel wk"><div class="ph"><h2>Denne uken</h2><span class="spacer"></span>
         <div class="seg" id="wkOwner"><button data-o="" class="on">Alle</button><button data-o="artist">Artist</button><button data-o="studio">Studio</button><button data-o="label">Label</button></div></div>
         <div id="week"></div></div>
@@ -62,6 +75,7 @@ select.flt{background:var(--card);border:1px solid var(--line);border-radius:10p
         <div class="big" id="cTitle"></div>
         <div class="muted" id="cSub" style="font-size:14px;margin-top:2px"></div>
       </div>
+      <button class="btn sub" id="cTags" type="button"># Hashtags</button>
       <button class="btn sub" id="cEdit" type="button">Endre plan</button>
       <button class="btn" id="cAdd" type="button">+ Oppgave</button>
     </div>
@@ -111,7 +125,55 @@ select.flt{background:var(--card);border:1px solid var(--line);border-radius:10p
     <div class="f"><label for="t-note">Notat</label><input id="t-note" maxlength="2000" placeholder="Idé, hashtag, hvem som filmer …"></div>
     <div class="f"><label for="t-link">Lenke til posten</label><input id="t-link" maxlength="500" placeholder="Når den er ute"></div>
     <label class="check" style="margin-bottom:10px"><input type="checkbox" id="t-done"> Ferdig</label>
+    <details id="t-kitWrap" open style="margin:4px 0 12px"><summary style="cursor:pointer;font-weight:600;font-size:14px">Beste tid, tekstforslag og hashtags</summary><div id="t-kit" style="margin-top:10px"></div></details>
     <div class="mfoot"><button type="button" class="btn danger hidden" id="t-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
+  </form>
+</div>
+
+<!-- Hashtags for en artist -->
+<div class="mback hidden" id="tagModal">
+  <form class="modal" id="tagForm" autocomplete="off">
+    <div class="mh"><h2 id="tagH">Hashtags</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <p class="muted" style="margin:0 0 12px;font-size:13px">Skriv hashtags med mellomrom eller linjeskift. Bland gjerne ett par fra hvert sett når dere poster. Artisten kan også endre disse selv.</p>
+    <div class="f"><label for="h-bred">Bred rekkevidde</label><textarea id="h-bred" placeholder="#nymusikk #norskmusikk …"></textarea></div>
+    <div class="f"><label for="h-nisje">Nisje</label><textarea id="h-nisje" placeholder="Sjanger og stemning"></textarea></div>
+    <div class="f"><label for="h-lokal">Lokalt og norsk</label><textarea id="h-lokal" placeholder="#drammen #norskpop …"></textarea></div>
+    <div class="mfoot"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
+  </form>
+</div>
+
+<!-- Tekstmal -->
+<div class="mback hidden" id="tplModal">
+  <form class="modal" id="tplForm" autocomplete="off" style="width:min(640px,100%)">
+    <div class="mh"><h2 id="tplH">Ny tekstmal</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="m-name">Navn</label><input id="m-name" maxlength="120" required placeholder="For eksempel «Slippdag»"></div>
+    <div class="f2">
+      <div class="f"><label for="m-chan">Kanal</label><select id="m-chan"></select></div>
+      <div class="f"><label for="m-cat">Type</label><select id="m-cat"></select></div>
+    </div>
+    <div class="f"><label for="m-content">Tekst</label><textarea id="m-content" class="big" maxlength="4000" required></textarea><span class="hint">[LÅTTITTEL], [ARTIST], [DATO] og [LENKE] fylles inn automatisk.</span></div>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="m-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
+  </form>
+</div>
+
+<!-- Idé -->
+<div class="mback hidden" id="ideaModal">
+  <form class="modal" id="ideaForm" autocomplete="off" style="width:min(640px,100%)">
+    <div class="mh"><h2 id="ideaH">Ny idé</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="i-title">Tittel</label><input id="i-title" maxlength="200" required></div>
+    <div class="f"><label for="i-what">Hva det er</label><textarea id="i-what" maxlength="3000"></textarea></div>
+    <div class="f"><label for="i-how">Slik kan artisten bruke den</label><textarea id="i-how" maxlength="3000"></textarea></div>
+    <div class="f2">
+      <div class="f"><label for="i-chan">Kanal</label><select id="i-chan"></select></div>
+      <div class="f"><label for="i-cat">Type</label><select id="i-cat"></select></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label for="i-heat">Temperatur</label><select id="i-heat"><option value="1">1 – stigende</option><option value="2">2 – varm</option><option value="3">3 – på topp</option></select></div>
+      <div class="f"><label for="i-batch">Gruppe/uke</label><input id="i-batch" maxlength="80" placeholder="For eksempel «Uke 48»"></div>
+    </div>
+    <div class="f"><label for="i-src">Kilde</label><input id="i-src" maxlength="200" placeholder="Hvor du fant den"></div>
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" id="i-arch"> Arkiver (skjules for artistene)</label>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="i-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
   </form>
 </div>
 
@@ -145,15 +207,17 @@ $("lockForm").addEventListener("submit", async (e) => {
 });
 
 let D = { campaigns: [], artists: [], songs: [] }, cur = null;
+let KIT = { templates: [], ideas: [], hashtags: {} }; const ideaState = {};
+const kitFor = () => ({ ...KIT, hashtagsFor: (c) => (c && KIT.hashtags[c.artist_id]) || {} });
 const ui = { month: null, view: "kal", owner: "", chan: "", done: false, wkOwner: "" };
 async function load() {
   if (!token) return lock();
-  try { D = await rpc("som_list"); $("lock").classList.add("hidden"); $("main").classList.remove("hidden"); route(); } catch (e) { if (token) toast(e.message, true); }
+  try { [D, KIT] = await Promise.all([rpc("som_list"), rpc("som_kit")]); $("lock").classList.add("hidden"); $("main").classList.remove("hidden"); route(); } catch (e) { if (token) toast(e.message, true); }
 }
 function route() {
   const m = location.hash.match(/^#c-(.+)$/);
   cur = m ? D.campaigns.find(c => c.id === m[1]) || null : null;
-  $("vHome").classList.toggle("hidden", !!cur); $("vCamp").classList.toggle("hidden", !cur);
+  $("main").classList.toggle("wide", !!cur); $("vHome").classList.toggle("hidden", !!cur); $("vCamp").classList.toggle("hidden", !cur);
   $("crumbC").textContent = cur ? " / " + cur.title : "";
   if (cur) renderCamp(); else renderHome();
   window.scrollTo(0, 0);
@@ -162,8 +226,15 @@ window.addEventListener("hashchange", route);
 $("crumbHome").onclick = (e) => { e.preventDefault(); location.hash = ""; };
 
 /* ---------- Oversikt ---------- */
+let homeTab = "plan";
+$("homeTabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; homeTab = b.dataset.h; renderHome(); });
 function renderHome() {
   document.documentElement.style.setProperty("--ac", "#D946EF");
+  [...$("homeTabs").children].forEach(x => x.classList.toggle("on", x.dataset.h === homeTab));
+  $("hPlan").classList.toggle("hidden", homeTab !== "plan"); $("hTpl").classList.toggle("hidden", homeTab !== "tpl"); $("hIdea").classList.toggle("hidden", homeTab !== "idea");
+  $("newBtn").classList.toggle("hidden", homeTab !== "plan");
+  if (homeTab === "tpl") return renderTpls();
+  if (homeTab === "idea") return S.renderIdeas($("ideaBox"), KIT.ideas, { state: ideaState, onEdit: openIdea });
   const box = $("camps"); box.replaceChildren();
   const list = D.campaigns.filter(c => $("showArch").checked || !c.archived);
   for (const c of list) {
@@ -278,11 +349,12 @@ function openTask(t, c) {
   $("t-start").value = S.ymd(S.addDays(rel, t ? t.start_off : Math.max(S.dayOff(tCamp, S.today()), -30)));
   $("t-end").value = t && t.end_off != null ? S.ymd(S.addDays(rel, t.end_off)) : "";
   $("t-note").value = t ? (t.note || "") : ""; $("t-link").value = t ? (t.link || "") : ""; $("t-done").checked = t ? t.done : false;
-  $("t-del").classList.toggle("hidden", !t); startHint(); openModal("taskModal"); setTimeout(() => $("t-title").focus(), 30);
+  $("t-del").classList.toggle("hidden", !t); startHint(); drawTaskKit(); openModal("taskModal"); setTimeout(() => $("t-title").focus(), 30);
 }
 function startHint() { const d = S.parse($("t-start").value); $("t-startHint").textContent = d ? S.offLabel(S.dayOff(tCamp, d)) : ""; }
 $("t-start").oninput = startHint;
-$("t-chan").onchange = () => { if (!editT) $("t-owner").value = S.ch($("t-chan").value).owner; };
+function drawTaskKit() { S.renderTaskKit($("t-kit"), tCamp, $("t-chan").value, kitFor(), { tagsEmpty: "Ingen hashtags for denne artisten ennå. Legg dem inn med «# Hashtags» øverst på planen." }); }
+$("t-chan").onchange = () => { if (!editT) $("t-owner").value = S.ch($("t-chan").value).owner; drawTaskKit(); };
 $("cAdd").onclick = () => openTask(null, cur);
 $("taskForm").addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -298,6 +370,62 @@ $("taskForm").addEventListener("submit", async (e) => {
   } catch (err) { toast(err.message, true); }
 });
 armDelete($("t-del"), async () => { await rpc("som_delete_task", { tid: editT.id }); toast("Oppgaven er slettet"); closeModals(); await load(); });
+
+/* ---------- Hashtags per artist ---------- */
+const splitTags = (v) => v.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+$("cTags").onclick = () => {
+  const h = KIT.hashtags[cur.artist_id] || {};
+  $("tagH").textContent = "Hashtags · " + (cur.artist || "artist");
+  for (const [k] of S.HT_SETS) $("h-" + k).value = (h[k] || []).join(" ");
+  openModal("tagModal");
+};
+$("tagForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const h = {}; for (const [k] of S.HT_SETS) h[k] = splitTags($("h-" + k).value);
+  try { await rpc("som_set_hashtags", { aid: cur.artist_id, h }); toast("Hashtags er lagret"); closeModals(); await load(); } catch (err) { toast(err.message, true); }
+});
+
+/* ---------- Tekstmaler ---------- */
+$("tplChan").append(...S.CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k })));
+$("tplChan").onchange = () => renderTpls();
+function renderTpls() {
+  const box = $("tplList"); box.replaceChildren(); const f = $("tplChan").value;
+  const list = KIT.templates.filter(t => !f || t.channel === f);
+  list.forEach(t => box.appendChild(S.tplCard(t, null, { onEdit: openTpl })));
+  if (!list.length) box.appendChild(el("div", "empty", "Ingen maler for denne kanalen ennå."));
+}
+$("m-chan").append(...S.CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k })));
+$("m-cat").append(...Object.entries(S.TPL_CATS).map(([k, n]) => Object.assign(el("option", null, n), { value: k })));
+let editTpl = null;
+function openTpl(t) {
+  editTpl = t || null; $("tplH").textContent = t ? "Endre tekstmal" : "Ny tekstmal";
+  $("m-name").value = t ? t.name : ""; $("m-chan").value = t ? t.channel : ($("tplChan").value || "instagram"); $("m-cat").value = t ? t.category : "slipp";
+  $("m-content").value = t ? t.content : ""; $("m-del").classList.toggle("hidden", !t); openModal("tplModal");
+}
+$("tplNew").onclick = () => openTpl(null);
+$("tplForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  try { await rpc("som_save_template", { t: { id: editTpl?.id || "", name: $("m-name").value.trim(), channel: $("m-chan").value, category: $("m-cat").value, content: $("m-content").value } }); toast("Malen er lagret"); closeModals(); await load(); } catch (err) { toast(err.message, true); }
+});
+armDelete($("m-del"), async () => { await rpc("som_delete_template", { tid: editTpl.id }); toast("Malen er slettet"); closeModals(); await load(); });
+
+/* ---------- Idébank ---------- */
+$("i-chan").append(Object.assign(el("option", null, "Alle kanaler"), { value: "alle" }), ...S.CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k })));
+$("i-cat").append(...Object.entries(S.IDEA_CATS).map(([k, v]) => Object.assign(el("option", null, v.n), { value: k })));
+let editIdea = null;
+function openIdea(i) {
+  editIdea = i || null; $("ideaH").textContent = i ? "Endre idé" : "Ny idé";
+  $("i-title").value = i ? i.title : ""; $("i-what").value = i ? (i.what || "") : ""; $("i-how").value = i ? (i.how || "") : "";
+  $("i-chan").value = i ? i.channel : "alle"; $("i-cat").value = i ? i.category : "format"; $("i-heat").value = i ? i.heat : 2;
+  $("i-batch").value = i ? (i.batch || "") : ""; $("i-src").value = i ? (i.source || "") : ""; $("i-arch").checked = i ? !!i.archived : false;
+  $("i-del").classList.toggle("hidden", !i); openModal("ideaModal");
+}
+$("ideaNew").onclick = () => openIdea(null);
+$("ideaForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const i = { id: editIdea?.id || "", title: $("i-title").value.trim(), what: $("i-what").value.trim(), how: $("i-how").value.trim(), channel: $("i-chan").value, category: $("i-cat").value, heat: +$("i-heat").value, batch: $("i-batch").value.trim(), source: $("i-src").value.trim(), archived: $("i-arch").checked };
+  try { await rpc("som_save_idea", { i }); toast("Idéen er lagret"); closeModals(); await load(); } catch (err) { toast(err.message, true); }
+});
+armDelete($("i-del"), async () => { await rpc("som_delete_idea", { iid: editIdea.id }); toast("Idéen er slettet"); closeModals(); await load(); });
 
 /* ---------- Felles ---------- */
 function openModal(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }

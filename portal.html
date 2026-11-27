@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css?v=202611270242">
-<script src="assets/artist-common.js?v=202611270242"></script>
-<script src="assets/some-common.js?v=202611270242"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611271200">
+<script src="assets/artist-common.js?v=202611271200"></script>
+<script src="assets/some-common.js?v=202611271200"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
 .mini{display:flex;flex-direction:column;gap:8px}
@@ -43,7 +43,7 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   <nav class="tabs" id="tabs">
     <button type="button" data-t="laater" class="on">Låter <span class="n" id="nSongs"></span></button>
     <button type="button" data-t="kalender">Kalender</button>
-    <button type="button" data-t="some" class="hidden" id="tabSome">Sosiale medier <span class="n" id="nSome"></span></button>
+    <button type="button" data-t="some" id="tabSome">Sosiale medier <span class="n" id="nSome"></span></button>
     <button type="button" data-t="dok">Dokumenter <span class="n" id="nDocs"></span></button>
     <button type="button" data-t="profil">Profil</button>
   </nav>
@@ -58,8 +58,18 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   </section>
 
   <section id="v-some" class="hidden">
-    <p class="muted" style="margin:0 0 12px;font-size:14px">Release-planen for sosiale medier. Kryss av når du har gjort noe – Phat Lab ser fremdriften.</p>
-    <div id="someBox"></div>
+    <div class="tabs2" id="someTabs" style="margin-top:0"><button data-s="plan" id="stPlan">Release-plan</button><button data-s="tpl">Tekstmaler</button><button data-s="tags">Hashtags</button><button data-s="idea">Idébank</button></div>
+    <div id="sPlan"><p class="muted" style="margin:0 0 12px;font-size:14px">Release-planen for sosiale medier. Kryss av når du har gjort noe – Phat Lab ser fremdriften. Trykk på en oppgave for tekstforslag og beste tid å poste.</p><div id="someBox"></div></div>
+    <div id="sTpl" class="hidden"><div class="toolbar" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px"><select class="flt" id="ptChan" style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--ink)"><option value="">Alle kanaler</option></select><select class="flt" id="ptPlan" style="background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--ink)"></select></div><p class="muted" id="ptHint" style="font-size:13px;margin:0 0 10px"></p><div class="tpl-list" id="ptList"></div></div>
+    <div id="sTags" class="hidden"><p class="muted" style="font-size:13.5px;margin:0 0 12px">Dine faste hashtags. Bland gjerne ett par fra hvert sett når du poster.</p><div id="ptTags"></div>
+      <form id="ptTagForm" class="panel hidden" style="margin-top:12px" autocomplete="off">
+        <div class="f"><label for="ph-bred">Bred rekkevidde</label><textarea id="ph-bred" placeholder="#nymusikk #norskmusikk …"></textarea></div>
+        <div class="f"><label for="ph-nisje">Nisje</label><textarea id="ph-nisje" placeholder="Sjanger og stemning"></textarea></div>
+        <div class="f"><label for="ph-lokal">Lokalt og norsk</label><textarea id="ph-lokal" placeholder="Byen din, #norskmusikk …"></textarea></div>
+        <div class="mfoot"><span class="spacer"></span><button type="button" class="btn ghost" id="ptTagCancel">Avbryt</button><button class="btn primary">Lagre</button></div>
+      </form>
+      <button class="btn sub" id="ptTagEdit" type="button" style="margin-top:12px">Endre hashtags</button></div>
+    <div id="sIdea" class="hidden"><p class="muted" style="font-size:13.5px;margin:0 0 12px">Trender og grep som fungerer akkurat nå, samlet av Phat Lab. Bruk det som passer deg.</p><div id="ptIdeas"></div></div>
   </section>
 
   <section id="v-dok" class="hidden">
@@ -309,7 +319,9 @@ function peekTask(c, t) {
   const k = S.ch(t.channel), mine = t.owner === "artist";
   const back = el("div", "mback"), m = el("div", "modal"); m.style.width = "min(440px,100%)"; back.appendChild(m);
   const ti = el("div"); ti.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px"; const chp = el("span", "chip", k.n); chp.style.setProperty("--c", k.c); ti.append(chp, el("span", "muted", S.dShort(S.taskStart(c, t)) + (t.end_off != null ? " – " + S.dShort(S.taskEnd(c, t)) : "") + " · " + S.OWNERS[t.owner]));
+  m.style.width = "min(640px,100%)";
   m.append(ti, el("h2", null, t.title)); if (t.note) m.appendChild(el("p", "muted", t.note));
+  const kb = el("div"); kb.style.cssText = "margin-top:12px;max-height:55vh;overflow:auto"; S.renderTaskKit(kb, c, t, { ...KIT, hashtags: KIT.hashtags }, { tagsEmpty: "Ingen hashtags ennå – legg dem inn under «Hashtags»." }); m.appendChild(kb);
   const f = el("div", "mfoot"); f.style.marginTop = "14px"; f.appendChild(el("span", "spacer"));
   const close = () => back.remove();
   const x = el("button", "btn ghost", "Lukk"); x.type = "button"; x.onclick = close; f.appendChild(x);
@@ -318,9 +330,14 @@ function peekTask(c, t) {
   else f.prepend(el("span", "muted", "Tas av " + S.OWNERS[t.owner].toLowerCase()));
   m.appendChild(f); back.addEventListener("click", (e) => { if (e.target === back) close(); }); document.body.appendChild(back);
 }
+let KIT = { templates: [], ideas: [], hashtags: {} }, someTab = null; const ideaState = {};
 async function loadSome() {
-  try { SC = await rpc("som_portal_get") || []; } catch { SC = []; }
-  $("tabSome").classList.toggle("hidden", !SC.length);
+  const [sc, kit] = await Promise.all([rpc("som_portal_get").catch(() => []), rpc("som_portal_kit").catch(() => null)]);
+  SC = sc || []; if (kit) KIT = kit;
+  $("tabSome").classList.toggle("hidden", !SC.length && !kit);
+  $("stPlan").classList.toggle("hidden", !SC.length);
+  if (!someTab || (someTab === "plan" && !SC.length)) someTab = SC.length ? "plan" : "idea";
+  renderSomeTabs();
   const open = SC.reduce((n, c) => n + c.tasks.filter(t => !t.done && t.owner === "artist" && ["now", "late"].includes(S.taskState(c, t))).length, 0);
   $("nSome").textContent = open || "";
   renderSome();
@@ -341,11 +358,39 @@ function renderSome() {
     const opts = { canToggle: (t) => t.owner === "artist", onToggle: async (t, val) => { await rpc("som_portal_set_done", { tid: t.id, val }); t.done = val; renderSome(); loadSomeCount(); } };
     if (v === "kal") { const td = S.today(), rel = S.parse(c.release_date); const ref = someMonth[c.id] || (Math.abs(td - rel) < 70 * 864e5 ? td : rel);
       requestAnimationFrame(() => S.renderMonth(body, c, { month: ref, showDone: true, onMonth: (d) => { someMonth[c.id] = d; }, onPeek: (t) => peekTask(c, t) })); }
-    else if (v === "tl") S.renderTimeline(body, c, {});
+    else if (v === "tl") S.renderTimeline(body, c, { onPeek: (t) => peekTask(c, t) });
     else S.renderList(body, c, { ...opts, range: v === "uke" ? "uke" : "", showDone: v === "alle" });
     box.appendChild(p);
   }
 }
+$("someTabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; someTab = b.dataset.s; renderSomeTabs(); });
+function renderSomeTabs() {
+  [...$("someTabs").children].forEach(x => x.classList.toggle("on", x.dataset.s === someTab));
+  const m = { plan: "sPlan", tpl: "sTpl", tags: "sTags", idea: "sIdea" };
+  for (const [k, id] of Object.entries(m)) $(id).classList.toggle("hidden", k !== someTab);
+  if (someTab === "tpl") renderPTpl(); else if (someTab === "tags") renderPTags(); else if (someTab === "idea") S.renderIdeas($("ptIdeas"), KIT.ideas, { state: ideaState, hideArchived: true });
+}
+$("ptChan").append(...S.CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k })));
+$("ptChan").onchange = () => renderPTpl(); $("ptPlan").onchange = () => renderPTpl();
+function renderPTpl() {
+  const sel = $("ptPlan"), keep = sel.value;
+  sel.replaceChildren(Object.assign(el("option", null, "Uten låt (vis feltene)"), { value: "" }), ...SC.map(c => Object.assign(el("option", null, "Fyll inn for: " + c.title), { value: c.id })));
+  sel.value = SC.some(c => c.id === keep) ? keep : (keep === "" && sel.dataset.touched ? "" : (SC[0]?.id || "")); sel.dataset.touched = "1";
+  sel.classList.toggle("hidden", !SC.length);
+  const c = SC.find(x => x.id === sel.value) || null;
+  $("ptHint").textContent = c ? "Låttittel, dato og lenke er fylt inn fra «" + c.title + "». Felt i [klammer] fyller du inn selv." : "Bytt ut feltene i [klammer] før du poster.";
+  const f = $("ptChan").value, box = $("ptList"); box.replaceChildren();
+  const list = KIT.templates.filter(t => !f || t.channel === f);
+  list.forEach(t => box.appendChild(S.tplCard(t, c ? { ...c, artist: c.artist || D.artist.name } : null)));
+  if (!list.length) box.appendChild(el("div", "empty", "Ingen maler for denne kanalen ennå."));
+}
+function renderPTags() { S.renderTags($("ptTags"), KIT.hashtags || {}, { empty: "Du har ikke lagt inn hashtags ennå. Trykk «Endre hashtags» for å lage dine faste sett." }); $("ptTagForm").classList.add("hidden"); $("ptTagEdit").classList.remove("hidden"); }
+$("ptTagEdit").onclick = () => { for (const [k] of S.HT_SETS) $("ph-" + k).value = ((KIT.hashtags || {})[k] || []).join(" "); $("ptTagForm").classList.remove("hidden"); $("ptTagEdit").classList.add("hidden"); };
+$("ptTagCancel").onclick = renderPTags;
+$("ptTagForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const h = {}; for (const [k] of S.HT_SETS) h[k] = $("ph-" + k).value.split(/[\s,]+/).map(x => x.trim()).filter(Boolean);
+  try { await rpc("som_portal_set_hashtags", { h }); toast("Hashtags er lagret"); const kit = await rpc("som_portal_kit"); if (kit) KIT = kit; renderPTags(); } catch (err) { toast(err.message, true); }
+});
 function loadSomeCount() { const open = SC.reduce((n, c) => n + c.tasks.filter(t => !t.done && t.owner === "artist" && ["now", "late"].includes(S.taskState(c, t))).length, 0); $("nSome").textContent = open || ""; }
 const PF = { bio: "pf-bio", genre: "pf-genre", contact_name: "pf-contact", email: "pf-email", phone: "pf-phone", instagram: "pf-ig", tiktok: "pf-tt", youtube: "pf-yt", spotify: "pf-sp", website: "pf-web" };
 function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; }

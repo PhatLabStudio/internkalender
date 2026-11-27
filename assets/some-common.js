@@ -195,42 +195,57 @@ function renderTimeline(box, c, opts = {}) {
   box.replaceChildren();
   const tasks = c.tasks.filter(t => !opts.owner || t.owner === opts.owner);
   if (!tasks.length) { box.appendChild(el("div", "empty", "Ingen oppgaver.")); return; }
-  const min = Math.min(-3, ...tasks.map(t => t.start_off)) - 1, max = Math.max(3, ...tasks.map(t => t.end_off ?? t.start_off)) + 1;
-  const span = max - min + 1, pos = (o) => (o - min) / span * 100;
-  const rel = parse(c.release_date);
-  const tl = el("div", "stl"), inn = el("div", "stl-in"); inn.style.minWidth = Math.max(720, span * 11) + "px";
-  const head = el("div", "stl-head");
+  const min = Math.min(-3, ...tasks.map(t => t.start_off)) - 2, max = Math.max(3, ...tasks.map(t => t.end_off ?? t.start_off)) + 2;
+  const nar = (box.clientWidth || window.innerWidth) < 640, DAY = nar ? 40 : 42, LW = nar ? 92 : 128, span = max - min + 1, W = span * DAY, x = (o) => (o - min) * DAY;
+  const rel = parse(c.release_date), td = dayOff(c, today());
+  const tl = el("div", "stl"), inn = el("div", "stl-in"); inn.style.width = (LW + W) + "px"; inn.style.setProperty("--lw", LW + "px");
+  // Bakgrunn: helger, i dag og releasedag
+  const bg = el("div", "stl-bg");
   for (let o = min; o <= max; o++) {
-    const d = addDays(rel, o);
-    if (o === 0 || (d.getDay() === 1 && Math.abs(o) > 3)) { const s = el("span", o === 0 ? "rel" : null, o === 0 ? "Release" : dShort(d)); s.style.left = pos(o) + "%"; head.appendChild(s); }
+    const d = addDays(rel, o), wk = d.getDay() === 0 || d.getDay() === 6;
+    if (wk || o === 0 || o === td) { const z = el("div", o === 0 ? "rel" : o === td ? "td" : "wk"); z.style.cssText = `left:${x(o)}px;width:${DAY}px`; bg.appendChild(z); }
   }
-  inn.appendChild(head);
+  inn.appendChild(bg);
+  // Topp: måned/uke-linje og dagnummer
+  const head = el("div", "stl-head"), hl = el("div", "stl-corner", "Kanal"), hr = el("div", "stl-days");
+  for (let o = min; o <= max; o++) {
+    const d = addDays(rel, o), cell = el("div", "stl-d" + (o === 0 ? " rel" : "") + (o === td ? " td" : "") + (d.getDay() === 0 || d.getDay() === 6 ? " wk" : ""));
+    cell.style.cssText = `left:${x(o)}px;width:${DAY}px`;
+    const top = o === 0 ? "RELEASE" : o === td ? "I DAG" : (d.getDate() === 1 || d.getDay() === 1 || o === min) ? (d.getDay() === 1 ? "uke " + isoWeek(d) : "") + (d.getDate() === 1 || o === min ? (d.getDay() === 1 ? " · " : "") + MON[d.getMonth()] : "") : "";
+    cell.append(el("span", "t", top), el("b", null, d.getDate()), el("span", "w", ["s", "m", "t", "o", "t", "f", "l"][d.getDay()]));
+    cell.title = DAYS[d.getDay()] + " " + dShort(d) + " · " + offLabel(o);
+    hr.appendChild(cell);
+  }
+  head.append(hl, hr); inn.appendChild(head);
+  // Én rad per kanal; oppgaver legges i egne baner så teksten ikke overlapper
   const used = CHANNELS.filter(k => tasks.some(t => t.channel === k.k));
   for (const k of used) {
     const row = el("div", "stl-row"), lab = el("div", "stl-lab"); const dot = el("i"); dot.style.background = k.c; lab.append(dot, document.createTextNode(k.n));
-    const tr = el("div", "stl-track");
-    // Flere oppgaver samme dag stables i små kolonner
-    const per = new Map();
-    for (const t of tasks.filter(t => t.channel === k.k)) {
-      const st = taskState(c, t), w = (t.end_off != null ? t.end_off - t.start_off + 1 : 1) / span * 100;
-      const key = t.start_off + ":" + (t.end_off ?? ""); const n = per.get(key) || 0; per.set(key, n + 1);
-      const b = el("button", "stl-b " + st); b.type = "button";
-      b.style.cssText = `left:calc(${pos(t.start_off)}% + 1px);width:calc(${w}% - 2px);--c:${k.c};top:${6 + n * 6}px`;
-      b.title = offLabel(t.start_off) + (t.end_off != null ? " – " + offLabel(t.end_off) : "") + " · " + dShort(taskStart(c, t)) + "\n" + t.title + "\n" + OWNERS[t.owner] + (t.done ? " · ferdig" : "");
-      if (t.end_off != null && w > 6) b.textContent = t.title;
-      if (opts.onTask) b.onclick = () => opts.onTask(t);
+    const tr = el("div", "stl-track"); const lanes = [];
+    const list = tasks.filter(t => t.channel === k.k).sort((a, b) => a.start_off - b.start_off || a.sort - b.sort);
+    for (const t of list) {
+      const st = taskState(c, t), left = x(t.start_off) + 2, real = ((t.end_off ?? t.start_off) - t.start_off + 1) * DAY - 4;
+      const vis = Math.max(real, Math.min(260, t.title.length * 6.4 + 18));
+      let lane = lanes.findIndex(e => e <= left - 3); if (lane < 0) { lane = lanes.length; lanes.push(0); } lanes[lane] = left + vis;
+      const b = el("button", "stl-b " + st + (t.end_off != null ? " multi" : "")); b.type = "button";
+      b.style.cssText = `left:${left}px;width:${vis}px;top:${5 + lane * 25}px;--c:${k.c};--real:${real}px`;
+      b.append(el("span", null, t.title));
+      b.title = dShort(taskStart(c, t)) + (t.end_off != null ? " – " + dShort(taskEnd(c, t)) : "") + " · " + offLabel(t.start_off) + "\n" + t.title + "\n" + OWNERS[t.owner] + (t.done ? " · ferdig" : "");
+      if (opts.onTask) b.onclick = () => opts.onTask(t); else if (opts.onPeek) b.onclick = () => opts.onPeek(t);
       tr.appendChild(b);
     }
+    tr.style.height = (lanes.length * 25 + 8) + "px";
     row.append(lab, tr); inn.appendChild(row);
   }
-  const td = dayOff(c, today());
-  if (td >= min && td <= max) { const x = el("div", "stl-today"); x.style.left = `calc(var(--lw) + (100% - var(--lw)) * ${(td - min + 0.5) / span})`; inn.appendChild(x); }
-  const rl = el("div", "stl-rel"); rl.style.left = `calc(var(--lw) + (100% - var(--lw)) * ${(0 - min + 0.5) / span})`; inn.appendChild(rl);
   tl.appendChild(inn); box.appendChild(tl);
   const lg = el("div", "legend");
-  [["Ferdig", "done"], ["I dag", "now"], ["Forsinket", "late"], ["Kommer", "future"]].forEach(([n, s]) => { const x = el("span"); const i = el("i", "lg-" + s); x.append(i, document.createTextNode(n)); lg.appendChild(x); });
+  [["Ferdig", "done"], ["I dag", "now"], ["Forsinket", "late"], ["Kommer", "future"]].forEach(([n, s]) => { const xx = el("span"); const i = el("i", "lg-" + s); xx.append(i, document.createTextNode(n)); lg.appendChild(xx); });
+  lg.appendChild(el("span", "muted", "Rull sidelengs for å se hele perioden. Fylt del av en stolpe = varighet."));
   box.appendChild(lg);
+  // Start ved i dag (eller release hvis i dag er utenfor planen)
+  requestAnimationFrame(() => { const o = td >= min && td <= max ? td : 0; tl.scrollLeft = Math.max(0, x(o) - DAY * (nar ? 1 : 4)); });
 }
+function isoWeek(d) { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const n = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - n); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t - y) / 864e5 + 1) / 7); }
 
 /* ---------- Liste gruppert per dag ---------- */
 function renderList(box, c, opts = {}) {
@@ -325,5 +340,126 @@ function renderMonth(box, c, opts = {}) {
   box.appendChild(grid);
 }
 
-window.SOME = { renderMonth, CHANNELS, OWNERS, ch, templateTasks, parse, ymd, addDays, today, dShort, offLabel, taskStart, taskEnd, dayOff, taskState, progress, renderTimeline, renderList, taskRow };
+/* ---------- Verktøykasse: beste tider, tekstmaler, hashtags, idébank ---------- */
+const BEST_TIMES = {
+  tiktok: { d: "Hverdag 18–21 · helg 11–13", tip: "Unngå 14–16. De første 2–3 sekundene avgjør." },
+  instagram: { d: "Hverdag 07–09 og 19–21 · helg 10–12", tip: "Reels gir mest rekkevidde. Stories for pre-save og nedtelling." },
+  youtube: { d: "Hverdag 17–19 · helg 10–14", tip: "Torsdag og fredag er best for nye videoer." },
+  facebook: { d: "Hverdag 12–14 og 19–21", tip: "Fungerer best for lokalt publikum og eldre fans." },
+  spotify: { d: "Slipp fredag kl. 00:00", tip: "Redaksjonell pitch senest 7 dager før, helst 3–4 uker." },
+  press: { d: "Tirsdag–torsdag 09–11", tip: "Kort mail, lenke til låta og et godt bilde. Ikke vedlegg store filer." },
+  epost: { d: "Tirsdag–torsdag 10–11 eller 19–20", tip: "Kort emnefelt med låttittel. Send på releasedagen." },
+  linkinbio: { d: "Oppdater samme dag som lenken skal brukes", tip: "Bytt fra pre-save til strømmelenke på releasedagen." },
+  nettverk: { d: "Når det passer – helst tidlig i uka", tip: "Personlige meldinger slår masseutsendelser." },
+};
+const TPL_CATS = { teaser: "Teaser", presave: "Pre-save", slipp: "Slippdag", bts: "Bak kulissene", historie: "Historie", engasjement: "Engasjement", etter: "Etter release", live: "Live", presse: "Presse", annet: "Annet" };
+const IDEA_CATS = { format: { n: "Format", c: "#A78BFA" }, taktikk: { n: "Taktikk", c: "#FFB547" }, lyd: { n: "Lyd og musikk", c: "#1ED760" }, estetikk: { n: "Estetikk", c: "#F472B6" } };
+const HT_SETS = [["bred", "Bred rekkevidde"], ["nisje", "Nisje"], ["lokal", "Lokalt og norsk"]];
+const songName = (c) => c ? (c.song || String(c.title || "").replace(/\s*[–-]\s*(singel|single|ep|album)\s*$/i, "")) : "";
+// Fyller inn [LÅTTITTEL], [ARTIST], [DATO] og [LENKE] fra planen. Ukjente felt blir stående.
+function fillTemplate(text, c) {
+  if (!c) return text;
+  const rel = parse(c.release_date);
+  const map = { "LÅTTITTEL": songName(c), "ARTIST": c.artist || "", "DATO": rel ? rel.getDate() + ". " + MONL[rel.getMonth()] : "", "LENKE": c.link || "" };
+  return String(text).replace(/\[([A-ZÆØÅ]+)\]/g, (m, k) => map[k] ? map[k] : m);
+}
+async function copyText(text, btn) {
+  try { await navigator.clipboard.writeText(text); }
+  catch { const ta = el("textarea"); ta.value = text; ta.style.cssText = "position:fixed;opacity:0"; document.body.appendChild(ta); ta.select(); try { document.execCommand("copy"); } catch {} ta.remove(); }
+  if (btn) { const o = btn.textContent; btn.textContent = "Kopiert ✓"; btn.disabled = true; setTimeout(() => { btn.textContent = o; btn.disabled = false; }, 1400); }
+}
+const copyBtn = (text, label) => { const b = el("button", "btn sub sm", label || "Kopier"); b.type = "button"; b.onclick = (e) => { e.stopPropagation(); copyText(typeof text === "function" ? text() : text, b); }; return b; };
+const tagStr = (arr) => (arr || []).join(" ");
+const hasTags = (h) => !!h && HT_SETS.some(([k]) => (h[k] || []).length);
+
+// Beste tid for en kanal (én linje)
+function bestTime(channel) {
+  const b = BEST_TIMES[channel]; if (!b) return null;
+  const x = el("div", "kit-time"); x.append(el("b", null, "Beste tid · " + ch(channel).n + ": "), document.createTextNode(b.d), el("div", "muted", b.tip));
+  return x;
+}
+// Ett malkort med kopier-knapp
+function tplCard(t, c, opts = {}) {
+  const k = ch(t.channel), body = fillTemplate(t.content, c);
+  const card = el("div", "tpl"); card.style.setProperty("--c", k.c);
+  const h = el("div", "tpl-h"); const chip = el("span", "chip", k.n); chip.style.setProperty("--c", k.c);
+  const cat = TPL_CATS[t.category] || ""; h.append(chip, el("b", null, t.name), el("span", "muted", cat.toLowerCase() === String(t.name).toLowerCase() ? "" : cat), el("span", "spacer"));
+  if (opts.onEdit) { const e = el("button", "btn ghost sm", "Endre"); e.type = "button"; e.onclick = () => opts.onEdit(t); h.appendChild(e); }
+  h.appendChild(copyBtn(body));
+  const pre = el("div", "tpl-b", body);
+  card.append(h, pre);
+  if (/\[[A-ZÆØÅ]+\]/.test(body)) card.appendChild(el("div", "tpl-hint", "Fyll inn feltene i [klammer] før du poster."));
+  return card;
+}
+// Hashtag-sett med kopier-knapper
+function renderTags(box, h, opts = {}) {
+  box.replaceChildren();
+  if (!hasTags(h)) { box.appendChild(el("div", "muted", opts.empty || "Ingen hashtags lagt inn ennå.")); return; }
+  const all = el("div", "ht-row");
+  for (const [k, n] of HT_SETS) {
+    const list = (h[k] || []); if (!list.length) continue;
+    const r = el("div", "ht"); const head = el("div", "ht-h"); head.append(el("b", null, n), el("span", "spacer"), copyBtn(tagStr(list)));
+    const tags = el("div", "ht-tags"); list.forEach(t => tags.appendChild(el("span", null, t)));
+    r.append(head, tags); all.appendChild(r);
+  }
+  box.appendChild(all);
+  const mix = HT_SETS.map(([k]) => (h[k] || []).slice(0, 3)).flat();
+  if (mix.length > 3) { const m = el("div", "ht-mix"); m.append(el("span", "muted", "Miks av alle tre: " + tagStr(mix)), copyBtn(tagStr(mix), "Kopier miks")); box.appendChild(m); }
+}
+/* Verktøy i en oppgave: beste tid, tekstforslag for kanalen og hashtags */
+function renderTaskKit(box, c, t, kit, opts = {}) {
+  box.replaceChildren(); if (!kit) return;
+  const channel = typeof t === "string" ? t : t.channel;
+  const bt = bestTime(channel); if (bt) box.appendChild(bt);
+  const tpls = (kit.templates || []).filter(x => x.channel === channel);
+  const rest = (kit.templates || []).filter(x => x.channel !== channel);
+  const sec = el("div", "kit-sec"); sec.appendChild(el("div", "kit-l", "Tekstforslag" + (tpls.length ? "" : " (ingen for " + ch(channel).n + " – viser alle)")));
+  const list = el("div", "tpl-list"); (tpls.length ? tpls : rest).forEach(x => list.appendChild(tplCard(x, c)));
+  sec.appendChild(list);
+  if (tpls.length && rest.length) { const more = el("button", "btn ghost sm", "Vis maler for andre kanaler (" + rest.length + ")"); more.type = "button"; more.onclick = () => { rest.forEach(x => list.appendChild(tplCard(x, c))); more.remove(); }; sec.appendChild(more); }
+  if (!(kit.templates || []).length) sec.appendChild(el("div", "muted", "Ingen tekstmaler ennå."));
+  box.appendChild(sec);
+  const hs = el("div", "kit-sec"); hs.appendChild(el("div", "kit-l", "Hashtags" + (c && c.artist ? " · " + c.artist : "")));
+  const hb = el("div"); renderTags(hb, (kit.hashtagsFor ? kit.hashtagsFor(c) : kit.hashtags) || {}, { empty: opts.tagsEmpty }); hs.appendChild(hb); box.appendChild(hs);
+}
+/* Idébank */
+function heatDots(n) { const s = el("span", "heat"); s.title = ["Stigende", "Varm", "På topp"][n - 1] || ""; for (let i = 1; i <= 3; i++) s.appendChild(el("i", i <= n ? "on" : "")); return s; }
+function ideaCard(i, opts = {}) {
+  const card = el("div", "idea" + (i.archived ? " arch" : ""));
+  const h = el("div", "idea-h");
+  const chan = i.channel === "alle" ? { n: "Alle kanaler", c: "#8B7FB8" } : ch(i.channel), cat = IDEA_CATS[i.category] || { n: i.category, c: "#8B7FB8" };
+  const a = el("span", "chip", chan.n); a.style.setProperty("--c", chan.c); const b = el("span", "chip", cat.n); b.style.setProperty("--c", cat.c);
+  h.append(a, b, el("span", "spacer"), heatDots(i.heat));
+  card.append(h, el("h3", null, i.title));
+  if (i.what) card.appendChild(el("p", "muted", i.what));
+  if (i.how) { const how = el("div", "idea-how"); how.append(el("div", "kit-l", "Slik kan du bruke den"), el("p", null, i.how)); card.appendChild(how); }
+  const f = el("div", "idea-f"); f.append(el("span", "muted", [i.source, i.batch, i.archived ? "arkivert" : ""].filter(Boolean).join(" · ")), el("span", "spacer"));
+  if (opts.onEdit) { const e = el("button", "btn ghost sm", "Endre"); e.type = "button"; e.onclick = () => opts.onEdit(i); f.appendChild(e); }
+  card.appendChild(f);
+  return card;
+}
+function renderIdeas(box, ideas, opts = {}) {
+  box.replaceChildren();
+  const st = opts.state || (opts.state = {}); for (const k of ["chan", "cat", "q"]) if (st[k] == null) st[k] = "";
+  const bar = el("div", "idea-bar");
+  const chSel = el("select", "flt"); chSel.append(Object.assign(el("option", null, "Alle kanaler"), { value: "" }), Object.assign(el("option", null, "Gjelder alle"), { value: "alle" }), ...CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k }))); chSel.value = st.chan;
+  const caSel = el("select", "flt"); caSel.append(Object.assign(el("option", null, "Alle typer"), { value: "" }), ...Object.entries(IDEA_CATS).map(([k, v]) => Object.assign(el("option", null, v.n), { value: k }))); caSel.value = st.cat;
+  const q = el("input", "flt"); q.type = "search"; q.placeholder = "Søk i idébanken"; q.value = st.q;
+  bar.append(q, chSel, caSel); box.appendChild(bar);
+  const grid = el("div", "idea-grid"); box.appendChild(grid);
+  const draw = () => {
+    grid.replaceChildren();
+    const needle = st.q.trim().toLowerCase();
+    const list = ideas.filter(i => (!opts.hideArchived || !i.archived) && (!st.chan || i.channel === st.chan || (st.chan !== "alle" && i.channel === "alle")) && (!st.cat || i.category === st.cat)
+      && (!needle || [i.title, i.what, i.how].join(" ").toLowerCase().includes(needle)))
+      .sort((a, b) => (a.archived - b.archived) || (b.heat - a.heat) || String(b.created_at).localeCompare(String(a.created_at)));
+    list.forEach(i => grid.appendChild(ideaCard(i, opts)));
+    if (!list.length) grid.appendChild(el("div", "empty", "Ingen idéer for dette filteret."));
+  };
+  chSel.onchange = () => { st.chan = chSel.value; draw(); }; caSel.onchange = () => { st.cat = caSel.value; draw(); }; q.oninput = () => { st.q = q.value; draw(); };
+  draw();
+  box.appendChild(el("div", "muted heat-legend", "Prikkene viser temperatur: 1 = stigende, 2 = varm, 3 = på topp."));
+}
+
+window.SOME = { renderMonth, BEST_TIMES, TPL_CATS, IDEA_CATS, HT_SETS, fillTemplate, copyText, copyBtn, bestTime, tplCard, renderTags, renderTaskKit, renderIdeas, ideaCard, hasTags, CHANNELS, OWNERS, ch, templateTasks, parse, ymd, addDays, today, dShort, offLabel, taskStart, taskEnd, dayOff, taskState, progress, renderTimeline, renderList, taskRow };
 })();
