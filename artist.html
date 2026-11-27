@@ -350,6 +350,11 @@ function renderSongs() {
     const rb = el("button", "btn sub sm", rel ? "Release-info" : "+ Release-info"); rb.type = "button"; rb.style.marginLeft = "auto";
     rb.onclick = () => P.openRelease(s, rel, async (data) => { await rpc("art_studio_save_release", { sid: s.id, r: data }); toast("Release-info lagret"); load(); });
     rl.appendChild(rb); c.appendChild(rl);
+    const sp = (D.social || []).find(x => x.song_id === s.id && !x.archived);
+    const sl = el("div", "relline");
+    if (sp) { const pct = sp.total ? Math.round(sp.done / sp.total * 100) : 0; const t = el("span", "tag", "SoMe"); t.style.cssText = "color:#F472B6;border-color:#F472B666"; sl.append(t, el("span", null, pct + " % av release-planen ferdig")); const a = el("a", "btn sub sm", "Åpne plan →"); a.href = "sosiale.html#c-" + sp.id; a.style.marginLeft = "auto"; sl.appendChild(a); }
+    else { sl.appendChild(el("span", "muted", "Ingen SoMe-plan")); const a = el("a", "btn sub sm", "+ SoMe-plan"); a.href = "sosiale.html"; a.style.marginLeft = "auto"; sl.appendChild(a); }
+    c.appendChild(sl);
     const docs = D.docs.filter(d => d.song_id === s.id);
     if (docs.length) c.appendChild(el("div", "team", docs.length + (docs.length === 1 ? " dokument" : " dokumenter") + ": " + docs.map(d => d.title).join(", ")));
     if (s.note) { const n = el("div", "team", s.note); n.style.whiteSpace = "pre-wrap"; c.appendChild(n); }

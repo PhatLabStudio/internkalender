@@ -11,6 +11,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <link rel="stylesheet" href="assets/artist.css">
 <script src="assets/artist-common.js"></script>
+<script src="assets/some-common.js"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
 .mini{display:flex;flex-direction:column;gap:8px}
@@ -42,6 +43,7 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
   <nav class="tabs" id="tabs">
     <button type="button" data-t="laater" class="on">Låter <span class="n" id="nSongs"></span></button>
     <button type="button" data-t="kalender">Kalender</button>
+    <button type="button" data-t="some" class="hidden" id="tabSome">Sosiale medier <span class="n" id="nSome"></span></button>
     <button type="button" data-t="dok">Dokumenter <span class="n" id="nDocs"></span></button>
     <button type="button" data-t="profil">Profil</button>
   </nav>
@@ -53,6 +55,11 @@ footer{color:var(--muted);font-size:12.5px;text-align:center;padding:30px 0 10px
     <h2 style="margin-bottom:10px">Produksjonskalender</h2>
     <div id="timeline"></div>
     <div class="panel" style="margin-top:18px"><div class="ph"><h2>Kommer</h2><span class="muted" style="font-size:13px">Steg, studiotid og milepæler</span></div><div id="agenda"></div></div>
+  </section>
+
+  <section id="v-some" class="hidden">
+    <p class="muted" style="margin:0 0 12px;font-size:14px">Release-planen for sosiale medier. Kryss av når du har gjort noe – Phat Lab ser fremdriften.</p>
+    <div id="someBox"></div>
   </section>
 
   <section id="v-dok" class="hidden">
@@ -168,7 +175,7 @@ $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"
 function renderTabs() {
   if (!$("v-" + tab)) tab = "laater";
   $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
-  for (const t of ["laater", "kalender", "dok", "profil"]) $("v-" + t).classList.toggle("hidden", t !== tab);
+  for (const t of ["laater", "kalender", "some", "dok", "profil"]) $("v-" + t).classList.toggle("hidden", t !== tab);
 }
 const reviewUrl = (r) => "review.html?s=" + encodeURIComponent(r.share_token) + "&from=portal";
 
@@ -188,6 +195,7 @@ function render() {
   $("links").replaceChildren(...L.map(([n, u]) => { const x = el("a", null, n + " ↗"); x.href = u; x.target = "_blank"; x.rel = "noopener noreferrer"; return x; }));
   $("nSongs").textContent = D.songs.length || ""; $("nDocs").textContent = D.docs.length || "";
 
+  loadSome();
   renderSongs(); P.renderTimeline($("timeline"), D.songs); P.renderAgenda($("agenda"), items); renderDocs(); fillProfile(); renderTabs();
 }
 function rvRow(r, withTitle) {
@@ -294,6 +302,35 @@ $("upForm").addEventListener("submit", async (e) => {
   } catch (err) { toast(err.message, true); }
   b.disabled = false;
 });
+/* ---------- Sosiale medier ---------- */
+const S = window.SOME; let SC = [], someView = {};
+async function loadSome() {
+  try { SC = await rpc("som_portal_get") || []; } catch { SC = []; }
+  $("tabSome").classList.toggle("hidden", !SC.length);
+  const open = SC.reduce((n, c) => n + c.tasks.filter(t => !t.done && t.owner === "artist" && ["now", "late"].includes(S.taskState(c, t))).length, 0);
+  $("nSome").textContent = open || "";
+  renderSome();
+}
+function renderSome() {
+  const box = $("someBox"); box.replaceChildren();
+  for (const c of SC) {
+    const v = someView[c.id] || "uke";
+    const p = el("div", "panel"); p.style.marginBottom = "16px";
+    const pr = S.progress(c), rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
+    const ph = el("div", "ph"); const hh = el("div"); hh.append(el("h2", null, c.title), el("div", "muted", "Release " + S.dShort(rel) + " · " + (d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1) + " etter release") + " · " + pr.pct + " % ferdig"));
+    hh.lastChild.style.fontSize = "13px"; ph.append(hh, el("span", "spacer"));
+    const seg = el("div", "seg"); seg.style.cssText = "display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden";
+    [["uke", "Denne uken"], ["alle", "Alle"], ["tl", "Tidslinje"]].forEach(([k, n]) => { const b = el("button", null, n); b.type = "button"; b.style.cssText = "border:0;padding:6px 11px;font-size:13px;background:" + (v === k ? "var(--ac);color:#fff" : "var(--card);color:var(--muted)"); b.onclick = () => { someView[c.id] = k; renderSome(); }; seg.appendChild(b); });
+    ph.appendChild(seg); p.appendChild(ph);
+    const bar = el("div", "pbar"); bar.appendChild(Object.assign(el("i"), { style: "width:" + pr.pct + "%" })); p.appendChild(bar);
+    const body = el("div"); body.style.marginTop = "10px"; p.appendChild(body);
+    const opts = { canToggle: (t) => t.owner === "artist", onToggle: async (t, val) => { await rpc("som_portal_set_done", { tid: t.id, val }); t.done = val; renderSome(); loadSomeCount(); } };
+    if (v === "tl") S.renderTimeline(body, c, {});
+    else S.renderList(body, c, { ...opts, range: v === "uke" ? "uke" : "", showDone: v === "alle" });
+    box.appendChild(p);
+  }
+}
+function loadSomeCount() { const open = SC.reduce((n, c) => n + c.tasks.filter(t => !t.done && t.owner === "artist" && ["now", "late"].includes(S.taskState(c, t))).length, 0); $("nSome").textContent = open || ""; }
 const PF = { bio: "pf-bio", genre: "pf-genre", contact_name: "pf-contact", email: "pf-email", phone: "pf-phone", instagram: "pf-ig", tiktok: "pf-tt", youtube: "pf-yt", spotify: "pf-sp", website: "pf-web" };
 function fillProfile() { for (const [k, id] of Object.entries(PF)) $(id).value = D.profile[k] || ""; }
 $("profForm").addEventListener("submit", async (e) => {

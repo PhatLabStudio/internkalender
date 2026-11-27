@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="nb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sosiale medier · Phat Lab</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<link rel="stylesheet" href="assets/artist.css">
+<script src="assets/artist-common.js"></script>
+<script src="assets/some-common.js"></script>
+<style>
+h1.pt{font:700 clamp(26px,4vw,36px)/1.1 var(--f-display);margin:0;letter-spacing:-.02em}
+h1.pt em{font-style:normal;background:linear-gradient(135deg,#E1306C,#7C3AED);-webkit-background-clip:text;background-clip:text;color:transparent}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:14px 0}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:var(--card);border:0;color:var(--muted);padding:7px 12px;font-size:13px}
+.seg button.on{background:var(--ac);color:#fff}
+.seg button+button{border-left:1px solid var(--line)}
+select.flt{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:7px 10px;color:var(--ink);font-size:13px}
+.wk .stask .camp-tag{font-size:11px;color:var(--muted)}
+.chs{display:flex;flex-wrap:wrap;gap:8px}
+.chs label{display:inline-flex;gap:6px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:99px;padding:5px 11px;font-size:13px;cursor:pointer}
+.chs label i{width:9px;height:9px;border-radius:3px}
+.chs input{accent-color:#D946EF}
+.ch-head{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.ch-head .big{font:700 clamp(22px,3.4vw,30px)/1.1 var(--f-display)}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="phatlab-admin/">PHAT <span>LAB</span></a>
+  <span class="crumb">/ <a href="phatlab-admin/">Admin</a> / <a href="#" id="crumbHome">Sosiale medier</a><span id="crumbC"></span></span>
+  <span class="spacer"></span>
+  <a class="btn ghost sm" href="phatlab-admin/">← Admin</a>
+  <button class="btn primary sm" id="newBtn" type="button">+ Ny plan</button>
+</header>
+
+<main class="wrap hidden" id="main">
+  <!-- OVERSIKT -->
+  <section id="vHome">
+    <h1 class="pt">Sosiale <em>medier</em></h1>
+    <p class="muted" style="margin:6px 0 0">90-dagers release-plan per låt: hva som skal postes hvor og når, fra 30 dager før release til 8 uker etter.</p>
+    <div class="grid2" style="margin-top:18px">
+      <div class="panel wk"><div class="ph"><h2>Denne uken</h2><span class="spacer"></span>
+        <div class="seg" id="wkOwner"><button data-o="" class="on">Alle</button><button data-o="artist">Artist</button><button data-o="studio">Studio</button><button data-o="label">Label</button></div></div>
+        <div id="week"></div></div>
+      <div class="panel"><div class="ph"><h2>Planer</h2><span class="spacer"></span><label class="check" style="font-size:13px"><input type="checkbox" id="showArch"> Vis arkiverte</label></div>
+        <div class="camps" id="camps" style="grid-template-columns:1fr"></div></div>
+    </div>
+  </section>
+
+  <!-- EN PLAN -->
+  <section id="vCamp" class="hidden">
+    <div class="ch-head">
+      <div class="avatar" id="cAv" style="width:52px;height:52px;font-size:22px;border-radius:15px"></div>
+      <div style="flex:1;min-width:0">
+        <div class="big" id="cTitle"></div>
+        <div class="muted" id="cSub" style="font-size:14px;margin-top:2px"></div>
+      </div>
+      <button class="btn sub" id="cEdit" type="button">Endre plan</button>
+      <button class="btn" id="cAdd" type="button">+ Oppgave</button>
+    </div>
+    <div class="stats" id="cStats"></div>
+    <div class="toolbar">
+      <div class="seg" id="cView"><button data-v="tl" class="on">Tidslinje</button><button data-v="list">Liste</button><button data-v="uke">Denne uken</button></div>
+      <div class="seg" id="cOwner"><button data-o="" class="on">Alle</button><button data-o="artist">Artist</button><button data-o="studio">Studio</button><button data-o="label">Label</button></div>
+      <select class="flt" id="cChan"><option value="">Alle kanaler</option></select>
+      <label class="check" style="font-size:13px"><input type="checkbox" id="cDone"> Vis ferdige</label>
+    </div>
+    <div id="cBody"></div>
+  </section>
+</main>
+
+<!-- Ny / endre plan -->
+<div class="mback hidden" id="planModal">
+  <form class="modal" id="planForm" autocomplete="off" style="width:min(620px,100%)">
+    <div class="mh"><h2 id="planH">Ny SoMe-plan</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f2">
+      <div class="f"><label for="p-artist">Artist</label><select id="p-artist" required></select></div>
+      <div class="f"><label for="p-song">Låt</label><select id="p-song"></select></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label for="p-title">Navn på planen</label><input id="p-title" maxlength="200" required placeholder="For eksempel «Pendel – singel»"></div>
+      <div class="f"><label for="p-date">Releasedato</label><input id="p-date" type="date" required><span class="hint" id="p-dateHint"></span></div>
+    </div>
+    <div class="f" id="chWrap"><label>Kanaler</label><div class="chs" id="p-chs"></div><span class="hint" id="p-count"></span></div>
+    <div class="f"><label for="p-notes">Notater</label><textarea id="p-notes" maxlength="4000" style="min-height:70px" placeholder="Hashtags, tone, hvem som gjør hva …"></textarea></div>
+    <label class="check hidden" id="archWrap" style="margin-bottom:10px"><input type="checkbox" id="p-arch"> Arkiver planen</label>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="p-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary" id="p-save">Lag plan</button></div>
+  </form>
+</div>
+
+<!-- Oppgave -->
+<div class="mback hidden" id="taskModal">
+  <form class="modal" id="taskForm" autocomplete="off">
+    <div class="mh"><h2 id="taskH">Ny oppgave</h2><span class="spacer"></span><button type="button" class="btn ghost sm" data-close>✕</button></div>
+    <div class="f"><label for="t-title">Oppgave</label><input id="t-title" maxlength="300" required></div>
+    <div class="f2">
+      <div class="f"><label for="t-chan">Kanal</label><select id="t-chan"></select></div>
+      <div class="f"><label for="t-owner">Ansvarlig</label><select id="t-owner"><option value="artist">Artist</option><option value="studio">Studio</option><option value="label">Label/distributør</option></select></div>
+    </div>
+    <div class="f2">
+      <div class="f"><label for="t-start">Dato</label><input id="t-start" type="date" required><span class="hint" id="t-startHint"></span></div>
+      <div class="f"><label for="t-end">Til og med (valgfritt)</label><input id="t-end" type="date"><span class="hint">For oppgaver som går over flere dager</span></div>
+    </div>
+    <div class="f"><label for="t-note">Notat</label><input id="t-note" maxlength="2000" placeholder="Idé, hashtag, hvem som filmer …"></div>
+    <div class="f"><label for="t-link">Lenke til posten</label><input id="t-link" maxlength="500" placeholder="Når den er ute"></div>
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" id="t-done"> Ferdig</label>
+    <div class="mfoot"><button type="button" class="btn danger hidden" id="t-del">Slett</button><span class="spacer"></span><button type="button" class="btn ghost" data-close>Avbryt</button><button class="btn primary">Lagre</button></div>
+  </form>
+</div>
+
+<div class="lock hidden" id="lock">
+  <form class="lockbox" id="lockForm" autocomplete="off">
+    <div class="logo" style="font-size:13px">PHAT <span>LAB</span></div>
+    <h2>Sosiale <em>medier</em></h2>
+    <p class="muted" style="margin:0;font-size:14px">Skriv inn PIN-koden (samme som på Admin).</p>
+    <input type="password" inputmode="numeric" id="pin" maxlength="8" autocomplete="current-password" aria-label="PIN-kode" style="letter-spacing:8px;font-size:22px">
+    <div class="lockerr" id="lockErr" role="alert"></div>
+    <button class="btn primary">Lås opp</button>
+    <a href="phatlab-admin/" class="muted" style="font-size:13px">← Til admin</a>
+  </form>
+</div>
+
+<script>
+(() => {
+"use strict";
+const P = window.PLA, S = window.SOME, { el, toast, store } = P;
+const $ = (id) => document.getElementById(id);
+const SB_URL = "https://vrjherdkzxerygrbfuhr.supabase.co", SB_KEY = "sb_publishable_RPKs4kKEfLztdUW0nmmTgQ_qPLW1Hh2";
+let token = store.get("plk-token");
+const mk = (h) => supabase.createClient(SB_URL, SB_KEY, { auth: { persistSession: false }, global: { headers: h || {} } });
+let sb = mk(token ? { "x-prod-token": token } : {});
+async function rpc(n, a) { const { data, error } = await sb.rpc(n, a || {}); if (error) { if (/Ikke innlogget/.test(error.message)) { store.set("plk-token", null); token = null; lock(); } throw new Error(error.message); } return data; }
+function lock(msg) { $("main").classList.add("hidden"); $("lock").classList.remove("hidden"); $("lockErr").textContent = msg || ""; setTimeout(() => $("pin").focus(), 30); }
+$("lockForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const { data, error } = await mk().rpc("prod_login", { pin: $("pin").value });
+  if (error) { $("lockErr").textContent = error.message; return; } if (!data) { $("lockErr").textContent = "Feil PIN"; return; }
+  token = data; store.set("plk-token", data); sb = mk({ "x-prod-token": data }); $("pin").value = ""; $("lock").classList.add("hidden"); load();
+});
+
+let D = { campaigns: [], artists: [], songs: [] }, cur = null;
+const ui = { view: "tl", owner: "", chan: "", done: false, wkOwner: "" };
+async function load() {
+  if (!token) return lock();
+  try { D = await rpc("som_list"); $("lock").classList.add("hidden"); $("main").classList.remove("hidden"); route(); } catch (e) { if (token) toast(e.message, true); }
+}
+function route() {
+  const m = location.hash.match(/^#c-(.+)$/);
+  cur = m ? D.campaigns.find(c => c.id === m[1]) || null : null;
+  $("vHome").classList.toggle("hidden", !!cur); $("vCamp").classList.toggle("hidden", !cur);
+  $("crumbC").textContent = cur ? " / " + cur.title : "";
+  if (cur) renderCamp(); else renderHome();
+  window.scrollTo(0, 0);
+}
+window.addEventListener("hashchange", route);
+$("crumbHome").onclick = (e) => { e.preventDefault(); location.hash = ""; };
+
+/* ---------- Oversikt ---------- */
+function renderHome() {
+  document.documentElement.style.setProperty("--ac", "#D946EF");
+  const box = $("camps"); box.replaceChildren();
+  const list = D.campaigns.filter(c => $("showArch").checked || !c.archived);
+  for (const c of list) {
+    const pr = S.progress(c), late = c.tasks.filter(t => S.taskState(c, t) === "late").length, now = c.tasks.filter(t => S.taskState(c, t) === "now").length;
+    const card = el("div", "camp"); card.style.setProperty("--c", c.color || "#D946EF");
+    const rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
+    card.append(el("b", null, c.title), el("div", "meta", (c.artist || "") + " · release " + S.dShort(rel) + " " + rel.getFullYear() + " · " + (d < 0 ? (-d) + " dager til release" : d === 0 ? "release i dag!" : "dag " + (d + 1) + " etter release") + (c.archived ? " · arkivert" : "")));
+    const bar = el("div", "pbar"); const i = el("i"); i.style.width = pr.pct + "%"; bar.appendChild(i); card.appendChild(bar);
+    const f = el("div", "meta"); f.textContent = pr.d + " av " + pr.n + " ferdig (" + pr.pct + " %)" + (now ? " · " + now + " i dag" : "") + (late ? " · " + late + " forsinket" : ""); if (late) f.style.color = "#FFB3B3"; card.appendChild(f);
+    card.onclick = () => { location.hash = "c-" + c.id; };
+    box.appendChild(card);
+  }
+  if (!list.length) box.appendChild(el("div", "empty", "Ingen planer ennå. Trykk «+ Ny plan» for å lage en fra 90-dagersmalen."));
+  // Denne uken på tvers av planer
+  const wk = $("week"); wk.replaceChildren(); const td = S.today();
+  const items = [];
+  for (const c of D.campaigns.filter(c => !c.archived)) for (const t of c.tasks) {
+    if (t.done || (ui.wkOwner && t.owner !== ui.wkOwner)) continue;
+    const s = S.taskStart(c, t), e = S.taskEnd(c, t);
+    if (e < S.addDays(td, -14) || s > S.addDays(td, 7)) continue;
+    const kd = e < td ? e : s < td ? td : s; items.push({ c, t, kd, late: e < td });
+  }
+  items.sort((a, b) => a.kd - b.kd || a.t.sort - b.t.sort);
+  let last = "";
+  for (const it of items) {
+    const k = S.ymd(it.kd); if (k !== last) { last = k; const h = el("div", "sday" + (k === S.ymd(td) ? " today" : it.kd < td ? " past" : "")); h.append(el("b", null, (k === S.ymd(td) ? "I dag · " : it.kd < td ? "Forsinket · " : "") + S.dShort(it.kd)), el("span")); wk.appendChild(h); }
+    const r = S.taskRow(it.c, it.t, { onToggle: toggle, onTask: (t) => openTask(t, it.c) });
+    const tag = el("div", "camp-tag", it.c.title + (it.c.artist ? " · " + it.c.artist : "")); r.querySelector(".m").appendChild(tag);
+    wk.appendChild(r);
+  }
+  if (!items.length) wk.appendChild(el("div", "empty", "Ingen åpne oppgaver denne uken."));
+}
+$("showArch").onchange = renderHome;
+$("wkOwner").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ui.wkOwner = b.dataset.o; [...$("wkOwner").children].forEach(x => x.classList.toggle("on", x === b)); renderHome(); });
+
+/* ---------- En plan ---------- */
+$("cChan").append(...S.CHANNELS.map(c => Object.assign(el("option", null, c.n), { value: c.k })));
+function renderCamp() {
+  const c = cur; document.documentElement.style.setProperty("--ac", c.color || "#D946EF");
+  $("cAv").textContent = P.initials(c.artist || c.title); $("cAv").style.background = c.color || "#D946EF";
+  $("cTitle").textContent = c.title;
+  const rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
+  $("cSub").textContent = [c.artist, c.song ? "låt: " + c.song : "", "release " + S.dShort(rel) + " " + rel.getFullYear(), d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1)].filter(Boolean).join(" · ");
+  const pr = S.progress(c), late = c.tasks.filter(t => S.taskState(c, t) === "late").length, now = c.tasks.filter(t => S.taskState(c, t) === "now").length;
+  $("cStats").replaceChildren(...[[pr.pct + " %", "ferdig", pr.d + " av " + pr.n], [now, "i dag", "oppgaver å gjøre"], [late, "forsinket", late ? "bør tas igjen" : "alt i rute"], [c.tasks.filter(t => t.owner === "artist" && !t.done).length, "åpne for artisten", "ser dem på artistsiden"]]
+    .map(([v, l, s], i) => { const x = el("div", "stat"); const b = el("b", null, v); if (i === 2 && late) b.style.color = "#FF8A8A"; x.append(b, el("span", null, l), Object.assign(el("div", "muted", s), { style: "font-size:11.5px;margin-top:2px" })); return x; }));
+  const body = $("cBody"); body.replaceChildren();
+  const view = { owner: ui.owner, channel: ui.chan, showDone: ui.done, onToggle: toggle, onTask: (t) => openTask(t, c) };
+  if (ui.view === "tl") { const t = el("div"); body.appendChild(t); S.renderTimeline(t, { ...c, tasks: c.tasks.filter(x => (!ui.chan || x.channel === ui.chan) && (ui.done || !x.done || true)) }, { owner: ui.owner, onTask: view.onTask }); }
+  else { const l = el("div"); body.appendChild(l); S.renderList(l, c, { ...view, range: ui.view === "uke" ? "uke" : "" }); }
+  if (c.notes) { const n = el("div", "panel"); n.style.marginTop = "16px"; n.append(el("h3", "sec", "Notater")); const p = el("div", null, c.notes); p.style.whiteSpace = "pre-wrap"; n.appendChild(p); body.appendChild(n); }
+}
+const segBind = (id, key, attr) => $(id).addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; ui[key] = b.dataset[attr]; [...$(id).children].forEach(x => x.classList.toggle("on", x === b)); renderCamp(); });
+segBind("cView", "view", "v"); segBind("cOwner", "owner", "o");
+$("cChan").onchange = () => { ui.chan = $("cChan").value; renderCamp(); };
+$("cDone").onchange = () => { ui.done = $("cDone").checked; renderCamp(); };
+
+async function toggle(t, val) {
+  await rpc("som_set_done", { tid: t.id, val }).catch(e => { toast(e.message, true); throw e; });
+  t.done = val; t.done_by = val ? "studio" : null;
+  cur ? renderCamp() : renderHome();
+}
+
+/* ---------- Ny / endre plan ---------- */
+let editC = null;
+function fillSongs() {
+  const aid = $("p-artist").value, songs = D.songs.filter(s => s.artist_id === aid);
+  $("p-song").replaceChildren(Object.assign(el("option", null, "Ingen bestemt låt"), { value: "" }), ...songs.map(s => Object.assign(el("option", null, s.title + (s.release_date ? " (release " + S.dShort(S.parse(s.release_date)) + ")" : "")), { value: s.id })));
+}
+function countHint() { const chs = [...$("p-chs").querySelectorAll("input:checked")].map(i => i.value); $("p-count").textContent = "Lager " + S.templateTasks(chs).length + " oppgaver fra 90-dagersplanen (kan endres etterpå)."; }
+function openPlan(c) {
+  editC = c || null; $("planH").textContent = c ? "Endre plan" : "Ny SoMe-plan"; $("p-save").textContent = c ? "Lagre" : "Lag plan";
+  $("p-artist").replaceChildren(...D.artists.map(a => Object.assign(el("option", null, a.name), { value: a.id })));
+  $("p-artist").disabled = !!c; $("p-artist").value = c ? c.artist_id : (D.artists[0]?.id || "");
+  fillSongs(); $("p-song").value = c ? (c.song_id || "") : "";
+  $("p-title").value = c ? c.title : ""; $("p-date").value = c ? c.release_date : ""; $("p-notes").value = c ? (c.notes || "") : "";
+  $("p-dateHint").textContent = c ? "Endrer du datoen, flytter alle oppgavene seg tilsvarende." : "";
+  $("chWrap").classList.toggle("hidden", !!c); $("archWrap").classList.toggle("hidden", !c); $("p-arch").checked = c ? !!c.archived : false; $("p-del").classList.toggle("hidden", !c);
+  if (!c) { $("p-chs").replaceChildren(...S.CHANNELS.filter(k => k.k !== "annet").map(k => { const l = el("label"); const i = el("input"); i.type = "checkbox"; i.value = k.k; i.checked = true; i.onchange = countHint; const d = el("i"); d.style.background = k.c; l.append(i, d, document.createTextNode(k.n + (k.owner === "label" ? " *" : ""))); return l; })); countHint(); }
+  openModal("planModal");
+}
+$("p-artist").onchange = () => { fillSongs(); };
+$("p-song").onchange = () => { const s = D.songs.find(x => x.id === $("p-song").value); if (s) { if (!$("p-title").value) $("p-title").value = s.title + " – singel"; if (s.release_date && !editC) $("p-date").value = s.release_date; } };
+$("newBtn").onclick = () => openPlan(null);
+$("cEdit").onclick = () => openPlan(cur);
+$("planForm").addEventListener("submit", async (e) => {
+  e.preventDefault(); const b = $("p-save"); b.disabled = true;
+  try {
+    const c = { artist_id: $("p-artist").value, song_id: $("p-song").value, title: $("p-title").value.trim(), release_date: $("p-date").value, notes: $("p-notes").value.trim() };
+    if (editC) { await rpc("som_update_campaign", { cid: editC.id, c: { ...c, archived: $("p-arch").checked } }); toast("Planen er lagret"); closeModals(); await load(); }
+    else {
+      const chs = [...$("p-chs").querySelectorAll("input:checked")].map(i => i.value);
+      const id = await rpc("som_create", { c: { ...c, channels: chs }, tasks: S.templateTasks(chs) });
+      toast("Planen er laget"); closeModals(); location.hash = "c-" + id; await load();
+    }
+  } catch (err) { toast(err.message, true); }
+  b.disabled = false;
+});
+armDelete($("p-del"), async () => { await rpc("som_delete_campaign", { cid: editC.id }); toast("Planen er slettet"); closeModals(); location.hash = ""; await load(); });
+
+/* ---------- Oppgave ---------- */
+$("t-chan").replaceChildren(...S.CHANNELS.map(k => Object.assign(el("option", null, k.n), { value: k.k })));
+let editT = null, tCamp = null;
+function openTask(t, c) {
+  editT = t || null; tCamp = c || cur; const rel = S.parse(tCamp.release_date);
+  $("taskH").textContent = t ? "Endre oppgave" : "Ny oppgave";
+  $("t-title").value = t ? t.title : ""; $("t-chan").value = t ? t.channel : "instagram"; $("t-owner").value = t ? t.owner : "artist";
+  $("t-start").value = S.ymd(S.addDays(rel, t ? t.start_off : Math.max(S.dayOff(tCamp, S.today()), -30)));
+  $("t-end").value = t && t.end_off != null ? S.ymd(S.addDays(rel, t.end_off)) : "";
+  $("t-note").value = t ? (t.note || "") : ""; $("t-link").value = t ? (t.link || "") : ""; $("t-done").checked = t ? t.done : false;
+  $("t-del").classList.toggle("hidden", !t); startHint(); openModal("taskModal"); setTimeout(() => $("t-title").focus(), 30);
+}
+function startHint() { const d = S.parse($("t-start").value); $("t-startHint").textContent = d ? S.offLabel(S.dayOff(tCamp, d)) : ""; }
+$("t-start").oninput = startHint;
+$("t-chan").onchange = () => { if (!editT) $("t-owner").value = S.ch($("t-chan").value).owner; };
+$("cAdd").onclick = () => openTask(null, cur);
+$("taskForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const s = S.parse($("t-start").value), en = S.parse($("t-end").value);
+  if (!s) { toast("Velg dato", true); return; }
+  const so = S.dayOff(tCamp, s), eo = en ? S.dayOff(tCamp, en) : null;
+  if (eo != null && eo < so) { toast("Til-datoen må være etter startdatoen", true); return; }
+  try {
+    await rpc("som_save_task", { t: { id: editT?.id || "", campaign_id: tCamp.id, title: $("t-title").value.trim(), channel: $("t-chan").value, owner: $("t-owner").value, start_off: so, end_off: eo === so ? "" : eo ?? "", note: $("t-note").value.trim(), link: $("t-link").value.trim() } });
+    const wasDone = editT ? editT.done : false;
+    if (editT && $("t-done").checked !== wasDone) await rpc("som_set_done", { tid: editT.id, val: $("t-done").checked });
+    toast("Lagret"); closeModals(); await load();
+  } catch (err) { toast(err.message, true); }
+});
+armDelete($("t-del"), async () => { await rpc("som_delete_task", { tid: editT.id }); toast("Oppgaven er slettet"); closeModals(); await load(); });
+
+/* ---------- Felles ---------- */
+function openModal(id) { $(id).classList.remove("hidden"); document.body.style.overflow = "hidden"; }
+function closeModals() { document.querySelectorAll(".mback").forEach(m => m.classList.add("hidden")); document.body.style.overflow = ""; }
+function armDelete(b, f) { b.onclick = async () => { if (!b.dataset.armed) { b.dataset.armed = "1"; b.textContent = "Sikker? Klikk igjen"; setTimeout(() => { delete b.dataset.armed; b.textContent = "Slett"; }, 3000); return; } try { await f(); } catch (e) { toast(e.message, true); } }; }
+document.querySelectorAll("[data-close]").forEach(b => b.onclick = closeModals);
+document.querySelectorAll(".mback").forEach(m => m.addEventListener("click", (e) => { if (e.target === m) closeModals(); }));
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModals(); });
+document.addEventListener("visibilitychange", () => { if (!document.hidden && token && !document.querySelector(".mback:not(.hidden)")) load(); });
+load();
+})();
+</script>
+</body>
+</html>
