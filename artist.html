@@ -9,8 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css?v=202611271200">
-<script src="assets/artist-common.js?v=202611271200"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611271330">
+<script src="assets/artist-common.js?v=202611271330"></script>
+<script src="assets/some-common.js?v=202611271330"></script>
+<script src="assets/some-studio.js?v=202611271330"></script>
 <style>
 .pform .f textarea{min-height:110px}
 .portalbox{display:flex;flex-direction:column;gap:12px}
@@ -64,6 +66,7 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   <nav class="tabs" id="tabs">
     <button type="button" data-t="laater" class="on">Låter <span class="n" id="nSongs"></span></button>
     <button type="button" data-t="kalender">Kalender og planer</button>
+    <button type="button" data-t="some">Sosiale medier <span class="n" id="nSome"></span></button>
     <button type="button" data-t="dok">Dokumenter <span class="n" id="nDocs"></span></button>
     <button type="button" data-t="profil">Profil</button>
     <button type="button" data-t="okonomi">Økonomi</button>
@@ -74,6 +77,9 @@ table.pay .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowr
   <section id="v-laater">
     <div class="songs" id="songs"></div>
   </section>
+
+  <!-- SOSIALE MEDIER -->
+  <section id="v-some" class="hidden"><div id="someRoot"></div></section>
 
   <!-- KALENDER -->
   <section id="v-kalender" class="hidden">
@@ -275,12 +281,18 @@ $("logout").onclick = async () => { try { await sb.rpc("prod_logout"); } catch {
 
 /* ---------- Data ---------- */
 let D = null;
+/* Sosiale medier ligger under artisten: egen fane + linje på hver låt */
+const SS = window.SOMESTUDIO.mount(document.getElementById("someRoot"), { rpc: (n, a) => rpc(n, a), artistId: AID, onChange: (cs) => {
+  const td = window.SOME.today(); const n = cs.filter(c => !c.archived).reduce((k, c) => k + c.tasks.filter(t => !t.done && window.SOME.taskStart(c, t) <= td).length, 0);
+  document.getElementById("nSome").textContent = n || ""; if (D) renderSongs(); } });
+function openSome(cid) { tab = "some"; history.replaceState(null, "", "#some"); renderTabs(); if (cid) SS.openPlan(cid); else SS.home(); }
 const portalUrl = () => new URL("portal.html", location.href).href;
 async function load() {
   if (!AID) { location.replace("produksjon.html#mapper"); return; }
   if (!token) { lock(); return; }
   try {
     D = await rpc("art_studio_get", { aid: AID });
+    SS.load().catch(e => toast(e.message, true));
     $("lock").classList.add("hidden"); $("main").classList.remove("hidden");
     render();
   } catch (e) { if (token) toast(e.message, true); }
@@ -291,7 +303,7 @@ $("tabs").addEventListener("click", (e) => { const b = e.target.closest("button"
 function renderTabs() {
   if (!$("v-" + tab)) tab = "laater";
   $("tabs").querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.t === tab));
-  for (const t of ["laater", "kalender", "dok", "profil", "okonomi", "portal"]) $("v-" + t).classList.toggle("hidden", t !== tab);
+  for (const t of ["laater", "kalender", "some", "dok", "profil", "okonomi", "portal"]) $("v-" + t).classList.toggle("hidden", t !== tab);
   if (tab === "okonomi") loadFin();
 }
 const hidden = () => new Set(D.profile.hidden_songs || []);
@@ -350,11 +362,8 @@ function renderSongs() {
     const rb = el("button", "btn sub sm", rel ? "Release-info" : "+ Release-info"); rb.type = "button"; rb.style.marginLeft = "auto";
     rb.onclick = () => P.openRelease(s, rel, async (data) => { await rpc("art_studio_save_release", { sid: s.id, r: data }); toast("Release-info lagret"); load(); });
     rl.appendChild(rb); c.appendChild(rl);
-    const sp = (D.social || []).find(x => x.song_id === s.id && !x.archived);
-    const sl = el("div", "relline");
-    if (sp) { const pct = sp.total ? Math.round(sp.done / sp.total * 100) : 0; const t = el("span", "tag", "SoMe"); t.style.cssText = "color:#F472B6;border-color:#F472B666"; sl.append(t, el("span", null, pct + " % av release-planen ferdig")); const a = el("a", "btn sub sm", "Åpne plan →"); a.href = "sosiale.html#c-" + sp.id; a.style.marginLeft = "auto"; sl.appendChild(a); }
-    else { sl.appendChild(el("span", "muted", "Ingen SoMe-plan")); const a = el("a", "btn sub sm", "+ SoMe-plan"); a.href = "sosiale.html"; a.style.marginLeft = "auto"; sl.appendChild(a); }
-    c.appendChild(sl);
+    const sp = SS.campaigns().find(x => x.song_id === s.id && !x.archived);
+    c.appendChild(window.SOMESTUDIO.songLine(sp, { onOpen: () => openSome(sp.id), onCreate: () => SS.newPlan(s.id) }));
     const docs = D.docs.filter(d => d.song_id === s.id);
     if (docs.length) c.appendChild(el("div", "team", docs.length + (docs.length === 1 ? " dokument" : " dokumenter") + ": " + docs.map(d => d.title).join(", ")));
     if (s.note) { const n = el("div", "team", s.note); n.style.whiteSpace = "pre-wrap"; c.appendChild(n); }

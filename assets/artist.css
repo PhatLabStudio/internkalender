@@ -301,3 +301,14 @@ h3.sec{font:600 12.5px var(--f-body);text-transform:uppercase;letter-spacing:.07
 .tabs2 button{background:none;border:0;border-bottom:2px solid transparent;color:var(--muted);padding:9px 12px;font-size:14px;font-weight:600;white-space:nowrap}
 .tabs2 button.on{color:var(--ink);border-bottom-color:var(--ac,#D946EF)}
 @media (max-width:640px){.stl-lab{font-size:12px;padding:0 8px;gap:5px}.stl-corner{padding:30px 8px 0}}
+/* SoMe-linje på låtkort */
+.some-line{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:7px;margin-top:10px}
+.some-line>.tag,.some-line>.muted{display:inline}
+.some-line:not(:has(.some-top)){flex-direction:row;align-items:center;flex-wrap:wrap;gap:8px}
+.some-line:not(:has(.some-top)) .btn{margin-left:auto}
+.some-top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13.5px}
+.some-top .btn{margin-left:auto}
+.some-line .muted{font-size:13px}
+.tag.some{color:#F472B6;border-color:#F472B666}
+.some-line .pbar{margin:0}
+.some-next{display:flex;align-items:center;gap:7px;font-size:13px;flex-wrap:wrap}

@@ -9,9 +9,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css?v=202611271200">
-<script src="assets/artist-common.js?v=202611271200"></script>
-<script src="assets/some-common.js?v=202611271200"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611271330">
+<script src="assets/artist-common.js?v=202611271330"></script>
+<script src="assets/some-common.js?v=202611271330"></script>
+<script src="assets/some-studio.js?v=202611271330"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
 .mini{display:flex;flex-direction:column;gap:8px}
@@ -231,6 +232,8 @@ function renderSongs() {
     const rb = el("button", "btn sub sm", rel ? "Release-info" : "+ Legg inn release-info"); rb.type = "button"; rb.style.marginLeft = "auto";
     rb.onclick = () => P.openRelease(s, rel, async (data) => { await rpc("art_portal_save_release", { sid: s.id, r: data }); toast("Release-info lagret"); load(); });
     rl.appendChild(rb); c.appendChild(rl);
+    const sp = (typeof SC !== "undefined" ? SC : []).find(x => x.song_id === s.id);
+    if (sp) c.appendChild(window.SOMESTUDIO.songLine(sp, { owner: "artist", onOpen: () => openSomePlan(sp.id) }));
     const docs = D.docs.filter(d => d.song_id === s.id);
     if (docs.length) { const f = el("div", "foot"); docs.forEach(d => { const b = el("button", "btn sub sm", d.title); b.type = "button"; b.onclick = () => openDoc(d); f.appendChild(b); }); c.appendChild(f); }
     box.appendChild(c);
@@ -337,7 +340,7 @@ async function loadSome() {
   $("tabSome").classList.toggle("hidden", !SC.length && !kit);
   $("stPlan").classList.toggle("hidden", !SC.length);
   if (!someTab || (someTab === "plan" && !SC.length)) someTab = SC.length ? "plan" : "idea";
-  renderSomeTabs();
+  renderSomeTabs(); renderSongs();
   const open = SC.reduce((n, c) => n + c.tasks.filter(t => !t.done && t.owner === "artist" && ["now", "late"].includes(S.taskState(c, t))).length, 0);
   $("nSome").textContent = open || "";
   renderSome();
@@ -346,7 +349,7 @@ function renderSome() {
   const box = $("someBox"); box.replaceChildren();
   for (const c of SC) {
     const v = someView[c.id] || "kal";
-    const p = el("div", "panel"); p.style.marginBottom = "16px";
+    const p = el("div", "panel"); p.style.marginBottom = "16px"; p.dataset.camp = c.id;
     const pr = S.progress(c), rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
     const ph = el("div", "ph"); const hh = el("div"); hh.append(el("h2", null, c.title), el("div", "muted", "Release " + S.dShort(rel) + " · " + (d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1) + " etter release") + " · " + pr.pct + " % ferdig"));
     hh.lastChild.style.fontSize = "13px"; ph.append(hh, el("span", "spacer"));
@@ -362,6 +365,10 @@ function renderSome() {
     else S.renderList(body, c, { ...opts, range: v === "uke" ? "uke" : "", showDone: v === "alle" });
     box.appendChild(p);
   }
+}
+function openSomePlan(cid) {
+  tab = "some"; history.replaceState(null, "", location.search + "#some"); renderTabs(); someTab = "plan"; renderSomeTabs();
+  requestAnimationFrame(() => { const p = document.querySelector('[data-camp="' + cid + '"]'); if (p) p.scrollIntoView({ behavior: "smooth", block: "start" }); });
 }
 $("someTabs").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; someTab = b.dataset.s; renderSomeTabs(); });
 function renderSomeTabs() {
