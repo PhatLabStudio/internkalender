@@ -223,3 +223,32 @@ h3.sec{font:600 12.5px var(--f-body);text-transform:uppercase;letter-spacing:.07
 .pbar{height:7px;border-radius:4px;background:rgba(255,255,255,.07);overflow:hidden}
 .pbar i{display:block;height:100%;background:linear-gradient(90deg,#3DDC97,#22D3EE)}
 .camps{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+
+/* Månedskalender (SoMe) */
+.mcal-nav{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.mcal-nav b{font:700 18px var(--f-display);min-width:150px;text-align:center}
+.mcal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.mcal-dn{font-size:11.5px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;padding:2px 6px}
+.mcal-c{background:var(--card);border:1px solid var(--line);border-radius:10px;min-height:112px;padding:5px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.mcal-c.out{opacity:.4}
+.mcal-c.today{border-color:#F0ABFC;box-shadow:inset 0 0 0 1px #F0ABFC}
+.mcal-c.rel{background:linear-gradient(180deg,rgba(217,70,239,.18),var(--card) 60%);border-color:#D946EF}
+.mcal-top{display:flex;justify-content:space-between;align-items:baseline;padding:0 2px}
+.mcal-top .n{font-weight:700;font-size:13px}
+.mcal-top .o{font-size:10px;color:var(--muted);white-space:nowrap}
+.mcal-c.rel .mcal-top .o{color:#F0ABFC;font-weight:700}
+.mchip{display:flex;align-items:center;gap:5px;width:100%;text-align:left;background:color-mix(in srgb,var(--c,#8B7FB8) 16%,#15121F);border:0;border-left:3px solid var(--c,#8B7FB8);border-radius:5px;padding:3px 5px;font-size:11px;line-height:1.25;color:var(--ink);cursor:pointer}
+.mchip i{display:none}
+.mchip span{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.mchip.done{opacity:.45;text-decoration:line-through}
+.mchip.late{box-shadow:inset 0 0 0 1px rgba(255,107,107,.6)}
+.mchip.now{box-shadow:inset 0 0 0 1px rgba(240,171,252,.7)}
+.mchip.more{border-left-color:transparent;background:transparent;color:var(--muted);justify-content:center}
+.mcal-list{display:flex;flex-direction:column;gap:10px}
+.mcal-lday{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:5px}
+.mcal-lday.today{border-color:#F0ABFC}
+.mcal-lday .h{display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px}
+.mcal-lday .h span{color:var(--muted);font-size:12px}
+.mcal-lday .h.rel span{color:#F0ABFC;font-weight:700}
+.mcal-lday .mchip{font-size:13px;padding:6px 8px}
+.mcal-lday .mchip span{-webkit-line-clamp:3}

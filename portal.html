@@ -9,9 +9,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<link rel="stylesheet" href="assets/artist.css">
-<script src="assets/artist-common.js"></script>
-<script src="assets/some-common.js"></script>
+<link rel="stylesheet" href="assets/artist.css?v=202611270242">
+<script src="assets/artist-common.js?v=202611270242"></script>
+<script src="assets/some-common.js?v=202611270242"></script>
 <style>
 .welcome{font-size:14px;color:var(--muted);margin-top:4px}
 .mini{display:flex;flex-direction:column;gap:8px}
@@ -303,7 +303,21 @@ $("upForm").addEventListener("submit", async (e) => {
   b.disabled = false;
 });
 /* ---------- Sosiale medier ---------- */
-const S = window.SOME; let SC = [], someView = {};
+const S = window.SOME; let SC = [], someView = {}, someMonth = {};
+// Trykk på en oppgave i kalenderen: vis teksten og la artisten krysse av egne oppgaver
+function peekTask(c, t) {
+  const k = S.ch(t.channel), mine = t.owner === "artist";
+  const back = el("div", "mback"), m = el("div", "modal"); m.style.width = "min(440px,100%)"; back.appendChild(m);
+  const ti = el("div"); ti.style.cssText = "display:flex;gap:8px;align-items:center;margin-bottom:8px"; const chp = el("span", "chip", k.n); chp.style.setProperty("--c", k.c); ti.append(chp, el("span", "muted", S.dShort(S.taskStart(c, t)) + (t.end_off != null ? " – " + S.dShort(S.taskEnd(c, t)) : "") + " · " + S.OWNERS[t.owner]));
+  m.append(ti, el("h2", null, t.title)); if (t.note) m.appendChild(el("p", "muted", t.note));
+  const f = el("div", "mfoot"); f.style.marginTop = "14px"; f.appendChild(el("span", "spacer"));
+  const close = () => back.remove();
+  const x = el("button", "btn ghost", "Lukk"); x.type = "button"; x.onclick = close; f.appendChild(x);
+  if (mine) { const b = el("button", "btn primary", t.done ? "Marker som ikke ferdig" : "Marker som ferdig"); b.type = "button";
+    b.onclick = async () => { b.disabled = true; try { await rpc("som_portal_set_done", { tid: t.id, val: !t.done }); t.done = !t.done; close(); renderSome(); loadSomeCount(); } catch (e) { toast(e.message, true); b.disabled = false; } }; f.appendChild(b); }
+  else f.prepend(el("span", "muted", "Tas av " + S.OWNERS[t.owner].toLowerCase()));
+  m.appendChild(f); back.addEventListener("click", (e) => { if (e.target === back) close(); }); document.body.appendChild(back);
+}
 async function loadSome() {
   try { SC = await rpc("som_portal_get") || []; } catch { SC = []; }
   $("tabSome").classList.toggle("hidden", !SC.length);
@@ -314,18 +328,20 @@ async function loadSome() {
 function renderSome() {
   const box = $("someBox"); box.replaceChildren();
   for (const c of SC) {
-    const v = someView[c.id] || "uke";
+    const v = someView[c.id] || "kal";
     const p = el("div", "panel"); p.style.marginBottom = "16px";
     const pr = S.progress(c), rel = S.parse(c.release_date), d = S.dayOff(c, S.today());
     const ph = el("div", "ph"); const hh = el("div"); hh.append(el("h2", null, c.title), el("div", "muted", "Release " + S.dShort(rel) + " · " + (d < 0 ? (-d) + " dager igjen" : d === 0 ? "release i dag!" : "dag " + (d + 1) + " etter release") + " · " + pr.pct + " % ferdig"));
     hh.lastChild.style.fontSize = "13px"; ph.append(hh, el("span", "spacer"));
     const seg = el("div", "seg"); seg.style.cssText = "display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden";
-    [["uke", "Denne uken"], ["alle", "Alle"], ["tl", "Tidslinje"]].forEach(([k, n]) => { const b = el("button", null, n); b.type = "button"; b.style.cssText = "border:0;padding:6px 11px;font-size:13px;background:" + (v === k ? "var(--ac);color:#fff" : "var(--card);color:var(--muted)"); b.onclick = () => { someView[c.id] = k; renderSome(); }; seg.appendChild(b); });
+    [["kal", "Kalender"], ["uke", "Denne uken"], ["alle", "Alle"], ["tl", "Tidslinje"]].forEach(([k, n]) => { const b = el("button", null, n); b.type = "button"; b.style.cssText = "border:0;padding:6px 11px;font-size:13px;background:" + (v === k ? "var(--ac);color:#fff" : "var(--card);color:var(--muted)"); b.onclick = () => { someView[c.id] = k; renderSome(); }; seg.appendChild(b); });
     ph.appendChild(seg); p.appendChild(ph);
     const bar = el("div", "pbar"); bar.appendChild(Object.assign(el("i"), { style: "width:" + pr.pct + "%" })); p.appendChild(bar);
     const body = el("div"); body.style.marginTop = "10px"; p.appendChild(body);
     const opts = { canToggle: (t) => t.owner === "artist", onToggle: async (t, val) => { await rpc("som_portal_set_done", { tid: t.id, val }); t.done = val; renderSome(); loadSomeCount(); } };
-    if (v === "tl") S.renderTimeline(body, c, {});
+    if (v === "kal") { const td = S.today(), rel = S.parse(c.release_date); const ref = someMonth[c.id] || (Math.abs(td - rel) < 70 * 864e5 ? td : rel);
+      requestAnimationFrame(() => S.renderMonth(body, c, { month: ref, showDone: true, onMonth: (d) => { someMonth[c.id] = d; }, onPeek: (t) => peekTask(c, t) })); }
+    else if (v === "tl") S.renderTimeline(body, c, {});
     else S.renderList(body, c, { ...opts, range: v === "uke" ? "uke" : "", showDone: v === "alle" });
     box.appendChild(p);
   }

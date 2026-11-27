@@ -264,5 +264,66 @@ function taskRow(c, t, opts) {
   return r;
 }
 
-window.SOME = { CHANNELS, OWNERS, ch, templateTasks, parse, ymd, addDays, today, dShort, offLabel, taskStart, taskEnd, dayOff, taskState, progress, renderTimeline, renderList, taskRow };
+
+/* ---------- Månedskalender (standardvisning) ---------- */
+const MONL = ["januar", "februar", "mars", "april", "mai", "juni", "juli", "august", "september", "oktober", "november", "desember"];
+function renderMonth(box, c, opts = {}) {
+  box.replaceChildren();
+  const rel = parse(c.release_date), td = today();
+  let tasks = c.tasks.filter(t => (!opts.owner || t.owner === opts.owner) && (!opts.channel || t.channel === opts.channel) && (opts.showDone !== false || !t.done));
+  const first = (opts.month && new Date(opts.month.getFullYear(), opts.month.getMonth(), 1)) || new Date(td.getFullYear(), td.getMonth(), 1);
+  const nav = el("div", "mcal-nav");
+  const prev = el("button", "btn sub sm", "‹"), next = el("button", "btn sub sm", "›"), now = el("button", "btn sub sm", "I dag"), relb = el("button", "btn sub sm", "Release");
+  [prev, next, now, relb].forEach(b => b.type = "button");
+  const go = (d) => { opts.month = d; if (opts.onMonth) opts.onMonth(d); renderMonth(box, c, opts); };
+  prev.onclick = () => go(new Date(first.getFullYear(), first.getMonth() - 1, 1));
+  next.onclick = () => go(new Date(first.getFullYear(), first.getMonth() + 1, 1));
+  now.onclick = () => go(new Date(td.getFullYear(), td.getMonth(), 1));
+  relb.onclick = () => go(new Date(rel.getFullYear(), rel.getMonth(), 1));
+  nav.append(prev, el("b", null, MONL[first.getMonth()][0].toUpperCase() + MONL[first.getMonth()].slice(1) + " " + first.getFullYear()), next, el("span", "spacer"), now, relb);
+  box.appendChild(nav);
+  // Hvilke oppgaver vises på en dag: énsdagsoppgaver på sin dag, flerdagsoppgaver på start- og sluttdag
+  const byDay = new Map(); const put = (d, t, kind) => { const k = ymd(d); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push({ t, kind }); };
+  for (const t of tasks) { const s = taskStart(c, t), e = taskEnd(c, t); put(s, t, t.end_off != null ? "start" : ""); if (t.end_off != null && ymd(e) !== ymd(s)) put(e, t, "end"); }
+  const narrow = (box.clientWidth || window.innerWidth) < 640;
+  const last = new Date(first.getFullYear(), first.getMonth() + 1, 0);
+  const chipFor = ({ t, kind }) => {
+    const k = ch(t.channel), st = taskState(c, t);
+    const b = el("button", "mchip " + st); b.type = "button"; b.style.setProperty("--c", k.c);
+    b.append(el("i"), el("span", null, (kind === "start" ? "Fra i dag: " : kind === "end" ? "Siste dag: " : "") + t.title));
+    b.title = k.n + " · " + t.title + " · " + OWNERS[t.owner] + (t.done ? " · ferdig" : "");
+    b.onclick = () => opts.onTask ? opts.onTask(t) : (opts.onPeek && opts.onPeek(t));
+    return b;
+  };
+  if (narrow) {
+    // Mobil: liste over dagene i måneden som har noe
+    const list = el("div", "mcal-list");
+    for (let d = new Date(first); d <= last; d = addDays(d, 1)) {
+      const items = byDay.get(ymd(d)) || [], isRel = ymd(d) === ymd(rel);
+      if (!items.length && !isRel) continue;
+      const day = el("div", "mcal-lday" + (ymd(d) === ymd(td) ? " today" : ""));
+      const h = el("div", "h"); h.append(el("b", null, DAYS[d.getDay()][0].toUpperCase() + DAYS[d.getDay()].slice(1) + " " + dShort(d)), el("span", null, isRel ? "RELEASE" : offLabel(dayOff(c, d))));
+      if (isRel) h.classList.add("rel");
+      day.appendChild(h); items.forEach(it => day.appendChild(chipFor(it))); list.appendChild(day);
+    }
+    if (!list.children.length) list.appendChild(el("div", "empty", "Ingen oppgaver denne måneden."));
+    box.appendChild(list); return;
+  }
+  const grid = el("div", "mcal");
+  ["Man", "Tir", "Ons", "Tor", "Fre", "Lør", "Søn"].forEach(n => grid.appendChild(el("div", "mcal-dn", n)));
+  const start = addDays(first, -((first.getDay() + 6) % 7));
+  for (let i = 0; i < 42; i++) {
+    const d = addDays(start, i); if (i >= 35 && d.getMonth() !== first.getMonth()) break;
+    const items = byDay.get(ymd(d)) || [], isRel = ymd(d) === ymd(rel);
+    const cell = el("div", "mcal-c" + (d.getMonth() !== first.getMonth() ? " out" : "") + (ymd(d) === ymd(td) ? " today" : "") + (isRel ? " rel" : ""));
+    const top = el("div", "mcal-top"); top.append(el("span", "n", d.getDate()), el("span", "o", isRel ? "RELEASE" : (dayOff(c, d) >= -30 && dayOff(c, d) <= 56 ? offLabel(dayOff(c, d)).replace(" før", "") : "")));
+    cell.appendChild(top);
+    const max = 5; items.slice(0, max).forEach(it => cell.appendChild(chipFor(it)));
+    if (items.length > max) { const m = el("button", "mchip more", "+" + (items.length - max) + " til"); m.type = "button"; m.onclick = () => { cell.querySelectorAll(".mchip").forEach(x => x.remove()); items.forEach(it => cell.appendChild(chipFor(it))); cell.classList.add("open"); }; cell.appendChild(m); }
+    grid.appendChild(cell);
+  }
+  box.appendChild(grid);
+}
+
+window.SOME = { renderMonth, CHANNELS, OWNERS, ch, templateTasks, parse, ymd, addDays, today, dShort, offLabel, taskStart, taskEnd, dayOff, taskState, progress, renderTimeline, renderList, taskRow };
 })();
